@@ -83,6 +83,14 @@ data class DropDefault(
 ) : Operation()
 
 @Serializable
+@SerialName("RENAME_TABLE")
+data class RenameTable(
+    override val migrationId: String,
+    val tableName: String,
+    val newTableName: String
+) : Operation()
+
+@Serializable
 data class Column(
     val name: String,
     val type: String,

@@ -8,6 +8,7 @@ import com.migrationtimeline.models.DropDefault
 import com.migrationtimeline.models.DropNotNull
 import com.migrationtimeline.models.Migration
 import com.migrationtimeline.models.MigrationTimelineResponse
+import com.migrationtimeline.models.RenameTable
 import com.migrationtimeline.models.SetDefault
 import com.migrationtimeline.models.SetNotNull
 import kotlinx.serialization.json.Json
@@ -114,6 +115,18 @@ class ApiContractFixtureGenerator {
                         migrationId = "migration-7",
                         tableName = "users",
                         columnName = "status"
+                    )
+                )
+            ),
+            Migration(
+                id = "migration-8",
+                version = "V8__rename_users_to_accounts",
+                timestamp = 8000L,
+                operations = listOf(
+                    RenameTable(
+                        migrationId = "migration-8",
+                        tableName = "users",
+                        newTableName = "accounts"
                     )
                 )
             )

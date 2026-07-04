@@ -126,6 +126,19 @@
                     "columnName": "status"
                 }
             ]
+        },
+        {
+            "id": "migration-8",
+            "version": "V8__rename_users_to_accounts",
+            "timestamp": 8000,
+            "operations": [
+                {
+                    "type": "RENAME_TABLE",
+                    "migrationId": "migration-8",
+                    "tableName": "users",
+                    "newTableName": "accounts"
+                }
+            ]
         }
     ],
     "map": {
@@ -253,6 +266,19 @@
                     "migrationId": "migration-7",
                     "tableName": "users",
                     "columnName": "status"
+                }
+            ]
+        },
+        "migration-8": {
+            "id": "migration-8",
+            "version": "V8__rename_users_to_accounts",
+            "timestamp": 8000,
+            "operations": [
+                {
+                    "type": "RENAME_TABLE",
+                    "migrationId": "migration-8",
+                    "tableName": "users",
+                    "newTableName": "accounts"
                 }
             ]
         }

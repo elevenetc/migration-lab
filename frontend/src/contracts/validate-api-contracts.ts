@@ -25,6 +25,8 @@ function validateOperationTypes(response: MigrationTimelineResponse): void {
           break
         case 'DROP_DEFAULT':
           break
+        case 'RENAME_TABLE':
+          break
         default:
           assertExhaustive(op)
       }

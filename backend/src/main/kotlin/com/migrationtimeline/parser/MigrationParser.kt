@@ -8,6 +8,7 @@ import com.migrationtimeline.models.DropDefault
 import com.migrationtimeline.models.DropNotNull
 import com.migrationtimeline.models.Migration
 import com.migrationtimeline.models.Operation
+import com.migrationtimeline.models.RenameTable
 import com.migrationtimeline.models.SetDefault
 import com.migrationtimeline.models.SetNotNull
 import net.sf.jsqlparser.parser.CCJSqlParserUtil
@@ -235,6 +236,19 @@ object MigrationParser {
             } ?: emptyList()
 
         operations.addAll(dropDefaults)
+
+        val renameTable = alter.alterExpressions
+            ?.firstOrNull { it.operation == AlterOperation.RENAME_TABLE }
+            ?.let { expr ->
+                val newName = expr.newTableName ?: return@let null
+                RenameTable(
+                    migrationId = migrationId,
+                    tableName = tableName,
+                    newTableName = newName
+                )
+            }
+
+        renameTable?.let { operations.add(it) }
 
         return operations
     }

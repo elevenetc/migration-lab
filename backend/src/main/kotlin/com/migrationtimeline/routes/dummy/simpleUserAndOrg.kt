@@ -41,6 +41,10 @@ private val dropLastnameDefault = """
     ALTER TABLE users ALTER COLUMN lastname DROP DEFAULT;
 """.trimIndent()
 
+private val renameUsersToCustomers = """
+    ALTER TABLE users RENAME TO customers;
+""".trimIndent()
+
 fun simpleUserAndOrg(): MigrationTimelineResponse {
     return migrationsToResponse(
         mapOf(
@@ -51,7 +55,8 @@ fun simpleUserAndOrg(): MigrationTimelineResponse {
             "V5__set_name_not_null" to setNameNotNull,
             "V6__drop_lastname_not_null" to dropLastnameNotNull,
             "V7__set_lastname_default" to setLastnameDefault,
-            "V8__drop_lastname_default" to dropLastnameDefault
+            "V8__drop_lastname_default" to dropLastnameDefault,
+            "V9__rename_users_to_accounts" to renameUsersToCustomers
         )
     )
 }

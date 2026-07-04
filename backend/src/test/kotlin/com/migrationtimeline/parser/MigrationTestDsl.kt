@@ -7,6 +7,7 @@ import com.migrationtimeline.models.DropDefault
 import com.migrationtimeline.models.DropNotNull
 import com.migrationtimeline.models.Migration
 import com.migrationtimeline.models.Operation
+import com.migrationtimeline.models.RenameTable
 import com.migrationtimeline.models.SetDefault
 import com.migrationtimeline.models.SetNotNull
 import java.util.UUID
@@ -44,6 +45,7 @@ private fun Operation.tableName(): String = when (this) {
     is DropNotNull -> tableName
     is SetDefault -> tableName
     is DropDefault -> tableName
+    is RenameTable -> tableName
 }
 
 private fun Operation.toTestDsl(): String = when (this) {
@@ -59,4 +61,5 @@ private fun Operation.toTestDsl(): String = when (this) {
     is DropNotNull -> "dropNotNull(${tableName}(${columnName}))"
     is SetDefault -> "setDefault(${tableName}(${columnName}=${defaultValue}))"
     is DropDefault -> "dropDefault(${tableName}(${columnName}))"
+    is RenameTable -> "renameTable(${tableName}->${newTableName})"
 }

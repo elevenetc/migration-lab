@@ -12,5 +12,8 @@ SQL statements that can be parsed (backend) and rendered (frontend).
 - `DROP NOT NULL`
 - `SET DEFAULT`
 - `DROP DEFAULT`
+- `RENAME TABLE`
 
 ## Not Supported
+
+- `RENAME COLUMN`
