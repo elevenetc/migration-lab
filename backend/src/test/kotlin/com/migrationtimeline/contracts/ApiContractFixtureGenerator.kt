@@ -41,7 +41,8 @@ class ApiContractFixtureGenerator {
                         tableName = "users",
                         addedColumns = listOf(
                             Column("status", "VARCHAR(50)", listOf("DEFAULT 'active'"))
-                        )
+                        ),
+                        droppedColumns = listOf("legacy_field")
                     )
                 )
             )

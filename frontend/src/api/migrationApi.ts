@@ -16,6 +16,7 @@ export interface AlterTable {
   migrationId: string
   tableName: string
   addedColumns: Column[]
+  droppedColumns: string[]
 }
 
 export type Operation = CreateTable | AlterTable

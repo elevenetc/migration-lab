@@ -19,6 +19,11 @@ class MigrationParserTest {
     }
 
     @Test
+    fun `parse ALTER TABLE DROP COLUMN migration`() {
+        dropLastNameSql.toMigration().isEqualTo("alter(users(-last_name))")
+    }
+
+    @Test
     fun `parse multiple migrations to DSL`() {
         listOf(createUsersSql, addLastNameSql, createOrgSql).toMigrations().isEqualTo(
             """
@@ -70,6 +75,10 @@ val addLastNameSql = """
 
 val addAgeSql = """
             ALTER TABLE users ADD COLUMN age INT;
+        """.trimIndent()
+
+val dropLastNameSql = """
+            ALTER TABLE users DROP COLUMN last_name;
         """.trimIndent()
 
 val createOrgSql = """

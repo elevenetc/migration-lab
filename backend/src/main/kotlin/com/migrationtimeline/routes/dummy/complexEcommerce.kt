@@ -160,6 +160,10 @@ private val createAuditLog = """
     );
 """.trimIndent()
 
+private val dropUserPhone = """
+    ALTER TABLE users DROP COLUMN phone;
+""".trimIndent()
+
 fun complexEcommerce(): MigrationTimelineResponse {
     return migrationsToResponse(
         mapOf(
@@ -178,7 +182,8 @@ fun complexEcommerce(): MigrationTimelineResponse {
             "V13__create_subscriptions_and_notifications" to "$createSubscriptions\n$createNotifications",
             "V14__add_user_organization" to addUserOrganization,
             "V15__add_payment_details" to addPaymentDetails,
-            "V16__create_audit_log" to createAuditLog
+            "V16__create_audit_log" to createAuditLog,
+            "V17__drop_user_phone" to dropUserPhone
         )
     )
 }

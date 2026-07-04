@@ -52,6 +52,7 @@ Two-module monorepo:
 ## Verification
 
 After making changes, run tests:
+
 ```
 just test
 ```
@@ -65,6 +66,7 @@ Backend and frontend types are kept in sync via compile-time contract validation
 3. Exhaustive switch ensures all Operation variants are handled
 
 When adding new Operation types:
+
 1. Add to `MigrationAst.kt` with `@SerialName`
 2. Add to `migrationApi.ts` and update `Operation` union
 3. Add case to `validate-api-contracts.ts` switch
@@ -77,3 +79,13 @@ When adding new Operation types:
 - PostgreSQL and Flyway migrations only
 - Frontend simplicity prioritized over polish for MVP
 - See [supported-sql.md](supported-sql.md) for supported SQL statements
+
+## Features implementation process
+
+1. Identify SQL statement or operation
+2. Implement backend parser
+3. Add backend test(s)
+4. Implement frontend rendering
+5. Add dummy example `com.migrationtimeline.routes.dummy`
+6. Run tests
+7. Update [supported-sql.md](supported-sql.md)

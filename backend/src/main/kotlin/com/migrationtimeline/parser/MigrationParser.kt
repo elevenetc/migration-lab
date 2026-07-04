@@ -6,6 +6,7 @@ import com.migrationtimeline.models.CreateTable
 import com.migrationtimeline.models.Migration
 import net.sf.jsqlparser.parser.CCJSqlParserUtil
 import net.sf.jsqlparser.statement.alter.Alter
+import net.sf.jsqlparser.statement.alter.AlterOperation
 import net.sf.jsqlparser.statement.create.table.CreateTable as JsqlCreateTable
 
 object MigrationParser {
@@ -85,10 +86,16 @@ object MigrationParser {
                 }
             } ?: emptyList()
 
+        val droppedColumns = alter.alterExpressions
+            ?.filter { it.operation == AlterOperation.DROP }
+            ?.mapNotNull { it.columnName }
+            ?: emptyList()
+
         return AlterTable(
             migrationId = migrationId,
             tableName = tableName,
-            addedColumns = addedColumns
+            addedColumns = addedColumns,
+            droppedColumns = droppedColumns
         )
     }
 }

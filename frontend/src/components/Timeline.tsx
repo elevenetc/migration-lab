@@ -2,23 +2,32 @@ import {useCallback, useEffect} from 'react'
 import {Background, Controls, Edge, MarkerType, Node, Position, ReactFlow, useEdgesState, useNodesState,} from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import {useMigrationStore} from '../store/migrationStore'
-import type {Column, Migration, Operation} from '../api/migrationApi'
+import type {Migration, Operation} from '../api/migrationApi'
 
 interface OperationEntry {
     migration: Migration
     operation: Operation
 }
 
-function getColumns(operation: Operation): Column[] {
-    return operation.type === 'CREATE_TABLE' ? operation.columns : operation.addedColumns
-}
-
 function formatOperationSummary(operation: Operation): string {
-    const columnNames = getColumns(operation).map(c => c.name).join(', ')
     if (operation.type === 'CREATE_TABLE') {
+        const columnNames = operation.columns.map(c => c.name).join(', ')
         return `create(${columnNames})`
     }
-    return `add(${columnNames})`
+    const added = operation.addedColumns.map(c => `+${c.name}`)
+    const dropped = operation.droppedColumns.map(c => `-${c}`)
+    const allChanges = [...added, ...dropped].join(', ')
+    return `alter(${allChanges})`
+}
+
+function getNodeColor(operation: Operation): string {
+    if (operation.type === 'CREATE_TABLE') {
+        return '#2c5282' // blue
+    }
+    if (operation.droppedColumns.length > 0) {
+        return '#c05621' // orange
+    }
+    return '#276749' // green
 }
 
 function buildTableOperationsMap(migrations: Migration[]): Map<string, OperationEntry[]> {
@@ -56,7 +65,6 @@ export function Timeline() {
         tableOperations.forEach((ops, tableName) => {
             ops.forEach((item) => {
                 const nodeId = `${item.migration.id}-${item.operation.tableName}`
-                const isCreate = item.operation.type === 'CREATE_TABLE'
                 const rank = timestampRank.get(item.migration.timestamp) ?? 0
 
                 nodes.push({
@@ -82,7 +90,7 @@ export function Timeline() {
                         ),
                     },
                     style: {
-                        background: isCreate ? '#2c5282' : '#1a365d',
+                        background: getNodeColor(item.operation),
                         color: 'white',
                         padding: 8,
                         borderRadius: 6,

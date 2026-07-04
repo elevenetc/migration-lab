@@ -38,5 +38,10 @@ private fun Operation.tableName(): String = when (this) {
 
 private fun Operation.toTestDsl(): String = when (this) {
     is CreateTable -> "create(${tableName}(${columns.joinToString(",") { it.name }}))"
-    is AlterTable -> "alter(${tableName}(${addedColumns.joinToString(",") { "+${it.name}" }}))"
+    is AlterTable -> {
+        val added = addedColumns.map { "+${it.name}" }
+        val dropped = droppedColumns.map { "-$it" }
+        val allChanges = (added + dropped).joinToString(",")
+        "alter(${tableName}($allChanges))"
+    }
 }

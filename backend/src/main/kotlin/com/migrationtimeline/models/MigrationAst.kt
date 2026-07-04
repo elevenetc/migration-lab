@@ -36,7 +36,8 @@ data class CreateTable(
 data class AlterTable(
     override val migrationId: String,
     val tableName: String,
-    val addedColumns: List<Column> = emptyList()
+    val addedColumns: List<Column> = emptyList(),
+    val droppedColumns: List<String> = emptyList()
 ) : Operation()
 
 @Serializable

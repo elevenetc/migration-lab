@@ -53,6 +53,9 @@
                                 "DEFAULT 'active'"
                             ]
                         }
+                    ],
+                    "droppedColumns": [
+                        "legacy_field"
                     ]
                 }
             ]
@@ -112,6 +115,9 @@
                                 "DEFAULT 'active'"
                             ]
                         }
+                    ],
+                    "droppedColumns": [
+                        "legacy_field"
                     ]
                 }
             ]
