@@ -23,6 +23,9 @@ function formatOperationSummary(operation: Operation): string {
     if (operation.type === 'DROP_NOT_NULL') {
         return `nullable(${operation.columnName})`
     }
+    if (operation.type === 'SET_DEFAULT') {
+        return `default(${operation.columnName}=${operation.defaultValue})`
+    }
     const added = operation.addedColumns.map(c => `+${c.name}`)
     const dropped = operation.droppedColumns.map(c => `-${c}`)
     const allChanges = [...added, ...dropped].join(', ')
@@ -41,6 +44,9 @@ function getNodeColor(operation: Operation): string {
     }
     if (operation.type === 'DROP_NOT_NULL') {
         return '#dd6b20' // orange - constraint removal
+    }
+    if (operation.type === 'SET_DEFAULT') {
+        return '#319795' // teal - default value
     }
     if (operation.droppedColumns.length > 0) {
         return '#c05621' // orange

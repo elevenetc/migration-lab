@@ -7,6 +7,7 @@ import com.migrationtimeline.models.CreateTable
 import com.migrationtimeline.models.DropNotNull
 import com.migrationtimeline.models.Migration
 import com.migrationtimeline.models.Operation
+import com.migrationtimeline.models.SetDefault
 import com.migrationtimeline.models.SetNotNull
 import net.sf.jsqlparser.parser.CCJSqlParserUtil
 import net.sf.jsqlparser.statement.alter.Alter
@@ -31,6 +32,24 @@ private fun AlterExpression.ColumnDataType.hasNotNullConstraint(): Boolean {
     val notIndex = upper.indexOf("NOT")
     val nullIndex = upper.indexOf("NULL")
     return notIndex != -1 && nullIndex == notIndex + 1
+}
+
+private fun AlterExpression.ColumnDataType.isSetDefault(): Boolean {
+    val colDataType = this.colDataType?.toString()?.uppercase() ?: return false
+    return colDataType == "SET"
+}
+
+private fun AlterExpression.ColumnDataType.hasDefaultConstraint(): Boolean {
+    val specs = this.columnSpecs ?: return false
+    return specs.any { it.uppercase() == "DEFAULT" }
+}
+
+private fun AlterExpression.ColumnDataType.extractDefaultValue(): String {
+    val specs = this.columnSpecs ?: return ""
+    val upper = specs.map { it.uppercase() }
+    val defaultIndex = upper.indexOf("DEFAULT")
+    if (defaultIndex == -1 || defaultIndex + 1 >= specs.size) return ""
+    return specs.drop(defaultIndex + 1).joinToString(" ")
 }
 
 object MigrationParser {
@@ -132,7 +151,7 @@ object MigrationParser {
             ?.filter { it.operation == AlterOperation.ALTER && it.colDataTypeList != null }
             ?.flatMap { expr ->
                 expr.colDataTypeList
-                    .filter { !it.isSetNotNull() && !it.isDropNotNull() }
+                    .filter { !it.isSetNotNull() && !it.isDropNotNull() && !it.isSetDefault() }
                     .map { colDataType ->
                         AlterColumnType(
                             migrationId = migrationId,
@@ -176,6 +195,23 @@ object MigrationParser {
             } ?: emptyList()
 
         operations.addAll(dropNotNulls)
+
+        val setDefaults = alter.alterExpressions
+            ?.filter { it.operation == AlterOperation.ALTER && it.colDataTypeList != null }
+            ?.flatMap { expr ->
+                expr.colDataTypeList
+                    .filter { it.isSetDefault() && it.hasDefaultConstraint() }
+                    .map { colDataType ->
+                        SetDefault(
+                            migrationId = migrationId,
+                            tableName = tableName,
+                            columnName = colDataType.columnName,
+                            defaultValue = colDataType.extractDefaultValue()
+                        )
+                    }
+            } ?: emptyList()
+
+        operations.addAll(setDefaults)
 
         return operations
     }

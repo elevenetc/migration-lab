@@ -33,6 +33,10 @@ private val dropLastnameNotNull = """
     ALTER TABLE users ALTER COLUMN lastname DROP NOT NULL;
 """.trimIndent()
 
+private val setLastnameDefault = """
+    ALTER TABLE users ALTER COLUMN lastname SET DEFAULT '';
+""".trimIndent()
+
 fun simpleUserAndOrg(): MigrationTimelineResponse {
     return migrationsToResponse(
         mapOf(
@@ -41,7 +45,8 @@ fun simpleUserAndOrg(): MigrationTimelineResponse {
             "V3__create_orgs" to createOrg,
             "V4__change_name_type" to changeNameType,
             "V5__set_name_not_null" to setNameNotNull,
-            "V6__drop_lastname_not_null" to dropLastnameNotNull
+            "V6__drop_lastname_not_null" to dropLastnameNotNull,
+            "V7__set_lastname_default" to setLastnameDefault
         )
     )
 }

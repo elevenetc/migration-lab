@@ -10,8 +10,8 @@ SQL statements that can be parsed (backend) and rendered (frontend).
 - `ALTER COLUMN TYPE`
 - `SET NOT NULL`
 - `DROP NOT NULL`
+- `SET DEFAULT`
 
 ## Not Supported
 
-- `SET DEFAULT`
 - `DROP DEFAULT`

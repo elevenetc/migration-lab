@@ -41,7 +41,15 @@ export interface DropNotNull {
   columnName: string
 }
 
-export type Operation = CreateTable | AlterTable | AlterColumnType | SetNotNull | DropNotNull
+export interface SetDefault {
+  type: 'SET_DEFAULT'
+  migrationId: string
+  tableName: string
+  columnName: string
+  defaultValue: string
+}
+
+export type Operation = CreateTable | AlterTable | AlterColumnType | SetNotNull | DropNotNull | SetDefault
 
 export interface Migration {
   id: string

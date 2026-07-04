@@ -7,6 +7,7 @@ import com.migrationtimeline.models.CreateTable
 import com.migrationtimeline.models.DropNotNull
 import com.migrationtimeline.models.Migration
 import com.migrationtimeline.models.MigrationTimelineResponse
+import com.migrationtimeline.models.SetDefault
 import com.migrationtimeline.models.SetNotNull
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Test
@@ -87,6 +88,19 @@ class ApiContractFixtureGenerator {
                         migrationId = "migration-5",
                         tableName = "users",
                         columnName = "status"
+                    )
+                )
+            ),
+            Migration(
+                id = "migration-6",
+                version = "V6__set_status_default",
+                timestamp = 6000L,
+                operations = listOf(
+                    SetDefault(
+                        migrationId = "migration-6",
+                        tableName = "users",
+                        columnName = "status",
+                        defaultValue = "'active'"
                     )
                 )
             )

@@ -99,6 +99,20 @@
                     "columnName": "status"
                 }
             ]
+        },
+        {
+            "id": "migration-6",
+            "version": "V6__set_status_default",
+            "timestamp": 6000,
+            "operations": [
+                {
+                    "type": "SET_DEFAULT",
+                    "migrationId": "migration-6",
+                    "tableName": "users",
+                    "columnName": "status",
+                    "defaultValue": "'active'"
+                }
+            ]
         }
     ],
     "map": {
@@ -199,6 +213,20 @@
                     "migrationId": "migration-5",
                     "tableName": "users",
                     "columnName": "status"
+                }
+            ]
+        },
+        "migration-6": {
+            "id": "migration-6",
+            "version": "V6__set_status_default",
+            "timestamp": 6000,
+            "operations": [
+                {
+                    "type": "SET_DEFAULT",
+                    "migrationId": "migration-6",
+                    "tableName": "users",
+                    "columnName": "status",
+                    "defaultValue": "'active'"
                 }
             ]
         }

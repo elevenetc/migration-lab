@@ -6,6 +6,7 @@ import com.migrationtimeline.models.CreateTable
 import com.migrationtimeline.models.DropNotNull
 import com.migrationtimeline.models.Migration
 import com.migrationtimeline.models.Operation
+import com.migrationtimeline.models.SetDefault
 import com.migrationtimeline.models.SetNotNull
 import java.util.UUID
 import kotlin.test.assertEquals
@@ -40,6 +41,7 @@ private fun Operation.tableName(): String = when (this) {
     is AlterColumnType -> tableName
     is SetNotNull -> tableName
     is DropNotNull -> tableName
+    is SetDefault -> tableName
 }
 
 private fun Operation.toTestDsl(): String = when (this) {
@@ -53,4 +55,5 @@ private fun Operation.toTestDsl(): String = when (this) {
     is AlterColumnType -> "alterType(${tableName}(${columnName}:${newType}))"
     is SetNotNull -> "setNotNull(${tableName}(${columnName}))"
     is DropNotNull -> "dropNotNull(${tableName}(${columnName}))"
+    is SetDefault -> "setDefault(${tableName}(${columnName}=${defaultValue}))"
 }

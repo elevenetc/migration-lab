@@ -66,6 +66,15 @@ data class DropNotNull(
 ) : Operation()
 
 @Serializable
+@SerialName("SET_DEFAULT")
+data class SetDefault(
+    override val migrationId: String,
+    val tableName: String,
+    val columnName: String,
+    val defaultValue: String
+) : Operation()
+
+@Serializable
 data class Column(
     val name: String,
     val type: String,
