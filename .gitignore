@@ -1,0 +1,33 @@
+# Gradle
+.gradle/
+build/
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+.kotlin/
+local.properties
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# Node/Frontend
+node_modules/
+dist/
+.vite/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+/.claude/settings.local.json

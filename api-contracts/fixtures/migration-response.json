@@ -1,0 +1,150 @@
+{
+    "timeline": [
+        {
+            "id": "migration-1",
+            "version": "V1__create_users",
+            "timestamp": 1000,
+            "operations": [
+                {
+                    "type": "CREATE_TABLE",
+                    "migrationId": "migration-1",
+                    "tableName": "users",
+                    "columns": [
+                        {
+                            "name": "id",
+                            "type": "SERIAL",
+                            "constraints": [
+                                "PRIMARY KEY"
+                            ]
+                        },
+                        {
+                            "name": "email",
+                            "type": "VARCHAR(255)",
+                            "constraints": [
+                                "NOT NULL",
+                                "UNIQUE"
+                            ]
+                        },
+                        {
+                            "name": "created_at",
+                            "type": "TIMESTAMP",
+                            "constraints": [
+                                "DEFAULT NOW()"
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "migration-2",
+            "version": "V2__add_user_status",
+            "timestamp": 2000,
+            "operations": [
+                {
+                    "type": "ALTER_TABLE",
+                    "migrationId": "migration-2",
+                    "tableName": "users",
+                    "addedColumns": [
+                        {
+                            "name": "status",
+                            "type": "VARCHAR(50)",
+                            "constraints": [
+                                "DEFAULT 'active'"
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "map": {
+        "migration-1": {
+            "id": "migration-1",
+            "version": "V1__create_users",
+            "timestamp": 1000,
+            "operations": [
+                {
+                    "type": "CREATE_TABLE",
+                    "migrationId": "migration-1",
+                    "tableName": "users",
+                    "columns": [
+                        {
+                            "name": "id",
+                            "type": "SERIAL",
+                            "constraints": [
+                                "PRIMARY KEY"
+                            ]
+                        },
+                        {
+                            "name": "email",
+                            "type": "VARCHAR(255)",
+                            "constraints": [
+                                "NOT NULL",
+                                "UNIQUE"
+                            ]
+                        },
+                        {
+                            "name": "created_at",
+                            "type": "TIMESTAMP",
+                            "constraints": [
+                                "DEFAULT NOW()"
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "migration-2": {
+            "id": "migration-2",
+            "version": "V2__add_user_status",
+            "timestamp": 2000,
+            "operations": [
+                {
+                    "type": "ALTER_TABLE",
+                    "migrationId": "migration-2",
+                    "tableName": "users",
+                    "addedColumns": [
+                        {
+                            "name": "status",
+                            "type": "VARCHAR(50)",
+                            "constraints": [
+                                "DEFAULT 'active'"
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    },
+    "createTableMap": {
+        "users": {
+            "migrationId": "migration-1",
+            "tableName": "users",
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "SERIAL",
+                    "constraints": [
+                        "PRIMARY KEY"
+                    ]
+                },
+                {
+                    "name": "email",
+                    "type": "VARCHAR(255)",
+                    "constraints": [
+                        "NOT NULL",
+                        "UNIQUE"
+                    ]
+                },
+                {
+                    "name": "created_at",
+                    "type": "TIMESTAMP",
+                    "constraints": [
+                        "DEFAULT NOW()"
+                    ]
+                }
+            ]
+        }
+    }
+}
