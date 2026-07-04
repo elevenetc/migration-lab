@@ -4,6 +4,7 @@ import com.migrationtimeline.models.AlterColumnType
 import com.migrationtimeline.models.AlterTable
 import com.migrationtimeline.models.Column
 import com.migrationtimeline.models.CreateTable
+import com.migrationtimeline.models.DropDefault
 import com.migrationtimeline.models.DropNotNull
 import com.migrationtimeline.models.Migration
 import com.migrationtimeline.models.MigrationTimelineResponse
@@ -101,6 +102,18 @@ class ApiContractFixtureGenerator {
                         tableName = "users",
                         columnName = "status",
                         defaultValue = "'active'"
+                    )
+                )
+            ),
+            Migration(
+                id = "migration-7",
+                version = "V7__drop_status_default",
+                timestamp = 7000L,
+                operations = listOf(
+                    DropDefault(
+                        migrationId = "migration-7",
+                        tableName = "users",
+                        columnName = "status"
                     )
                 )
             )

@@ -3,6 +3,7 @@ package com.migrationtimeline.parser
 import com.migrationtimeline.models.AlterColumnType
 import com.migrationtimeline.models.AlterTable
 import com.migrationtimeline.models.CreateTable
+import com.migrationtimeline.models.DropDefault
 import com.migrationtimeline.models.DropNotNull
 import com.migrationtimeline.models.Migration
 import com.migrationtimeline.models.Operation
@@ -42,6 +43,7 @@ private fun Operation.tableName(): String = when (this) {
     is SetNotNull -> tableName
     is DropNotNull -> tableName
     is SetDefault -> tableName
+    is DropDefault -> tableName
 }
 
 private fun Operation.toTestDsl(): String = when (this) {
@@ -56,4 +58,5 @@ private fun Operation.toTestDsl(): String = when (this) {
     is SetNotNull -> "setNotNull(${tableName}(${columnName}))"
     is DropNotNull -> "dropNotNull(${tableName}(${columnName}))"
     is SetDefault -> "setDefault(${tableName}(${columnName}=${defaultValue}))"
+    is DropDefault -> "dropDefault(${tableName}(${columnName}))"
 }

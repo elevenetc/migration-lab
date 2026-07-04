@@ -44,6 +44,11 @@ class MigrationParserTest {
     }
 
     @Test
+    fun `parse ALTER COLUMN DROP DEFAULT migration`() {
+        dropDefaultSql.toMigration().isEqualTo("dropDefault(users(status))")
+    }
+
+    @Test
     fun `parse multiple migrations to DSL`() {
         listOf(createUsersSql, addLastNameSql, createOrgSql).toMigrations().isEqualTo(
             """
@@ -122,4 +127,8 @@ val dropNotNullSql = """
 
 val setDefaultSql = """
             ALTER TABLE users ALTER COLUMN status SET DEFAULT 'active';
+        """.trimIndent()
+
+val dropDefaultSql = """
+            ALTER TABLE users ALTER COLUMN status DROP DEFAULT;
         """.trimIndent()

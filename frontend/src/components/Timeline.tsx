@@ -26,6 +26,9 @@ function formatOperationSummary(operation: Operation): string {
     if (operation.type === 'SET_DEFAULT') {
         return `default(${operation.columnName}=${operation.defaultValue})`
     }
+    if (operation.type === 'DROP_DEFAULT') {
+        return `dropDefault(${operation.columnName})`
+    }
     const added = operation.addedColumns.map(c => `+${c.name}`)
     const dropped = operation.droppedColumns.map(c => `-${c}`)
     const allChanges = [...added, ...dropped].join(', ')
@@ -47,6 +50,9 @@ function getNodeColor(operation: Operation): string {
     }
     if (operation.type === 'SET_DEFAULT') {
         return '#319795' // teal - default value
+    }
+    if (operation.type === 'DROP_DEFAULT') {
+        return '#d69e2e' // yellow - default removal
     }
     if (operation.droppedColumns.length > 0) {
         return '#c05621' // orange

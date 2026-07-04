@@ -11,7 +11,6 @@ SQL statements that can be parsed (backend) and rendered (frontend).
 - `SET NOT NULL`
 - `DROP NOT NULL`
 - `SET DEFAULT`
+- `DROP DEFAULT`
 
 ## Not Supported
-
-- `DROP DEFAULT`

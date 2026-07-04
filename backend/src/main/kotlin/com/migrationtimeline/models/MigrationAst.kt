@@ -75,6 +75,14 @@ data class SetDefault(
 ) : Operation()
 
 @Serializable
+@SerialName("DROP_DEFAULT")
+data class DropDefault(
+    override val migrationId: String,
+    val tableName: String,
+    val columnName: String
+) : Operation()
+
+@Serializable
 data class Column(
     val name: String,
     val type: String,

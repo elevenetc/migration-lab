@@ -4,6 +4,7 @@ import com.migrationtimeline.models.AlterColumnType
 import com.migrationtimeline.models.AlterTable
 import com.migrationtimeline.models.Column
 import com.migrationtimeline.models.CreateTable
+import com.migrationtimeline.models.DropDefault
 import com.migrationtimeline.models.DropNotNull
 import com.migrationtimeline.models.Migration
 import com.migrationtimeline.models.Operation
@@ -37,6 +38,12 @@ private fun AlterExpression.ColumnDataType.hasNotNullConstraint(): Boolean {
 private fun AlterExpression.ColumnDataType.isSetDefault(): Boolean {
     val colDataType = this.colDataType?.toString()?.uppercase() ?: return false
     return colDataType == "SET"
+}
+
+private fun AlterExpression.ColumnDataType.isDropDefault(): Boolean {
+    val specs = this.columnSpecs ?: return false
+    if (specs.isEmpty()) return false
+    return specs[0].uppercase() == "DROP"
 }
 
 private fun AlterExpression.ColumnDataType.hasDefaultConstraint(): Boolean {
@@ -151,7 +158,7 @@ object MigrationParser {
             ?.filter { it.operation == AlterOperation.ALTER && it.colDataTypeList != null }
             ?.flatMap { expr ->
                 expr.colDataTypeList
-                    .filter { !it.isSetNotNull() && !it.isDropNotNull() && !it.isSetDefault() }
+                    .filter { !it.isSetNotNull() && !it.isDropNotNull() && !it.isSetDefault() && !it.isDropDefault() }
                     .map { colDataType ->
                         AlterColumnType(
                             migrationId = migrationId,
@@ -212,6 +219,22 @@ object MigrationParser {
             } ?: emptyList()
 
         operations.addAll(setDefaults)
+
+        val dropDefaults = alter.alterExpressions
+            ?.filter { it.operation == AlterOperation.ALTER && it.colDataTypeList != null }
+            ?.flatMap { expr ->
+                expr.colDataTypeList
+                    .filter { it.isDropDefault() && it.hasDefaultConstraint() }
+                    .map { colDataType ->
+                        DropDefault(
+                            migrationId = migrationId,
+                            tableName = tableName,
+                            columnName = colDataType.columnName
+                        )
+                    }
+            } ?: emptyList()
+
+        operations.addAll(dropDefaults)
 
         return operations
     }

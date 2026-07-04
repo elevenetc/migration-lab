@@ -113,6 +113,19 @@
                     "defaultValue": "'active'"
                 }
             ]
+        },
+        {
+            "id": "migration-7",
+            "version": "V7__drop_status_default",
+            "timestamp": 7000,
+            "operations": [
+                {
+                    "type": "DROP_DEFAULT",
+                    "migrationId": "migration-7",
+                    "tableName": "users",
+                    "columnName": "status"
+                }
+            ]
         }
     ],
     "map": {
@@ -227,6 +240,19 @@
                     "tableName": "users",
                     "columnName": "status",
                     "defaultValue": "'active'"
+                }
+            ]
+        },
+        "migration-7": {
+            "id": "migration-7",
+            "version": "V7__drop_status_default",
+            "timestamp": 7000,
+            "operations": [
+                {
+                    "type": "DROP_DEFAULT",
+                    "migrationId": "migration-7",
+                    "tableName": "users",
+                    "columnName": "status"
                 }
             ]
         }
