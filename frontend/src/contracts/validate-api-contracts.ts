@@ -19,6 +19,8 @@ function validateOperationTypes(response: MigrationTimelineResponse): void {
           break
         case 'SET_NOT_NULL':
           break
+        case 'DROP_NOT_NULL':
+          break
         default:
           assertExhaustive(op)
       }

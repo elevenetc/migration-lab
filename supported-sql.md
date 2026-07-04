@@ -9,9 +9,9 @@ SQL statements that can be parsed (backend) and rendered (frontend).
 - `ALTER TABLE DROP COLUMN`
 - `ALTER COLUMN TYPE`
 - `SET NOT NULL`
+- `DROP NOT NULL`
 
 ## Not Supported
 
-- `DROP NOT NULL`
 - `SET DEFAULT`
 - `DROP DEFAULT`

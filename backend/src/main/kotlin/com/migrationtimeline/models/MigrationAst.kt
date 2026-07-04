@@ -58,6 +58,14 @@ data class SetNotNull(
 ) : Operation()
 
 @Serializable
+@SerialName("DROP_NOT_NULL")
+data class DropNotNull(
+    override val migrationId: String,
+    val tableName: String,
+    val columnName: String
+) : Operation()
+
+@Serializable
 data class Column(
     val name: String,
     val type: String,

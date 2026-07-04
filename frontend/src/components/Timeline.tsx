@@ -20,6 +20,9 @@ function formatOperationSummary(operation: Operation): string {
     if (operation.type === 'SET_NOT_NULL') {
         return `notNull(${operation.columnName})`
     }
+    if (operation.type === 'DROP_NOT_NULL') {
+        return `nullable(${operation.columnName})`
+    }
     const added = operation.addedColumns.map(c => `+${c.name}`)
     const dropped = operation.droppedColumns.map(c => `-${c}`)
     const allChanges = [...added, ...dropped].join(', ')
@@ -35,6 +38,9 @@ function getNodeColor(operation: Operation): string {
     }
     if (operation.type === 'SET_NOT_NULL') {
         return '#c53030' // red - constraint addition
+    }
+    if (operation.type === 'DROP_NOT_NULL') {
+        return '#dd6b20' // orange - constraint removal
     }
     if (operation.droppedColumns.length > 0) {
         return '#c05621' // orange

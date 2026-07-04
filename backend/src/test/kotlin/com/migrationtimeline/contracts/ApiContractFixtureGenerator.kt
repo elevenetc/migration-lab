@@ -4,6 +4,7 @@ import com.migrationtimeline.models.AlterColumnType
 import com.migrationtimeline.models.AlterTable
 import com.migrationtimeline.models.Column
 import com.migrationtimeline.models.CreateTable
+import com.migrationtimeline.models.DropNotNull
 import com.migrationtimeline.models.Migration
 import com.migrationtimeline.models.MigrationTimelineResponse
 import com.migrationtimeline.models.SetNotNull
@@ -74,6 +75,18 @@ class ApiContractFixtureGenerator {
                         migrationId = "migration-4",
                         tableName = "users",
                         columnName = "email"
+                    )
+                )
+            ),
+            Migration(
+                id = "migration-5",
+                version = "V5__drop_status_not_null",
+                timestamp = 5000L,
+                operations = listOf(
+                    DropNotNull(
+                        migrationId = "migration-5",
+                        tableName = "users",
+                        columnName = "status"
                     )
                 )
             )
