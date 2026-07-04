@@ -19,7 +19,15 @@ export interface AlterTable {
   droppedColumns: string[]
 }
 
-export type Operation = CreateTable | AlterTable
+export interface AlterColumnType {
+  type: 'ALTER_COLUMN_TYPE'
+  migrationId: string
+  tableName: string
+  columnName: string
+  newType: string
+}
+
+export type Operation = CreateTable | AlterTable | AlterColumnType
 
 export interface Migration {
   id: string

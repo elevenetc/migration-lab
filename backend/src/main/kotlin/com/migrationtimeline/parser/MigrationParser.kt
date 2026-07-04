@@ -1,9 +1,11 @@
 package com.migrationtimeline.parser
 
+import com.migrationtimeline.models.AlterColumnType
 import com.migrationtimeline.models.AlterTable
 import com.migrationtimeline.models.Column
 import com.migrationtimeline.models.CreateTable
 import com.migrationtimeline.models.Migration
+import com.migrationtimeline.models.Operation
 import net.sf.jsqlparser.parser.CCJSqlParserUtil
 import net.sf.jsqlparser.statement.alter.Alter
 import net.sf.jsqlparser.statement.alter.AlterOperation
@@ -21,11 +23,11 @@ object MigrationParser {
     @Suppress("DEPRECATION")
     fun parse(id: String, sql: String, timestamp: Long = 0L): Migration {
         val statements = CCJSqlParserUtil.parseStatements(sql).statements
-        val operations = statements.mapNotNull { statement ->
+        val operations = statements.flatMap { statement ->
             when (statement) {
-                is JsqlCreateTable -> parseCreateTable(id, statement)
-                is Alter -> parseAlterTable(id, statement)
-                else -> null
+                is JsqlCreateTable -> listOf(parseCreateTable(id, statement))
+                is Alter -> parseAlter(id, statement)
+                else -> emptyList()
             }
         }
         return Migration(id = id, version = id, timestamp = timestamp, operations = operations)
@@ -72,10 +74,12 @@ object MigrationParser {
         )
     }
 
-    private fun parseAlterTable(migrationId: String, alter: Alter): AlterTable {
+    private fun parseAlter(migrationId: String, alter: Alter): List<Operation> {
         val tableName = alter.table.name
+        val operations = mutableListOf<Operation>()
+
         val addedColumns = alter.alterExpressions
-            ?.filter { it.colDataTypeList != null }
+            ?.filter { it.operation == AlterOperation.ADD && it.colDataTypeList != null }
             ?.flatMap { expr ->
                 expr.colDataTypeList.map { colDataType ->
                     Column(
@@ -91,11 +95,32 @@ object MigrationParser {
             ?.mapNotNull { it.columnName }
             ?: emptyList()
 
-        return AlterTable(
-            migrationId = migrationId,
-            tableName = tableName,
-            addedColumns = addedColumns,
-            droppedColumns = droppedColumns
-        )
+        if (addedColumns.isNotEmpty() || droppedColumns.isNotEmpty()) {
+            operations.add(
+                AlterTable(
+                    migrationId = migrationId,
+                    tableName = tableName,
+                    addedColumns = addedColumns,
+                    droppedColumns = droppedColumns
+                )
+            )
+        }
+
+        val alterColumnTypes = alter.alterExpressions
+            ?.filter { it.operation == AlterOperation.ALTER && it.colDataTypeList != null }
+            ?.flatMap { expr ->
+                expr.colDataTypeList.map { colDataType ->
+                    AlterColumnType(
+                        migrationId = migrationId,
+                        tableName = tableName,
+                        columnName = colDataType.columnName,
+                        newType = colDataType.colDataType.toString().replace(" ", "")
+                    )
+                }
+            } ?: emptyList()
+
+        operations.addAll(alterColumnTypes)
+
+        return operations
     }
 }

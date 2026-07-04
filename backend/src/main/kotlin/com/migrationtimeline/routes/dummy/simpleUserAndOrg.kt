@@ -21,12 +21,17 @@ private val createOrg = """
     );
 """.trimIndent()
 
+private val changeNameType = """
+    ALTER TABLE users ALTER COLUMN name TYPE TEXT;
+""".trimIndent()
+
 fun simpleUserAndOrg(): MigrationTimelineResponse {
     return migrationsToResponse(
         mapOf(
             "V1__create_users" to createUser,
             "V2__add_lastname" to addUserLastName,
-            "V3__create_orgs" to createOrg
+            "V3__create_orgs" to createOrg,
+            "V4__change_name_type" to changeNameType
         )
     )
 }

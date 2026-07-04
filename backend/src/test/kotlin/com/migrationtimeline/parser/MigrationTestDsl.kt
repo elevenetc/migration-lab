@@ -1,5 +1,6 @@
 package com.migrationtimeline.parser
 
+import com.migrationtimeline.models.AlterColumnType
 import com.migrationtimeline.models.AlterTable
 import com.migrationtimeline.models.CreateTable
 import com.migrationtimeline.models.Migration
@@ -34,6 +35,7 @@ fun Migration.toTestDsl(): String =
 private fun Operation.tableName(): String = when (this) {
     is CreateTable -> tableName
     is AlterTable -> tableName
+    is AlterColumnType -> tableName
 }
 
 private fun Operation.toTestDsl(): String = when (this) {
@@ -44,4 +46,5 @@ private fun Operation.toTestDsl(): String = when (this) {
         val allChanges = (added + dropped).joinToString(",")
         "alter(${tableName}($allChanges))"
     }
+    is AlterColumnType -> "alterType(${tableName}(${columnName}:${newType}))"
 }

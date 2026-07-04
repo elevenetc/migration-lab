@@ -10,8 +10,8 @@ import io.ktor.server.routing.*
 fun Application.migrationRoutes() {
     routing {
         get("/api/migrations") {
-            //call.respond(simpleUserAndOrg())
-            call.respond(complexEcommerce())
+            call.respond(simpleUserAndOrg())
+//            call.respond(complexEcommerce())
         }
     }
 }

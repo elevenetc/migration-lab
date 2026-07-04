@@ -59,6 +59,20 @@
                     ]
                 }
             ]
+        },
+        {
+            "id": "migration-3",
+            "version": "V3__change_email_type",
+            "timestamp": 3000,
+            "operations": [
+                {
+                    "type": "ALTER_COLUMN_TYPE",
+                    "migrationId": "migration-3",
+                    "tableName": "users",
+                    "columnName": "email",
+                    "newType": "TEXT"
+                }
+            ]
         }
     ],
     "map": {
@@ -119,6 +133,20 @@
                     "droppedColumns": [
                         "legacy_field"
                     ]
+                }
+            ]
+        },
+        "migration-3": {
+            "id": "migration-3",
+            "version": "V3__change_email_type",
+            "timestamp": 3000,
+            "operations": [
+                {
+                    "type": "ALTER_COLUMN_TYPE",
+                    "migrationId": "migration-3",
+                    "tableName": "users",
+                    "columnName": "email",
+                    "newType": "TEXT"
                 }
             ]
         }

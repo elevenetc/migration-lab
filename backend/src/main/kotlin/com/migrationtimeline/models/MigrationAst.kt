@@ -41,6 +41,15 @@ data class AlterTable(
 ) : Operation()
 
 @Serializable
+@SerialName("ALTER_COLUMN_TYPE")
+data class AlterColumnType(
+    override val migrationId: String,
+    val tableName: String,
+    val columnName: String,
+    val newType: String
+) : Operation()
+
+@Serializable
 data class Column(
     val name: String,
     val type: String,

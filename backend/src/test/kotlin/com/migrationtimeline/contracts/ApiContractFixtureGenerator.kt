@@ -45,6 +45,19 @@ class ApiContractFixtureGenerator {
                         droppedColumns = listOf("legacy_field")
                     )
                 )
+            ),
+            Migration(
+                id = "migration-3",
+                version = "V3__change_email_type",
+                timestamp = 3000L,
+                operations = listOf(
+                    AlterColumnType(
+                        migrationId = "migration-3",
+                        tableName = "users",
+                        columnName = "email",
+                        newType = "TEXT"
+                    )
+                )
             )
         )
 

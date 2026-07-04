@@ -14,6 +14,9 @@ function formatOperationSummary(operation: Operation): string {
         const columnNames = operation.columns.map(c => c.name).join(', ')
         return `create(${columnNames})`
     }
+    if (operation.type === 'ALTER_COLUMN_TYPE') {
+        return `type(${operation.columnName}→${operation.newType})`
+    }
     const added = operation.addedColumns.map(c => `+${c.name}`)
     const dropped = operation.droppedColumns.map(c => `-${c}`)
     const allChanges = [...added, ...dropped].join(', ')
@@ -23,6 +26,9 @@ function formatOperationSummary(operation: Operation): string {
 function getNodeColor(operation: Operation): string {
     if (operation.type === 'CREATE_TABLE') {
         return '#2c5282' // blue
+    }
+    if (operation.type === 'ALTER_COLUMN_TYPE') {
+        return '#6b46c1' // purple
     }
     if (operation.droppedColumns.length > 0) {
         return '#c05621' // orange

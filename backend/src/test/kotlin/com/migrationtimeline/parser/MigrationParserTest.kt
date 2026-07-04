@@ -24,6 +24,11 @@ class MigrationParserTest {
     }
 
     @Test
+    fun `parse ALTER COLUMN TYPE migration`() {
+        alterColumnTypeSql.toMigration().isEqualTo("alterType(users(name:TEXT))")
+    }
+
+    @Test
     fun `parse multiple migrations to DSL`() {
         listOf(createUsersSql, addLastNameSql, createOrgSql).toMigrations().isEqualTo(
             """
@@ -86,4 +91,8 @@ val createOrgSql = """
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(255) NOT NULL
             );
+        """.trimIndent()
+
+val alterColumnTypeSql = """
+            ALTER TABLE users ALTER COLUMN name TYPE TEXT;
         """.trimIndent()

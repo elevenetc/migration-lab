@@ -7,10 +7,10 @@ SQL statements that can be parsed (backend) and rendered (frontend).
 - `CREATE TABLE`
 - `ALTER TABLE ADD COLUMN`
 - `ALTER TABLE DROP COLUMN`
+- `ALTER COLUMN TYPE`
 
 ## Not Supported
 
-- `ALTER COLUMN TYPE`
 - `SET NOT NULL`
 - `DROP NOT NULL`
 - `SET DEFAULT`

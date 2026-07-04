@@ -15,6 +15,8 @@ function validateOperationTypes(response: MigrationTimelineResponse): void {
           break
         case 'ALTER_TABLE':
           break
+        case 'ALTER_COLUMN_TYPE':
+          break
         default:
           assertExhaustive(op)
       }
