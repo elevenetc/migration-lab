@@ -5,6 +5,7 @@ import com.migrationtimeline.models.AlterTable
 import com.migrationtimeline.models.CreateTable
 import com.migrationtimeline.models.Migration
 import com.migrationtimeline.models.Operation
+import com.migrationtimeline.models.SetNotNull
 import java.util.UUID
 import kotlin.test.assertEquals
 
@@ -36,6 +37,7 @@ private fun Operation.tableName(): String = when (this) {
     is CreateTable -> tableName
     is AlterTable -> tableName
     is AlterColumnType -> tableName
+    is SetNotNull -> tableName
 }
 
 private fun Operation.toTestDsl(): String = when (this) {
@@ -47,4 +49,5 @@ private fun Operation.toTestDsl(): String = when (this) {
         "alter(${tableName}($allChanges))"
     }
     is AlterColumnType -> "alterType(${tableName}(${columnName}:${newType}))"
+    is SetNotNull -> "setNotNull(${tableName}(${columnName}))"
 }

@@ -73,6 +73,19 @@
                     "newType": "TEXT"
                 }
             ]
+        },
+        {
+            "id": "migration-4",
+            "version": "V4__set_email_not_null",
+            "timestamp": 4000,
+            "operations": [
+                {
+                    "type": "SET_NOT_NULL",
+                    "migrationId": "migration-4",
+                    "tableName": "users",
+                    "columnName": "email"
+                }
+            ]
         }
     ],
     "map": {
@@ -147,6 +160,19 @@
                     "tableName": "users",
                     "columnName": "email",
                     "newType": "TEXT"
+                }
+            ]
+        },
+        "migration-4": {
+            "id": "migration-4",
+            "version": "V4__set_email_not_null",
+            "timestamp": 4000,
+            "operations": [
+                {
+                    "type": "SET_NOT_NULL",
+                    "migrationId": "migration-4",
+                    "tableName": "users",
+                    "columnName": "email"
                 }
             ]
         }

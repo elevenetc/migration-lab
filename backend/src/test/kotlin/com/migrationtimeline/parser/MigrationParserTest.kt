@@ -29,6 +29,11 @@ class MigrationParserTest {
     }
 
     @Test
+    fun `parse ALTER COLUMN SET NOT NULL migration`() {
+        setNotNullSql.toMigration().isEqualTo("setNotNull(users(name))")
+    }
+
+    @Test
     fun `parse multiple migrations to DSL`() {
         listOf(createUsersSql, addLastNameSql, createOrgSql).toMigrations().isEqualTo(
             """
@@ -95,4 +100,8 @@ val createOrgSql = """
 
 val alterColumnTypeSql = """
             ALTER TABLE users ALTER COLUMN name TYPE TEXT;
+        """.trimIndent()
+
+val setNotNullSql = """
+            ALTER TABLE users ALTER COLUMN name SET NOT NULL;
         """.trimIndent()

@@ -17,6 +17,9 @@ function formatOperationSummary(operation: Operation): string {
     if (operation.type === 'ALTER_COLUMN_TYPE') {
         return `type(${operation.columnName}→${operation.newType})`
     }
+    if (operation.type === 'SET_NOT_NULL') {
+        return `notNull(${operation.columnName})`
+    }
     const added = operation.addedColumns.map(c => `+${c.name}`)
     const dropped = operation.droppedColumns.map(c => `-${c}`)
     const allChanges = [...added, ...dropped].join(', ')
@@ -29,6 +32,9 @@ function getNodeColor(operation: Operation): string {
     }
     if (operation.type === 'ALTER_COLUMN_TYPE') {
         return '#6b46c1' // purple
+    }
+    if (operation.type === 'SET_NOT_NULL') {
+        return '#c53030' // red - constraint addition
     }
     if (operation.droppedColumns.length > 0) {
         return '#c05621' // orange

@@ -1,6 +1,12 @@
 package com.migrationtimeline.contracts
 
-import com.migrationtimeline.models.*
+import com.migrationtimeline.models.AlterColumnType
+import com.migrationtimeline.models.AlterTable
+import com.migrationtimeline.models.Column
+import com.migrationtimeline.models.CreateTable
+import com.migrationtimeline.models.Migration
+import com.migrationtimeline.models.MigrationTimelineResponse
+import com.migrationtimeline.models.SetNotNull
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Test
 import java.io.File
@@ -56,6 +62,18 @@ class ApiContractFixtureGenerator {
                         tableName = "users",
                         columnName = "email",
                         newType = "TEXT"
+                    )
+                )
+            ),
+            Migration(
+                id = "migration-4",
+                version = "V4__set_email_not_null",
+                timestamp = 4000L,
+                operations = listOf(
+                    SetNotNull(
+                        migrationId = "migration-4",
+                        tableName = "users",
+                        columnName = "email"
                     )
                 )
             )

@@ -27,7 +27,14 @@ export interface AlterColumnType {
   newType: string
 }
 
-export type Operation = CreateTable | AlterTable | AlterColumnType
+export interface SetNotNull {
+  type: 'SET_NOT_NULL'
+  migrationId: string
+  tableName: string
+  columnName: string
+}
+
+export type Operation = CreateTable | AlterTable | AlterColumnType | SetNotNull
 
 export interface Migration {
   id: string

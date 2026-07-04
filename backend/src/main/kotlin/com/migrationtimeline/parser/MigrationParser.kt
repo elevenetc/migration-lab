@@ -6,10 +6,25 @@ import com.migrationtimeline.models.Column
 import com.migrationtimeline.models.CreateTable
 import com.migrationtimeline.models.Migration
 import com.migrationtimeline.models.Operation
+import com.migrationtimeline.models.SetNotNull
 import net.sf.jsqlparser.parser.CCJSqlParserUtil
 import net.sf.jsqlparser.statement.alter.Alter
+import net.sf.jsqlparser.statement.alter.AlterExpression
 import net.sf.jsqlparser.statement.alter.AlterOperation
 import net.sf.jsqlparser.statement.create.table.CreateTable as JsqlCreateTable
+
+private fun AlterExpression.ColumnDataType.isSetNotNull(): Boolean {
+    val colDataType = this.colDataType?.toString()?.uppercase() ?: return false
+    return colDataType == "SET"
+}
+
+private fun AlterExpression.ColumnDataType.hasNotNullConstraint(): Boolean {
+    val specs = this.columnSpecs ?: return false
+    val upper = specs.map { it.uppercase() }
+    val notIndex = upper.indexOf("NOT")
+    val nullIndex = upper.indexOf("NULL")
+    return notIndex != -1 && nullIndex == notIndex + 1
+}
 
 object MigrationParser {
 
@@ -109,17 +124,35 @@ object MigrationParser {
         val alterColumnTypes = alter.alterExpressions
             ?.filter { it.operation == AlterOperation.ALTER && it.colDataTypeList != null }
             ?.flatMap { expr ->
-                expr.colDataTypeList.map { colDataType ->
-                    AlterColumnType(
-                        migrationId = migrationId,
-                        tableName = tableName,
-                        columnName = colDataType.columnName,
-                        newType = colDataType.colDataType.toString().replace(" ", "")
-                    )
-                }
+                expr.colDataTypeList
+                    .filter { !it.isSetNotNull() }
+                    .map { colDataType ->
+                        AlterColumnType(
+                            migrationId = migrationId,
+                            tableName = tableName,
+                            columnName = colDataType.columnName,
+                            newType = colDataType.colDataType.toString().replace(" ", "")
+                        )
+                    }
             } ?: emptyList()
 
         operations.addAll(alterColumnTypes)
+
+        val setNotNulls = alter.alterExpressions
+            ?.filter { it.operation == AlterOperation.ALTER && it.colDataTypeList != null }
+            ?.flatMap { expr ->
+                expr.colDataTypeList
+                    .filter { it.isSetNotNull() && it.hasNotNullConstraint() }
+                    .map { colDataType ->
+                        SetNotNull(
+                            migrationId = migrationId,
+                            tableName = tableName,
+                            columnName = colDataType.columnName
+                        )
+                    }
+            } ?: emptyList()
+
+        operations.addAll(setNotNulls)
 
         return operations
     }

@@ -25,13 +25,18 @@ private val changeNameType = """
     ALTER TABLE users ALTER COLUMN name TYPE TEXT;
 """.trimIndent()
 
+private val setNameNotNull = """
+    ALTER TABLE users ALTER COLUMN name SET NOT NULL;
+""".trimIndent()
+
 fun simpleUserAndOrg(): MigrationTimelineResponse {
     return migrationsToResponse(
         mapOf(
             "V1__create_users" to createUser,
             "V2__add_lastname" to addUserLastName,
             "V3__create_orgs" to createOrg,
-            "V4__change_name_type" to changeNameType
+            "V4__change_name_type" to changeNameType,
+            "V5__set_name_not_null" to setNameNotNull
         )
     )
 }

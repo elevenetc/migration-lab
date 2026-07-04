@@ -50,6 +50,14 @@ data class AlterColumnType(
 ) : Operation()
 
 @Serializable
+@SerialName("SET_NOT_NULL")
+data class SetNotNull(
+    override val migrationId: String,
+    val tableName: String,
+    val columnName: String
+) : Operation()
+
+@Serializable
 data class Column(
     val name: String,
     val type: String,
