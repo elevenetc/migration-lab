@@ -41,6 +41,9 @@ function formatOperationSummary(operation: Operation): string {
     if (operation.type === 'RENAME_COLUMN') {
         return `rename(${operation.columnName}→${operation.newColumnName})`
     }
+    if (operation.type === 'ADD_CONSTRAINT') {
+        return `constraint(${operation.constraintName}:${operation.constraintType})`
+    }
     const added = operation.addedColumns.map(c => `+${c.name}`)
     const dropped = operation.droppedColumns.map(c => `-${c}`)
     const allChanges = [...added, ...dropped].join(', ')
@@ -71,6 +74,9 @@ function getNodeColor(operation: Operation): string {
     }
     if (operation.type === 'RENAME_COLUMN') {
         return '#b794f4' // lighter purple - rename column
+    }
+    if (operation.type === 'ADD_CONSTRAINT') {
+        return '#805ad5' // purple - constraint operations
     }
     if (operation.droppedColumns.length > 0) {
         return '#c05621' // orange

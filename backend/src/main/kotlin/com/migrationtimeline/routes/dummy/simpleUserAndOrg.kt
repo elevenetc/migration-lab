@@ -49,6 +49,10 @@ private val renameNameToFullName = """
     ALTER TABLE customers RENAME COLUMN name TO full_name;
 """.trimIndent()
 
+private val addUniqueConstraint = """
+    ALTER TABLE customers ADD CONSTRAINT uk_customers_full_name UNIQUE (full_name);
+""".trimIndent()
+
 fun simpleUserAndOrg(): MigrationTimelineResponse {
     return migrationsToResponse(
         mapOf(
@@ -61,7 +65,8 @@ fun simpleUserAndOrg(): MigrationTimelineResponse {
             "V7__set_lastname_default" to setLastnameDefault,
             "V8__drop_lastname_default" to dropLastnameDefault,
             "V9__rename_users_to_accounts" to renameUsersToCustomers,
-            "V10__rename_name_to_full_name" to renameNameToFullName
+            "V10__rename_name_to_full_name" to renameNameToFullName,
+            "V11__add_unique_constraint" to addUniqueConstraint
         )
     )
 }

@@ -153,6 +153,20 @@
                     "newColumnName": "email_address"
                 }
             ]
+        },
+        {
+            "id": "migration-10",
+            "version": "V10__add_unique_constraint",
+            "timestamp": 10000,
+            "operations": [
+                {
+                    "type": "ADD_CONSTRAINT",
+                    "migrationId": "migration-10",
+                    "tableName": "accounts",
+                    "constraintName": "uk_accounts_email",
+                    "constraintType": "UNIQUE"
+                }
+            ]
         }
     ],
     "map": {
@@ -307,6 +321,20 @@
                     "tableName": "accounts",
                     "columnName": "email",
                     "newColumnName": "email_address"
+                }
+            ]
+        },
+        "migration-10": {
+            "id": "migration-10",
+            "version": "V10__add_unique_constraint",
+            "timestamp": 10000,
+            "operations": [
+                {
+                    "type": "ADD_CONSTRAINT",
+                    "migrationId": "migration-10",
+                    "tableName": "accounts",
+                    "constraintName": "uk_accounts_email",
+                    "constraintType": "UNIQUE"
                 }
             ]
         }

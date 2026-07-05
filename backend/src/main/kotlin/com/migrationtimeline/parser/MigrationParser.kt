@@ -1,5 +1,6 @@
 package com.migrationtimeline.parser
 
+import com.migrationtimeline.models.AddConstraint
 import com.migrationtimeline.models.AlterColumnType
 import com.migrationtimeline.models.AlterTable
 import com.migrationtimeline.models.Column
@@ -265,6 +266,29 @@ object MigrationParser {
             } ?: emptyList()
 
         operations.addAll(renameColumns)
+
+        val addConstraints = alter.alterExpressions
+            ?.filter { it.operation == AlterOperation.ADD && it.index != null && it.colDataTypeList == null }
+            ?.mapNotNull { expr ->
+                val index = expr.index ?: return@mapNotNull null
+                val constraintName = index.name ?: return@mapNotNull null
+                val constraintType = when {
+                    index.type?.uppercase() == "PRIMARY KEY" -> "PRIMARY KEY"
+                    index.type?.uppercase() == "UNIQUE" -> "UNIQUE"
+                    index.type?.uppercase() == "FOREIGN KEY" -> "FOREIGN KEY"
+                    index.type == null && index.toString().uppercase().contains("CHECK") -> "CHECK"
+                    index.type == null && index.toString().uppercase().contains("EXCLUDE") -> "EXCLUDE"
+                    else -> index.type?.uppercase() ?: "UNKNOWN"
+                }
+                AddConstraint(
+                    migrationId = migrationId,
+                    tableName = tableName,
+                    constraintName = constraintName,
+                    constraintType = constraintType
+                )
+            } ?: emptyList()
+
+        operations.addAll(addConstraints)
 
         return operations
     }

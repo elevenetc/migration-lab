@@ -29,6 +29,8 @@ function validateOperationTypes(response: MigrationTimelineResponse): void {
           break
         case 'RENAME_COLUMN':
           break
+        case 'ADD_CONSTRAINT':
+          break
         default:
           assertExhaustive(op)
       }

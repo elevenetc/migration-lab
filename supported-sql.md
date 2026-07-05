@@ -14,5 +14,8 @@ SQL statements that can be parsed (backend) and rendered (frontend).
 - `DROP DEFAULT`
 - `RENAME TABLE`
 - `RENAME COLUMN`
+- `ADD CONSTRAINT` (PRIMARY KEY, UNIQUE, FOREIGN KEY, CHECK, EXCLUDE)
 
 ## Not Supported
+
+- `DROP CONSTRAINT`

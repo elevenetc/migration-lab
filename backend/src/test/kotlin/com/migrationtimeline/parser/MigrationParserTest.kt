@@ -59,6 +59,26 @@ class MigrationParserTest {
     }
 
     @Test
+    fun `parse ADD CONSTRAINT PRIMARY KEY migration`() {
+        addPrimaryKeyConstraintSql.toMigration().isEqualTo("addConstraint(users(pk_users:PRIMARY KEY))")
+    }
+
+    @Test
+    fun `parse ADD CONSTRAINT UNIQUE migration`() {
+        addUniqueConstraintSql.toMigration().isEqualTo("addConstraint(users(uk_users_email:UNIQUE))")
+    }
+
+    @Test
+    fun `parse ADD CONSTRAINT FOREIGN KEY migration`() {
+        addForeignKeyConstraintSql.toMigration().isEqualTo("addConstraint(orders(fk_orders_user:FOREIGN KEY))")
+    }
+
+    @Test
+    fun `parse ADD CONSTRAINT CHECK migration`() {
+        addCheckConstraintSql.toMigration().isEqualTo("addConstraint(users(ck_users_age:CHECK))")
+    }
+
+    @Test
     fun `parse multiple migrations to DSL`() {
         listOf(createUsersSql, addLastNameSql, createOrgSql).toMigrations().isEqualTo(
             """
@@ -149,4 +169,20 @@ val renameTableSql = """
 
 val renameColumnSql = """
             ALTER TABLE users RENAME COLUMN name TO full_name;
+        """.trimIndent()
+
+val addPrimaryKeyConstraintSql = """
+            ALTER TABLE users ADD CONSTRAINT pk_users PRIMARY KEY (id);
+        """.trimIndent()
+
+val addUniqueConstraintSql = """
+            ALTER TABLE users ADD CONSTRAINT uk_users_email UNIQUE (email);
+        """.trimIndent()
+
+val addForeignKeyConstraintSql = """
+            ALTER TABLE orders ADD CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCES users(id);
+        """.trimIndent()
+
+val addCheckConstraintSql = """
+            ALTER TABLE users ADD CONSTRAINT ck_users_age CHECK (age >= 0);
         """.trimIndent()

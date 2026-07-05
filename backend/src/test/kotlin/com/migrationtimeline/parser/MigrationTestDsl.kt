@@ -1,5 +1,6 @@
 package com.migrationtimeline.parser
 
+import com.migrationtimeline.models.AddConstraint
 import com.migrationtimeline.models.AlterColumnType
 import com.migrationtimeline.models.AlterTable
 import com.migrationtimeline.models.CreateTable
@@ -48,6 +49,7 @@ private fun Operation.tableName(): String = when (this) {
     is DropDefault -> tableName
     is RenameTable -> tableName
     is RenameColumn -> tableName
+    is AddConstraint -> tableName
 }
 
 private fun Operation.toTestDsl(): String = when (this) {
@@ -65,4 +67,5 @@ private fun Operation.toTestDsl(): String = when (this) {
     is DropDefault -> "dropDefault(${tableName}(${columnName}))"
     is RenameTable -> "renameTable(${tableName}->${newTableName})"
     is RenameColumn -> "renameColumn(${tableName}(${columnName}->${newColumnName}))"
+    is AddConstraint -> "addConstraint(${tableName}(${constraintName}:${constraintType}))"
 }

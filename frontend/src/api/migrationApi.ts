@@ -71,7 +71,15 @@ export interface RenameColumn {
   newColumnName: string
 }
 
-export type Operation = CreateTable | AlterTable | AlterColumnType | SetNotNull | DropNotNull | SetDefault | DropDefault | RenameTable | RenameColumn
+export interface AddConstraint {
+  type: 'ADD_CONSTRAINT'
+  migrationId: string
+  tableName: string
+  constraintName: string
+  constraintType: string
+}
+
+export type Operation = CreateTable | AlterTable | AlterColumnType | SetNotNull | DropNotNull | SetDefault | DropDefault | RenameTable | RenameColumn | AddConstraint
 
 export interface Migration {
   id: string

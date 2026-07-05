@@ -1,5 +1,6 @@
 package com.migrationtimeline.contracts
 
+import com.migrationtimeline.models.AddConstraint
 import com.migrationtimeline.models.AlterColumnType
 import com.migrationtimeline.models.AlterTable
 import com.migrationtimeline.models.Column
@@ -141,6 +142,19 @@ class ApiContractFixtureGenerator {
                         tableName = "accounts",
                         columnName = "email",
                         newColumnName = "email_address"
+                    )
+                )
+            ),
+            Migration(
+                id = "migration-10",
+                version = "V10__add_unique_constraint",
+                timestamp = 10000L,
+                operations = listOf(
+                    AddConstraint(
+                        migrationId = "migration-10",
+                        tableName = "accounts",
+                        constraintName = "uk_accounts_email",
+                        constraintType = "UNIQUE"
                     )
                 )
             )

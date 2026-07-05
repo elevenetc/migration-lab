@@ -100,6 +100,15 @@ data class RenameColumn(
 ) : Operation()
 
 @Serializable
+@SerialName("ADD_CONSTRAINT")
+data class AddConstraint(
+    override val migrationId: String,
+    val tableName: String,
+    val constraintName: String,
+    val constraintType: String
+) : Operation()
+
+@Serializable
 data class Column(
     val name: String,
     val type: String,
