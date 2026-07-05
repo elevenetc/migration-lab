@@ -1,5 +1,5 @@
-import {useCallback, useEffect} from 'react'
-import {Background, Controls, Edge, MarkerType, Node, Position, ReactFlow, useEdgesState, useNodesState,} from '@xyflow/react'
+import {useCallback, useEffect, useMemo} from 'react'
+import {Background, BaseEdge, Controls, Edge, EdgeProps, MarkerType, Node, Position, ReactFlow, useEdgesState, useNodesState,} from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import {useMigrationStore} from '../store/migrationStore'
 import type {Migration, Operation} from '../api/migrationApi'
@@ -66,6 +66,7 @@ function formatOperationSummary(operation: Operation): string {
     if (operation.type === 'ADD_COLUMN') {
         return `add(${operation.column.name})`
     }
+    console.warn('Unsupported operation type:', operation)
     return 'unknown'
 }
 
@@ -194,10 +195,16 @@ function buildTableOperationsMap(migrations: Migration[]): TableOperationsResult
     return {tableOperations, renames, partitions, tableOrder}
 }
 
-const NODE_WIDTH = 180
-const NODE_HEIGHT = 80
-const X_GAP = 40
-const Y_GAP = 30
+const NODE_WIDTH = 140
+const NODE_HEIGHT = 60
+const X_GAP = 20
+const Y_GAP = 15
+
+function StepDownEdge({sourceX, sourceY, targetX, targetY, markerEnd, style}: EdgeProps) {
+    // Start from right side of source, go down, then right to target
+    const path = `M ${sourceX} ${sourceY} L ${sourceX} ${targetY} L ${targetX} ${targetY}`
+    return <BaseEdge path={path} markerEnd={markerEnd} style={style}/>
+}
 
 export function Timeline() {
     const {migrations, loading, error} = useMigrationStore()
@@ -231,11 +238,11 @@ export function Timeline() {
                     data: {
                         label: (
                             <div>
-                                <div style={{fontWeight: 'bold', fontSize: '11px'}}>{tableName}</div>
-                                <div style={{fontSize: '10px', color: '#a0aec0'}}>
+                                <div style={{fontWeight: 'bold', fontSize: '9px'}}>{tableName}</div>
+                                <div style={{fontSize: '8px', color: '#a0aec0'}}>
                                     {item.migration.version}
                                 </div>
-                                <div style={{fontSize: '10px', color: '#cbd5e0'}}>
+                                <div style={{fontSize: '8px', color: '#cbd5e0'}}>
                                     {formatOperationSummary(item.operation)}
                                 </div>
                             </div>
@@ -244,9 +251,10 @@ export function Timeline() {
                     style: {
                         background: getNodeColor(item.operation),
                         color: 'white',
-                        padding: 8,
-                        borderRadius: 6,
+                        padding: 4,
+                        borderRadius: 4,
                         width: NODE_WIDTH,
+                        fontSize: '9px',
                     },
                 })
             })
@@ -268,7 +276,7 @@ export function Timeline() {
                     id: `${sourceId}->${targetId}`,
                     source: sourceId,
                     target: targetId,
-                    type: 'smoothstep',
+                    type: 'stepDown',
                     markerEnd: {type: MarkerType.ArrowClosed},
                 })
             }
@@ -285,7 +293,7 @@ export function Timeline() {
                     id: `rename-${sourceId}->${targetId}`,
                     source: sourceId,
                     target: targetId,
-                    type: 'smoothstep',
+                    type: 'stepDown',
                     markerEnd: {type: MarkerType.ArrowClosed},
                     style: {strokeDasharray: '5,5'}, // Dashed line to distinguish cross-table edges
                 })
@@ -295,22 +303,25 @@ export function Timeline() {
         // Build cross-table edges for partitions (from parent CREATE_TABLE to child partition)
         partitions.forEach(partition => {
             const parentOps = tableOperations.get(partition.parentTable)
-            if (parentOps && parentOps.length > 0) {
-                // Find the parent CREATE_TABLE operation
-                const parentCreateOp = parentOps.find(op => op.operation.type === 'CREATE_TABLE')
-                if (parentCreateOp) {
-                    const sourceId = `${parentCreateOp.migration.id}-${partition.parentTable}`
-                    const targetId = `${partition.migrationId}-${partition.childTable}`
-                    edges.push({
-                        id: `partition-${sourceId}->${targetId}`,
-                        source: sourceId,
-                        target: targetId,
-                        type: 'smoothstep',
-                        markerEnd: {type: MarkerType.ArrowClosed},
-                        style: {strokeDasharray: '3,3', stroke: '#38a169'}, // Dotted green line for partitions
-                    })
-                }
+            if (!parentOps || parentOps.length === 0) {
+                console.warn(`Partition ${partition.childTable}: parent table "${partition.parentTable}" not found`)
+                return
             }
+            const parentCreateOp = parentOps.find(op => op.operation.type === 'CREATE_TABLE')
+            if (!parentCreateOp) {
+                console.warn(`Partition ${partition.childTable}: parent table "${partition.parentTable}" has no CREATE_TABLE operation`)
+                return
+            }
+            const sourceId = `${parentCreateOp.migration.id}-${partition.parentTable}`
+            const targetId = `${partition.migrationId}-${partition.childTable}`
+            edges.push({
+                id: `partition-${sourceId}->${targetId}`,
+                source: sourceId,
+                target: targetId,
+                type: 'stepDown',
+                markerEnd: {type: MarkerType.ArrowClosed},
+                style: {strokeDasharray: '3,3', stroke: '#38a169'}, // Dotted green line for partitions
+            })
         })
 
         return edges
@@ -318,6 +329,7 @@ export function Timeline() {
 
     const [nodes, setNodes] = useNodesState<Node>([])
     const [edges, setEdges] = useEdgesState<Edge>([])
+    const edgeTypes = useMemo(() => ({stepDown: StepDownEdge}), [])
 
     useEffect(() => {
         setNodes(buildNodes())
@@ -341,7 +353,9 @@ export function Timeline() {
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
+                edgeTypes={edgeTypes}
                 fitView
+                minZoom={0.1}
                 attributionPosition="bottom-left"
             >
                 <Background/>
