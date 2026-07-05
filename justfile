@@ -70,7 +70,14 @@ compose-apply:
         local current_sha
         current_sha=$(git log -1 --format=%H -- "$dir/" 2>/dev/null || echo "none")
         current_sha="$current_sha-$(git diff HEAD -- "$dir/" 2>/dev/null | sha256sum | cut -c1-16)"
-        current_sha="$current_sha-$(git ls-files --others --exclude-standard "$dir/" 2>/dev/null | sha256sum | cut -c1-16)"
+        # Hash untracked file names AND their contents
+        local untracked_files
+        untracked_files=$(git ls-files --others --exclude-standard "$dir/" 2>/dev/null)
+        if [ -n "$untracked_files" ]; then
+            current_sha="$current_sha-$(echo "$untracked_files" | xargs cat 2>/dev/null | sha256sum | cut -c1-16)"
+        else
+            current_sha="$current_sha-nountracked"
+        fi
 
         # Compare with last build state
         if [ -f "$state_file" ]; then
