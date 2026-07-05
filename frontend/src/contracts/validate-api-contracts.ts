@@ -31,6 +31,8 @@ function validateOperationTypes(response: MigrationTimelineResponse): void {
           break
         case 'ADD_CONSTRAINT':
           break
+        case 'DROP_CONSTRAINT':
+          break
         default:
           assertExhaustive(op)
       }

@@ -44,6 +44,9 @@ function formatOperationSummary(operation: Operation): string {
     if (operation.type === 'ADD_CONSTRAINT') {
         return `constraint(${operation.constraintName}:${operation.constraintType})`
     }
+    if (operation.type === 'DROP_CONSTRAINT') {
+        return `dropConstraint(${operation.constraintName})`
+    }
     const added = operation.addedColumns.map(c => `+${c.name}`)
     const dropped = operation.droppedColumns.map(c => `-${c}`)
     const allChanges = [...added, ...dropped].join(', ')
@@ -77,6 +80,9 @@ function getNodeColor(operation: Operation): string {
     }
     if (operation.type === 'ADD_CONSTRAINT') {
         return '#805ad5' // purple - constraint operations
+    }
+    if (operation.type === 'DROP_CONSTRAINT') {
+        return '#e53e3e' // red - constraint removal
     }
     if (operation.droppedColumns.length > 0) {
         return '#c05621' // orange

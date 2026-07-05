@@ -79,6 +79,11 @@ class MigrationParserTest {
     }
 
     @Test
+    fun `parse DROP CONSTRAINT migration`() {
+        dropConstraintSql.toMigration().isEqualTo("dropConstraint(users(uk_users_email))")
+    }
+
+    @Test
     fun `parse multiple migrations to DSL`() {
         listOf(createUsersSql, addLastNameSql, createOrgSql).toMigrations().isEqualTo(
             """
@@ -185,4 +190,8 @@ val addForeignKeyConstraintSql = """
 
 val addCheckConstraintSql = """
             ALTER TABLE users ADD CONSTRAINT ck_users_age CHECK (age >= 0);
+        """.trimIndent()
+
+val dropConstraintSql = """
+            ALTER TABLE users DROP CONSTRAINT uk_users_email;
         """.trimIndent()

@@ -109,6 +109,14 @@ data class AddConstraint(
 ) : Operation()
 
 @Serializable
+@SerialName("DROP_CONSTRAINT")
+data class DropConstraint(
+    override val migrationId: String,
+    val tableName: String,
+    val constraintName: String
+) : Operation()
+
+@Serializable
 data class Column(
     val name: String,
     val type: String,

@@ -5,6 +5,7 @@ import com.migrationtimeline.models.AlterColumnType
 import com.migrationtimeline.models.AlterTable
 import com.migrationtimeline.models.Column
 import com.migrationtimeline.models.CreateTable
+import com.migrationtimeline.models.DropConstraint
 import com.migrationtimeline.models.DropDefault
 import com.migrationtimeline.models.DropNotNull
 import com.migrationtimeline.models.Migration
@@ -289,6 +290,18 @@ object MigrationParser {
             } ?: emptyList()
 
         operations.addAll(addConstraints)
+
+        val dropConstraints = alter.alterExpressions
+            ?.filter { it.operation == AlterOperation.DROP && it.constraintName != null }
+            ?.map { expr ->
+                DropConstraint(
+                    migrationId = migrationId,
+                    tableName = tableName,
+                    constraintName = expr.constraintName
+                )
+            } ?: emptyList()
+
+        operations.addAll(dropConstraints)
 
         return operations
     }

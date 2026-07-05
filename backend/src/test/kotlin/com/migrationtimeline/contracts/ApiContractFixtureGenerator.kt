@@ -5,6 +5,7 @@ import com.migrationtimeline.models.AlterColumnType
 import com.migrationtimeline.models.AlterTable
 import com.migrationtimeline.models.Column
 import com.migrationtimeline.models.CreateTable
+import com.migrationtimeline.models.DropConstraint
 import com.migrationtimeline.models.DropDefault
 import com.migrationtimeline.models.DropNotNull
 import com.migrationtimeline.models.Migration
@@ -155,6 +156,18 @@ class ApiContractFixtureGenerator {
                         tableName = "accounts",
                         constraintName = "uk_accounts_email",
                         constraintType = "UNIQUE"
+                    )
+                )
+            ),
+            Migration(
+                id = "migration-11",
+                version = "V11__drop_unique_constraint",
+                timestamp = 11000L,
+                operations = listOf(
+                    DropConstraint(
+                        migrationId = "migration-11",
+                        tableName = "accounts",
+                        constraintName = "uk_accounts_email"
                     )
                 )
             )

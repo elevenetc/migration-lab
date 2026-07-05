@@ -167,6 +167,19 @@
                     "constraintType": "UNIQUE"
                 }
             ]
+        },
+        {
+            "id": "migration-11",
+            "version": "V11__drop_unique_constraint",
+            "timestamp": 11000,
+            "operations": [
+                {
+                    "type": "DROP_CONSTRAINT",
+                    "migrationId": "migration-11",
+                    "tableName": "accounts",
+                    "constraintName": "uk_accounts_email"
+                }
+            ]
         }
     ],
     "map": {
@@ -335,6 +348,19 @@
                     "tableName": "accounts",
                     "constraintName": "uk_accounts_email",
                     "constraintType": "UNIQUE"
+                }
+            ]
+        },
+        "migration-11": {
+            "id": "migration-11",
+            "version": "V11__drop_unique_constraint",
+            "timestamp": 11000,
+            "operations": [
+                {
+                    "type": "DROP_CONSTRAINT",
+                    "migrationId": "migration-11",
+                    "tableName": "accounts",
+                    "constraintName": "uk_accounts_email"
                 }
             ]
         }

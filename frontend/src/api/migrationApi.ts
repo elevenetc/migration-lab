@@ -79,7 +79,14 @@ export interface AddConstraint {
   constraintType: string
 }
 
-export type Operation = CreateTable | AlterTable | AlterColumnType | SetNotNull | DropNotNull | SetDefault | DropDefault | RenameTable | RenameColumn | AddConstraint
+export interface DropConstraint {
+  type: 'DROP_CONSTRAINT'
+  migrationId: string
+  tableName: string
+  constraintName: string
+}
+
+export type Operation = CreateTable | AlterTable | AlterColumnType | SetNotNull | DropNotNull | SetDefault | DropDefault | RenameTable | RenameColumn | AddConstraint | DropConstraint
 
 export interface Migration {
   id: string
