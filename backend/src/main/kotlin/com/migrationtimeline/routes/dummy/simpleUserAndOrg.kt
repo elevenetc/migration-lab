@@ -61,6 +61,10 @@ private val dropOrgs = """
     DROP TABLE orgs;
 """.trimIndent()
 
+private val dropLastname = """
+    ALTER TABLE customers DROP COLUMN lastname;
+""".trimIndent()
+
 fun simpleUserAndOrg(): MigrationTimelineResponse {
     return migrationsToResponse(
         mapOf(
@@ -76,7 +80,8 @@ fun simpleUserAndOrg(): MigrationTimelineResponse {
             "V10__rename_name_to_full_name" to renameNameToFullName,
             "V11__add_unique_constraint" to addUniqueConstraint,
             "V12__drop_unique_constraint" to dropUniqueConstraint,
-            "V13__drop_orgs" to dropOrgs
+            "V13__drop_orgs" to dropOrgs,
+            "V14__drop_lastname" to dropLastname
         )
     )
 }

@@ -5,6 +5,7 @@ import com.migrationtimeline.models.AlterColumnType
 import com.migrationtimeline.models.AlterTable
 import com.migrationtimeline.models.Column
 import com.migrationtimeline.models.CreateTable
+import com.migrationtimeline.models.DropColumn
 import com.migrationtimeline.models.DropConstraint
 import com.migrationtimeline.models.DropDefault
 import com.migrationtimeline.models.DropNotNull
@@ -55,8 +56,7 @@ class ApiContractFixtureGenerator {
                         tableName = "users",
                         addedColumns = listOf(
                             Column("status", "VARCHAR(50)", listOf("DEFAULT 'active'"))
-                        ),
-                        droppedColumns = listOf("legacy_field")
+                        )
                     )
                 )
             ),
@@ -180,6 +180,18 @@ class ApiContractFixtureGenerator {
                     DropTable(
                         migrationId = "migration-12",
                         tableName = "accounts"
+                    )
+                )
+            ),
+            Migration(
+                id = "migration-13",
+                version = "V13__drop_legacy_column",
+                timestamp = 13000L,
+                operations = listOf(
+                    DropColumn(
+                        migrationId = "migration-13",
+                        tableName = "users",
+                        columnName = "legacy_field"
                     )
                 )
             )

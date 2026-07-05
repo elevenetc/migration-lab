@@ -53,9 +53,6 @@
                                 "DEFAULT 'active'"
                             ]
                         }
-                    ],
-                    "droppedColumns": [
-                        "legacy_field"
                     ]
                 }
             ]
@@ -192,6 +189,19 @@
                     "tableName": "accounts"
                 }
             ]
+        },
+        {
+            "id": "migration-13",
+            "version": "V13__drop_legacy_column",
+            "timestamp": 13000,
+            "operations": [
+                {
+                    "type": "DROP_COLUMN",
+                    "migrationId": "migration-13",
+                    "tableName": "users",
+                    "columnName": "legacy_field"
+                }
+            ]
         }
     ],
     "map": {
@@ -248,9 +258,6 @@
                                 "DEFAULT 'active'"
                             ]
                         }
-                    ],
-                    "droppedColumns": [
-                        "legacy_field"
                     ]
                 }
             ]
@@ -385,6 +392,19 @@
                     "type": "DROP_TABLE",
                     "migrationId": "migration-12",
                     "tableName": "accounts"
+                }
+            ]
+        },
+        "migration-13": {
+            "id": "migration-13",
+            "version": "V13__drop_legacy_column",
+            "timestamp": 13000,
+            "operations": [
+                {
+                    "type": "DROP_COLUMN",
+                    "migrationId": "migration-13",
+                    "tableName": "users",
+                    "columnName": "legacy_field"
                 }
             ]
         }

@@ -20,5 +20,4 @@ SQL statements that can be parsed (backend) and rendered (frontend).
 
 ## Not Supported
 
-- `DROP COLUMN`
 - Indicate lock: `ACCESS SHARE`, `ROW EXCLUSIVE`, `ACCESS EXCLUSIVE`

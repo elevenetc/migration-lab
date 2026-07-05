@@ -35,6 +35,8 @@ function validateOperationTypes(response: MigrationTimelineResponse): void {
           break
         case 'DROP_TABLE':
           break
+        case 'DROP_COLUMN':
+          break
         default:
           assertExhaustive(op)
       }

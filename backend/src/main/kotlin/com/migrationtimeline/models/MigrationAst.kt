@@ -36,8 +36,7 @@ data class CreateTable(
 data class AlterTable(
     override val migrationId: String,
     val tableName: String,
-    val addedColumns: List<Column> = emptyList(),
-    val droppedColumns: List<String> = emptyList()
+    val addedColumns: List<Column> = emptyList()
 ) : Operation()
 
 @Serializable
@@ -121,6 +120,14 @@ data class DropConstraint(
 data class DropTable(
     override val migrationId: String,
     val tableName: String
+) : Operation()
+
+@Serializable
+@SerialName("DROP_COLUMN")
+data class DropColumn(
+    override val migrationId: String,
+    val tableName: String,
+    val columnName: String
 ) : Operation()
 
 @Serializable

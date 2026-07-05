@@ -20,7 +20,7 @@ class MigrationParserTest {
 
     @Test
     fun `parse ALTER TABLE DROP COLUMN migration`() {
-        dropLastNameSql.toMigration().isEqualTo("alter(users(-last_name))")
+        dropLastNameSql.toMigration().isEqualTo("dropColumn(users(last_name))")
     }
 
     @Test

@@ -4,6 +4,7 @@ import com.migrationtimeline.models.AddConstraint
 import com.migrationtimeline.models.AlterColumnType
 import com.migrationtimeline.models.AlterTable
 import com.migrationtimeline.models.CreateTable
+import com.migrationtimeline.models.DropColumn
 import com.migrationtimeline.models.DropConstraint
 import com.migrationtimeline.models.DropDefault
 import com.migrationtimeline.models.DropNotNull
@@ -54,14 +55,14 @@ private fun Operation.tableName(): String = when (this) {
     is AddConstraint -> tableName
     is DropConstraint -> tableName
     is DropTable -> tableName
+    is DropColumn -> tableName
 }
 
 private fun Operation.toTestDsl(): String = when (this) {
     is CreateTable -> "create(${tableName}(${columns.joinToString(",") { it.name }}))"
     is AlterTable -> {
         val added = addedColumns.map { "+${it.name}" }
-        val dropped = droppedColumns.map { "-$it" }
-        val allChanges = (added + dropped).joinToString(",")
+        val allChanges = added.joinToString(",")
         "alter(${tableName}($allChanges))"
     }
     is AlterColumnType -> "alterType(${tableName}(${columnName}:${newType}))"
@@ -74,4 +75,5 @@ private fun Operation.toTestDsl(): String = when (this) {
     is AddConstraint -> "addConstraint(${tableName}(${constraintName}:${constraintType}))"
     is DropConstraint -> "dropConstraint(${tableName}(${constraintName}))"
     is DropTable -> "drop(${tableName})"
+    is DropColumn -> "dropColumn(${tableName}(${columnName}))"
 }

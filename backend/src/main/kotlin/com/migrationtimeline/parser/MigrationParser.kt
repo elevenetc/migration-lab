@@ -5,6 +5,7 @@ import com.migrationtimeline.models.AlterColumnType
 import com.migrationtimeline.models.AlterTable
 import com.migrationtimeline.models.Column
 import com.migrationtimeline.models.CreateTable
+import com.migrationtimeline.models.DropColumn
 import com.migrationtimeline.models.DropConstraint
 import com.migrationtimeline.models.DropDefault
 import com.migrationtimeline.models.DropNotNull
@@ -145,18 +146,24 @@ object MigrationParser {
                 }
             } ?: emptyList()
 
-        val droppedColumns = alter.alterExpressions
-            ?.filter { it.operation == AlterOperation.DROP }
-            ?.mapNotNull { it.columnName }
-            ?: emptyList()
+        val dropColumns = alter.alterExpressions
+            ?.filter { it.operation == AlterOperation.DROP && it.columnName != null && it.constraintName == null }
+            ?.map { expr ->
+                DropColumn(
+                    migrationId = migrationId,
+                    tableName = tableName,
+                    columnName = expr.columnName
+                )
+            } ?: emptyList()
 
-        if (addedColumns.isNotEmpty() || droppedColumns.isNotEmpty()) {
+        operations.addAll(dropColumns)
+
+        if (addedColumns.isNotEmpty()) {
             operations.add(
                 AlterTable(
                     migrationId = migrationId,
                     tableName = tableName,
-                    addedColumns = addedColumns,
-                    droppedColumns = droppedColumns
+                    addedColumns = addedColumns
                 )
             )
         }

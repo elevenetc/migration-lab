@@ -16,7 +16,6 @@ export interface AlterTable {
   migrationId: string
   tableName: string
   addedColumns: Column[]
-  droppedColumns: string[]
 }
 
 export interface AlterColumnType {
@@ -92,7 +91,14 @@ export interface DropTable {
   tableName: string
 }
 
-export type Operation = CreateTable | AlterTable | AlterColumnType | SetNotNull | DropNotNull | SetDefault | DropDefault | RenameTable | RenameColumn | AddConstraint | DropConstraint | DropTable
+export interface DropColumn {
+  type: 'DROP_COLUMN'
+  migrationId: string
+  tableName: string
+  columnName: string
+}
+
+export type Operation = CreateTable | AlterTable | AlterColumnType | SetNotNull | DropNotNull | SetDefault | DropDefault | RenameTable | RenameColumn | AddConstraint | DropConstraint | DropTable | DropColumn
 
 export interface Migration {
   id: string
