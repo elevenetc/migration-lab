@@ -9,9 +9,10 @@ import io.ktor.server.routing.*
 fun Application.migrationRoutes() {
     routing {
         get("/api/migrations") {
+            call.respond(simpleUsers())
             //call.respond(simpleTableRename())
             //call.respond(simpleUserAndOrg())
-            call.respond(complexEcommerce())
+            //call.respond(complexEcommerce())
             //call.respond(partitionedTables())
         }
     }
