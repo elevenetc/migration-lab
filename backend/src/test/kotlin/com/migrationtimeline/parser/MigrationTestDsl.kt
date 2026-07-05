@@ -7,6 +7,7 @@ import com.migrationtimeline.models.CreateTable
 import com.migrationtimeline.models.DropConstraint
 import com.migrationtimeline.models.DropDefault
 import com.migrationtimeline.models.DropNotNull
+import com.migrationtimeline.models.DropTable
 import com.migrationtimeline.models.Migration
 import com.migrationtimeline.models.Operation
 import com.migrationtimeline.models.RenameColumn
@@ -52,6 +53,7 @@ private fun Operation.tableName(): String = when (this) {
     is RenameColumn -> tableName
     is AddConstraint -> tableName
     is DropConstraint -> tableName
+    is DropTable -> tableName
 }
 
 private fun Operation.toTestDsl(): String = when (this) {
@@ -71,4 +73,5 @@ private fun Operation.toTestDsl(): String = when (this) {
     is RenameColumn -> "renameColumn(${tableName}(${columnName}->${newColumnName}))"
     is AddConstraint -> "addConstraint(${tableName}(${constraintName}:${constraintType}))"
     is DropConstraint -> "dropConstraint(${tableName}(${constraintName}))"
+    is DropTable -> "drop(${tableName})"
 }

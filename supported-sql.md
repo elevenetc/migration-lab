@@ -16,7 +16,9 @@ SQL statements that can be parsed (backend) and rendered (frontend).
 - `RENAME COLUMN`
 - `ADD CONSTRAINT` (PRIMARY KEY, UNIQUE, FOREIGN KEY, CHECK, EXCLUDE)
 - `DROP CONSTRAINT`
+- `DROP TABLE`
 
 ## Not Supported
 
-- `DROP TABLE`
+- `DROP COLUMN`
+- Indicate lock: `ACCESS SHARE`, `ROW EXCLUSIVE`, `ACCESS EXCLUSIVE`

@@ -8,6 +8,7 @@ import com.migrationtimeline.models.CreateTable
 import com.migrationtimeline.models.DropConstraint
 import com.migrationtimeline.models.DropDefault
 import com.migrationtimeline.models.DropNotNull
+import com.migrationtimeline.models.DropTable
 import com.migrationtimeline.models.Migration
 import com.migrationtimeline.models.MigrationTimelineResponse
 import com.migrationtimeline.models.RenameColumn
@@ -168,6 +169,17 @@ class ApiContractFixtureGenerator {
                         migrationId = "migration-11",
                         tableName = "accounts",
                         constraintName = "uk_accounts_email"
+                    )
+                )
+            ),
+            Migration(
+                id = "migration-12",
+                version = "V12__drop_accounts",
+                timestamp = 12000L,
+                operations = listOf(
+                    DropTable(
+                        migrationId = "migration-12",
+                        tableName = "accounts"
                     )
                 )
             )

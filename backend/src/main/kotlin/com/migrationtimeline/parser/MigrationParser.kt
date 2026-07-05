@@ -8,6 +8,7 @@ import com.migrationtimeline.models.CreateTable
 import com.migrationtimeline.models.DropConstraint
 import com.migrationtimeline.models.DropDefault
 import com.migrationtimeline.models.DropNotNull
+import com.migrationtimeline.models.DropTable
 import com.migrationtimeline.models.Migration
 import com.migrationtimeline.models.Operation
 import com.migrationtimeline.models.RenameColumn
@@ -19,6 +20,7 @@ import net.sf.jsqlparser.statement.alter.Alter
 import net.sf.jsqlparser.statement.alter.AlterExpression
 import net.sf.jsqlparser.statement.alter.AlterOperation
 import net.sf.jsqlparser.statement.create.table.CreateTable as JsqlCreateTable
+import net.sf.jsqlparser.statement.drop.Drop
 
 private fun AlterExpression.ColumnDataType.isSetNotNull(): Boolean {
     val colDataType = this.colDataType?.toString()?.uppercase() ?: return false
@@ -79,6 +81,7 @@ object MigrationParser {
             when (statement) {
                 is JsqlCreateTable -> listOf(parseCreateTable(id, statement))
                 is Alter -> parseAlter(id, statement)
+                is Drop -> parseDropTable(id, statement)?.let { listOf(it) } ?: emptyList()
                 else -> emptyList()
             }
         }
@@ -304,5 +307,11 @@ object MigrationParser {
         operations.addAll(dropConstraints)
 
         return operations
+    }
+
+    private fun parseDropTable(migrationId: String, drop: Drop): DropTable? {
+        if (drop.type?.uppercase() != "TABLE") return null
+        val tableName = drop.name?.name ?: return null
+        return DropTable(migrationId = migrationId, tableName = tableName)
     }
 }

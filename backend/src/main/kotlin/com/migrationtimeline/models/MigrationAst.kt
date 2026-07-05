@@ -117,6 +117,13 @@ data class DropConstraint(
 ) : Operation()
 
 @Serializable
+@SerialName("DROP_TABLE")
+data class DropTable(
+    override val migrationId: String,
+    val tableName: String
+) : Operation()
+
+@Serializable
 data class Column(
     val name: String,
     val type: String,

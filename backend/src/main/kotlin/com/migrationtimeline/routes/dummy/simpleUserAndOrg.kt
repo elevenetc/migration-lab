@@ -57,6 +57,10 @@ private val dropUniqueConstraint = """
     ALTER TABLE customers DROP CONSTRAINT uk_customers_full_name;
 """.trimIndent()
 
+private val dropOrgs = """
+    DROP TABLE orgs;
+""".trimIndent()
+
 fun simpleUserAndOrg(): MigrationTimelineResponse {
     return migrationsToResponse(
         mapOf(
@@ -71,7 +75,8 @@ fun simpleUserAndOrg(): MigrationTimelineResponse {
             "V9__rename_users_to_accounts" to renameUsersToCustomers,
             "V10__rename_name_to_full_name" to renameNameToFullName,
             "V11__add_unique_constraint" to addUniqueConstraint,
-            "V12__drop_unique_constraint" to dropUniqueConstraint
+            "V12__drop_unique_constraint" to dropUniqueConstraint,
+            "V13__drop_orgs" to dropOrgs
         )
     )
 }

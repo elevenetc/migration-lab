@@ -84,6 +84,11 @@ class MigrationParserTest {
     }
 
     @Test
+    fun `parse DROP TABLE migration`() {
+        dropTableSql.toMigration().isEqualTo("drop(users)")
+    }
+
+    @Test
     fun `parse multiple migrations to DSL`() {
         listOf(createUsersSql, addLastNameSql, createOrgSql).toMigrations().isEqualTo(
             """
@@ -194,4 +199,8 @@ val addCheckConstraintSql = """
 
 val dropConstraintSql = """
             ALTER TABLE users DROP CONSTRAINT uk_users_email;
+        """.trimIndent()
+
+val dropTableSql = """
+            DROP TABLE users;
         """.trimIndent()

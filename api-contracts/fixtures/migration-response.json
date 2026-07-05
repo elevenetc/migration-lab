@@ -180,6 +180,18 @@
                     "constraintName": "uk_accounts_email"
                 }
             ]
+        },
+        {
+            "id": "migration-12",
+            "version": "V12__drop_accounts",
+            "timestamp": 12000,
+            "operations": [
+                {
+                    "type": "DROP_TABLE",
+                    "migrationId": "migration-12",
+                    "tableName": "accounts"
+                }
+            ]
         }
     ],
     "map": {
@@ -361,6 +373,18 @@
                     "migrationId": "migration-11",
                     "tableName": "accounts",
                     "constraintName": "uk_accounts_email"
+                }
+            ]
+        },
+        "migration-12": {
+            "id": "migration-12",
+            "version": "V12__drop_accounts",
+            "timestamp": 12000,
+            "operations": [
+                {
+                    "type": "DROP_TABLE",
+                    "migrationId": "migration-12",
+                    "tableName": "accounts"
                 }
             ]
         }
