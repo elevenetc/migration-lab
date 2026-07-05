@@ -31,3 +31,4 @@ Thumbs.db
 *.log
 npm-debug.log*
 /.claude/settings.local.json
+/.playwright-mcp/
