@@ -74,6 +74,70 @@ When adding new Operation types:
 
 `just test` fails if types drift.
 
+## Test DSL
+
+The test DSL (`MigrationTestDsl.kt`) serves two purposes:
+
+1. **Readability** - concise assertions for parsed migrations
+2. **Timeline depiction** - output mirrors how frontend renders the timeline
+
+### Basic DSL (untimed)
+
+Groups operations by table name (alphabetically sorted), joins with ` > `:
+
+```kotlin
+listOf(createUsersSql, addLastNameSql, createOrgSql).toMigrations().isEqualTo(
+    """
+    create(org(id,name))
+    create(users(id,name)) > addColumn(users(last_name))
+    """.trimIndent()
+)
+```
+
+### Timed DSL
+
+Use `toTimedMigrations()` with `List<Pair<Int, String>>` to specify timestamps:
+
+```kotlin
+listOf(
+    1 to createTableA,
+    2 to createTableB,
+    3 to alterTableA
+).toTimedMigrations().isEqualToTimed(
+    """
+    create(a(id)) > addColumn(a(name))
+    >create(b(id))
+    """.trimIndent()
+)
+```
+
+**Rules:**
+
+- **Grouping**: one line per table, operations joined with ` > `
+- **Sorting**: tables sorted by first appearance timestamp
+- **Timing prefix**: `>` count = timestamp difference from first migration
+- Same timestamp = same prefix depth
+
+### Operation formats
+
+| Operation                 | DSL format                        |
+|---------------------------|-----------------------------------|
+| CREATE TABLE              | `create(table(col1,col2))`        |
+| CREATE TABLE PARTITION BY | `createPartitioned(table(cols))`  |
+| CREATE TABLE PARTITION OF | `createPartition(child:parent)`   |
+| ADD COLUMN                | `addColumn(table(col))`           |
+| DROP COLUMN               | `dropColumn(table(col))`          |
+| ALTER COLUMN TYPE         | `alterType(table(col:TYPE))`      |
+| SET NOT NULL              | `setNotNull(table(col))`          |
+| DROP NOT NULL             | `dropNotNull(table(col))`         |
+| SET DEFAULT               | `setDefault(table(col=value))`    |
+| DROP DEFAULT              | `dropDefault(table(col))`         |
+| RENAME TABLE              | `renameTable(old->new)`           |
+| RENAME COLUMN             | `renameColumn(table(old->new))`   |
+| ADD CONSTRAINT            | `addConstraint(table(name:TYPE))` |
+| DROP CONSTRAINT           | `dropConstraint(table(name))`     |
+| DROP TABLE                | `drop(table)`                     |
+
 ## Constraints
 
 - PostgreSQL and Flyway migrations only
@@ -89,3 +153,9 @@ When adding new Operation types:
 5. Add dummy example `com.migrationtimeline.routes.dummy`
 6. Run tests
 7. Update [supported-sql.md](supported-sql.md)
+
+## Debugging
+
+- use `playwright mcp` and `localhost:3000` to verify frontend implementation
+- `localhost:3000` makes single request which returns content of `migrationRoutes`/`/api/migrations`
+- update `migrationRoutes` and run `just compose-apply` to see updated version at `localhost:3000`
