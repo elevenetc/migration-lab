@@ -11,8 +11,8 @@ fun Application.migrationRoutes() {
         get("/api/migrations") {
             //call.respond(simpleTableRename())
             //call.respond(simpleUserAndOrg())
-            //call.respond(complexEcommerce())
-            call.respond(partitionedTables())
+            call.respond(complexEcommerce())
+            //call.respond(partitionedTables())
         }
     }
 }

@@ -72,6 +72,28 @@ private val PARTITION_OF_REGEX = Regex(
     RegexOption.IGNORE_CASE
 )
 
+// JSQLParser doesn't support PARTITION BY RANGE (only LIST works)
+private val PARTITION_BY_RANGE_REGEX = Regex(
+    """CREATE\s+TABLE\s+(\w+)\s*\(([^)]+(?:\([^)]*\)[^)]*)*)\)\s*PARTITION\s+BY\s+RANGE""",
+    RegexOption.IGNORE_CASE
+)
+
+private fun parseColumnsFromSql(columnsSql: String): List<Column> {
+    return columnsSql.split(",")
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
+        .mapNotNull { colDef ->
+            val parts = colDef.split(Regex("\\s+"), limit = 2)
+            if (parts.isNotEmpty()) {
+                Column(
+                    name = parts[0],
+                    type = parts.getOrElse(1) { "UNKNOWN" }.split(Regex("\\s+"))[0],
+                    constraints = emptyList()
+                )
+            } else null
+        }
+}
+
 object MigrationParser {
 
     @Suppress("DEPRECATION")
@@ -115,7 +137,20 @@ object MigrationParser {
             }
             operations.addAll(parsedOps)
         } catch (_: Exception) {
-            // JSQLParser failed, no fallback available
+            // JSQLParser failed, try regex fallback for PARTITION BY RANGE
+            val partitionByRangeMatch = PARTITION_BY_RANGE_REGEX.find(sql)
+            if (partitionByRangeMatch != null) {
+                val tableName = partitionByRangeMatch.groupValues[1]
+                val columnsSql = partitionByRangeMatch.groupValues[2]
+                operations.add(
+                    CreateTable(
+                        migrationId = id,
+                        tableName = tableName,
+                        columns = parseColumnsFromSql(columnsSql),
+                        isPartitioned = true
+                    )
+                )
+            }
         }
 
         return Migration(id = id, version = id, timestamp = timestamp, operations = operations)

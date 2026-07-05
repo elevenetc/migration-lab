@@ -58,8 +58,6 @@ private val createOrderItems = """
 
 private val addUserProfile = """
     ALTER TABLE users ADD COLUMN first_name VARCHAR(100);
-    ALTER TABLE users ADD COLUMN last_name VARCHAR(100);
-    ALTER TABLE users ADD COLUMN phone VARCHAR(20);
 """.trimIndent()
 
 private val createAddresses = """
@@ -86,8 +84,6 @@ private val createPayments = """
 
 private val addProductDetails = """
     ALTER TABLE products ADD COLUMN description TEXT;
-    ALTER TABLE products ADD COLUMN sku VARCHAR(100) UNIQUE;
-    ALTER TABLE products ADD COLUMN category_id INTEGER REFERENCES categories(id);
 """.trimIndent()
 
 private val createInventory = """
@@ -113,8 +109,6 @@ private val createReviews = """
 
 private val addOrderTracking = """
     ALTER TABLE orders ADD COLUMN tracking_number VARCHAR(100);
-    ALTER TABLE orders ADD COLUMN shipped_at TIMESTAMP;
-    ALTER TABLE orders ADD COLUMN delivered_at TIMESTAMP;
 """.trimIndent()
 
 private val createSubscriptions = """
@@ -145,7 +139,6 @@ private val addUserOrganization = """
 
 private val addPaymentDetails = """
     ALTER TABLE payments ADD COLUMN transaction_id VARCHAR(255);
-    ALTER TABLE payments ADD COLUMN error_message TEXT;
 """.trimIndent()
 
 private val createAuditLog = """
@@ -162,6 +155,79 @@ private val createAuditLog = """
 
 private val dropUserPhone = """
     ALTER TABLE users DROP COLUMN phone;
+""".trimIndent()
+
+// ALTER COLUMN TYPE
+private val changeProductPrice = """
+    ALTER TABLE products ALTER COLUMN price TYPE NUMERIC(12, 4);
+""".trimIndent()
+
+// SET NOT NULL
+private val setDescriptionNotNull = """
+    ALTER TABLE products ALTER COLUMN description SET NOT NULL;
+""".trimIndent()
+
+// DROP NOT NULL
+private val dropDescriptionNotNull = """
+    ALTER TABLE products ALTER COLUMN description DROP NOT NULL;
+""".trimIndent()
+
+// SET DEFAULT
+private val setOrderStatusDefault = """
+    ALTER TABLE orders ALTER COLUMN status SET DEFAULT 'new';
+""".trimIndent()
+
+// DROP DEFAULT
+private val dropOrderStatusDefault = """
+    ALTER TABLE orders ALTER COLUMN status DROP DEFAULT;
+""".trimIndent()
+
+// RENAME TABLE
+private val renameAuditLog = """
+    ALTER TABLE audit_log RENAME TO activity_log;
+""".trimIndent()
+
+// RENAME COLUMN
+private val renameUserEmail = """
+    ALTER TABLE users RENAME COLUMN email TO email_address;
+""".trimIndent()
+
+// ADD CONSTRAINT - various types
+private val addConstraints = """
+    ALTER TABLE products ADD CONSTRAINT uk_products_sku UNIQUE (sku);
+    ALTER TABLE orders ADD CONSTRAINT chk_orders_status CHECK (status IN ('new', 'pending', 'shipped', 'delivered', 'cancelled'));
+    ALTER TABLE reviews ADD CONSTRAINT fk_reviews_products FOREIGN KEY (product_id) REFERENCES products(id);
+""".trimIndent()
+
+// DROP CONSTRAINT
+private val dropSkuConstraint = """
+    ALTER TABLE products DROP CONSTRAINT uk_products_sku;
+""".trimIndent()
+
+// DROP TABLE
+private val dropNotifications = """
+    DROP TABLE notifications;
+""".trimIndent()
+
+// PARTITION BY - partitioned parent table
+private val createOrdersPartitioned = """
+    CREATE TABLE orders_history (
+        id SERIAL,
+        order_id INTEGER NOT NULL,
+        status VARCHAR(50) NOT NULL,
+        changed_at TIMESTAMP NOT NULL
+    ) PARTITION BY RANGE (changed_at);
+""".trimIndent()
+
+// PARTITION OF - child partition
+private val createOrdersHistory2024 = """
+    CREATE TABLE orders_history_2024 PARTITION OF orders_history
+        FOR VALUES FROM ('2024-01-01') TO ('2025-01-01');
+""".trimIndent()
+
+private val createOrdersHistory2025 = """
+    CREATE TABLE orders_history_2025 PARTITION OF orders_history
+        FOR VALUES FROM ('2025-01-01') TO ('2026-01-01');
 """.trimIndent()
 
 fun complexEcommerce(): MigrationTimelineResponse {
@@ -183,7 +249,19 @@ fun complexEcommerce(): MigrationTimelineResponse {
             "V14__add_user_organization" to addUserOrganization,
             "V15__add_payment_details" to addPaymentDetails,
             "V16__create_audit_log" to createAuditLog,
-            "V17__drop_user_phone" to dropUserPhone
+            "V17__drop_user_phone" to dropUserPhone,
+            "V18__change_product_price_precision" to changeProductPrice,
+            "V19__set_description_not_null" to setDescriptionNotNull,
+            "V20__set_order_status_default" to setOrderStatusDefault,
+            "V21__add_constraints" to addConstraints,
+            "V22__rename_user_email" to renameUserEmail,
+            "V23__rename_audit_log" to renameAuditLog,
+            "V24__drop_sku_constraint" to dropSkuConstraint,
+            "V25__drop_description_not_null" to dropDescriptionNotNull,
+            "V26__drop_order_status_default" to dropOrderStatusDefault,
+            "V27__drop_notifications" to dropNotifications,
+            "V28__create_orders_history_partitioned" to createOrdersPartitioned,
+            "V29__create_orders_history_partitions" to "$createOrdersHistory2024\n$createOrdersHistory2025"
         )
     )
 }
