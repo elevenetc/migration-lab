@@ -8,6 +8,7 @@ import com.migrationtimeline.models.DropDefault
 import com.migrationtimeline.models.DropNotNull
 import com.migrationtimeline.models.Migration
 import com.migrationtimeline.models.MigrationTimelineResponse
+import com.migrationtimeline.models.RenameColumn
 import com.migrationtimeline.models.RenameTable
 import com.migrationtimeline.models.SetDefault
 import com.migrationtimeline.models.SetNotNull
@@ -127,6 +128,19 @@ class ApiContractFixtureGenerator {
                         migrationId = "migration-8",
                         tableName = "users",
                         newTableName = "accounts"
+                    )
+                )
+            ),
+            Migration(
+                id = "migration-9",
+                version = "V9__rename_email_to_email_address",
+                timestamp = 9000L,
+                operations = listOf(
+                    RenameColumn(
+                        migrationId = "migration-9",
+                        tableName = "accounts",
+                        columnName = "email",
+                        newColumnName = "email_address"
                     )
                 )
             )

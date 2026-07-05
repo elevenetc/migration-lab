@@ -13,7 +13,6 @@ SQL statements that can be parsed (backend) and rendered (frontend).
 - `SET DEFAULT`
 - `DROP DEFAULT`
 - `RENAME TABLE`
+- `RENAME COLUMN`
 
 ## Not Supported
-
-- `RENAME COLUMN`

@@ -63,7 +63,15 @@ export interface RenameTable {
   newTableName: string
 }
 
-export type Operation = CreateTable | AlterTable | AlterColumnType | SetNotNull | DropNotNull | SetDefault | DropDefault | RenameTable
+export interface RenameColumn {
+  type: 'RENAME_COLUMN'
+  migrationId: string
+  tableName: string
+  columnName: string
+  newColumnName: string
+}
+
+export type Operation = CreateTable | AlterTable | AlterColumnType | SetNotNull | DropNotNull | SetDefault | DropDefault | RenameTable | RenameColumn
 
 export interface Migration {
   id: string

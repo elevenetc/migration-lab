@@ -32,6 +32,9 @@ function formatOperationSummary(operation: Operation): string {
     if (operation.type === 'RENAME_TABLE') {
         return `rename(→${operation.newTableName})`
     }
+    if (operation.type === 'RENAME_COLUMN') {
+        return `rename(${operation.columnName}→${operation.newColumnName})`
+    }
     const added = operation.addedColumns.map(c => `+${c.name}`)
     const dropped = operation.droppedColumns.map(c => `-${c}`)
     const allChanges = [...added, ...dropped].join(', ')
@@ -58,7 +61,10 @@ function getNodeColor(operation: Operation): string {
         return '#d69e2e' // yellow - default removal
     }
     if (operation.type === 'RENAME_TABLE') {
-        return '#9f7aea' // purple - rename
+        return '#9f7aea' // purple - rename table
+    }
+    if (operation.type === 'RENAME_COLUMN') {
+        return '#b794f4' // lighter purple - rename column
     }
     if (operation.droppedColumns.length > 0) {
         return '#c05621' // orange

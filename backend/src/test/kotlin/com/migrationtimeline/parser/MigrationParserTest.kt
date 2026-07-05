@@ -54,6 +54,11 @@ class MigrationParserTest {
     }
 
     @Test
+    fun `parse RENAME COLUMN migration`() {
+        renameColumnSql.toMigration().isEqualTo("renameColumn(users(name->full_name))")
+    }
+
+    @Test
     fun `parse multiple migrations to DSL`() {
         listOf(createUsersSql, addLastNameSql, createOrgSql).toMigrations().isEqualTo(
             """
@@ -140,4 +145,8 @@ val dropDefaultSql = """
 
 val renameTableSql = """
             ALTER TABLE users RENAME TO accounts;
+        """.trimIndent()
+
+val renameColumnSql = """
+            ALTER TABLE users RENAME COLUMN name TO full_name;
         """.trimIndent()

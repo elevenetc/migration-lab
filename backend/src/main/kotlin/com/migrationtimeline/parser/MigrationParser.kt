@@ -8,6 +8,7 @@ import com.migrationtimeline.models.DropDefault
 import com.migrationtimeline.models.DropNotNull
 import com.migrationtimeline.models.Migration
 import com.migrationtimeline.models.Operation
+import com.migrationtimeline.models.RenameColumn
 import com.migrationtimeline.models.RenameTable
 import com.migrationtimeline.models.SetDefault
 import com.migrationtimeline.models.SetNotNull
@@ -249,6 +250,21 @@ object MigrationParser {
             }
 
         renameTable?.let { operations.add(it) }
+
+        val renameColumns = alter.alterExpressions
+            ?.filter { it.operation == AlterOperation.RENAME && it.columnName != null }
+            ?.mapNotNull { expr ->
+                val oldName = expr.columnName ?: return@mapNotNull null
+                val newName = expr.columnOldName ?: return@mapNotNull null
+                RenameColumn(
+                    migrationId = migrationId,
+                    tableName = tableName,
+                    columnName = newName,
+                    newColumnName = oldName
+                )
+            } ?: emptyList()
+
+        operations.addAll(renameColumns)
 
         return operations
     }

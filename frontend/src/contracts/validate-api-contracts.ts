@@ -27,6 +27,8 @@ function validateOperationTypes(response: MigrationTimelineResponse): void {
           break
         case 'RENAME_TABLE':
           break
+        case 'RENAME_COLUMN':
+          break
         default:
           assertExhaustive(op)
       }

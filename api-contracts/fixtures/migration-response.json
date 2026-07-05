@@ -139,6 +139,20 @@
                     "newTableName": "accounts"
                 }
             ]
+        },
+        {
+            "id": "migration-9",
+            "version": "V9__rename_email_to_email_address",
+            "timestamp": 9000,
+            "operations": [
+                {
+                    "type": "RENAME_COLUMN",
+                    "migrationId": "migration-9",
+                    "tableName": "accounts",
+                    "columnName": "email",
+                    "newColumnName": "email_address"
+                }
+            ]
         }
     ],
     "map": {
@@ -279,6 +293,20 @@
                     "migrationId": "migration-8",
                     "tableName": "users",
                     "newTableName": "accounts"
+                }
+            ]
+        },
+        "migration-9": {
+            "id": "migration-9",
+            "version": "V9__rename_email_to_email_address",
+            "timestamp": 9000,
+            "operations": [
+                {
+                    "type": "RENAME_COLUMN",
+                    "migrationId": "migration-9",
+                    "tableName": "accounts",
+                    "columnName": "email",
+                    "newColumnName": "email_address"
                 }
             ]
         }

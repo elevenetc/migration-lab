@@ -91,6 +91,15 @@ data class RenameTable(
 ) : Operation()
 
 @Serializable
+@SerialName("RENAME_COLUMN")
+data class RenameColumn(
+    override val migrationId: String,
+    val tableName: String,
+    val columnName: String,
+    val newColumnName: String
+) : Operation()
+
+@Serializable
 data class Column(
     val name: String,
     val type: String,

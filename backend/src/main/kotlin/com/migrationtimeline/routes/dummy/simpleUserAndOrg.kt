@@ -45,6 +45,10 @@ private val renameUsersToCustomers = """
     ALTER TABLE users RENAME TO customers;
 """.trimIndent()
 
+private val renameNameToFullName = """
+    ALTER TABLE customers RENAME COLUMN name TO full_name;
+""".trimIndent()
+
 fun simpleUserAndOrg(): MigrationTimelineResponse {
     return migrationsToResponse(
         mapOf(
@@ -56,7 +60,8 @@ fun simpleUserAndOrg(): MigrationTimelineResponse {
             "V6__drop_lastname_not_null" to dropLastnameNotNull,
             "V7__set_lastname_default" to setLastnameDefault,
             "V8__drop_lastname_default" to dropLastnameDefault,
-            "V9__rename_users_to_accounts" to renameUsersToCustomers
+            "V9__rename_users_to_accounts" to renameUsersToCustomers,
+            "V10__rename_name_to_full_name" to renameNameToFullName
         )
     )
 }
