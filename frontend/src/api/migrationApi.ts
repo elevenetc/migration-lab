@@ -9,6 +9,8 @@ export interface CreateTable {
   migrationId: string
   tableName: string
   columns: Column[]
+  isPartitioned: boolean
+  partitionOf: string | null
 }
 
 export interface AddColumn {

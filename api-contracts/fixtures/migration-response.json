@@ -32,7 +32,9 @@
                                 "DEFAULT NOW()"
                             ]
                         }
-                    ]
+                    ],
+                    "isPartitioned": false,
+                    "partitionOf": null
                 }
             ]
         },
@@ -200,6 +202,54 @@
                     "columnName": "legacy_field"
                 }
             ]
+        },
+        {
+            "id": "migration-14",
+            "version": "V14__create_partitioned_table",
+            "timestamp": 14000,
+            "operations": [
+                {
+                    "type": "CREATE_TABLE",
+                    "migrationId": "migration-14",
+                    "tableName": "measurements",
+                    "columns": [
+                        {
+                            "name": "id",
+                            "type": "SERIAL",
+                            "constraints": []
+                        },
+                        {
+                            "name": "created_at",
+                            "type": "TIMESTAMP",
+                            "constraints": [
+                                "NOT NULL"
+                            ]
+                        },
+                        {
+                            "name": "value",
+                            "type": "NUMERIC",
+                            "constraints": []
+                        }
+                    ],
+                    "isPartitioned": true,
+                    "partitionOf": null
+                }
+            ]
+        },
+        {
+            "id": "migration-15",
+            "version": "V15__create_partition",
+            "timestamp": 15000,
+            "operations": [
+                {
+                    "type": "CREATE_TABLE",
+                    "migrationId": "migration-15",
+                    "tableName": "measurements_2024",
+                    "columns": [],
+                    "isPartitioned": false,
+                    "partitionOf": "measurements"
+                }
+            ]
         }
     ],
     "map": {
@@ -235,7 +285,9 @@
                                 "DEFAULT NOW()"
                             ]
                         }
-                    ]
+                    ],
+                    "isPartitioned": false,
+                    "partitionOf": null
                 }
             ]
         },
@@ -403,6 +455,54 @@
                     "columnName": "legacy_field"
                 }
             ]
+        },
+        "migration-14": {
+            "id": "migration-14",
+            "version": "V14__create_partitioned_table",
+            "timestamp": 14000,
+            "operations": [
+                {
+                    "type": "CREATE_TABLE",
+                    "migrationId": "migration-14",
+                    "tableName": "measurements",
+                    "columns": [
+                        {
+                            "name": "id",
+                            "type": "SERIAL",
+                            "constraints": []
+                        },
+                        {
+                            "name": "created_at",
+                            "type": "TIMESTAMP",
+                            "constraints": [
+                                "NOT NULL"
+                            ]
+                        },
+                        {
+                            "name": "value",
+                            "type": "NUMERIC",
+                            "constraints": []
+                        }
+                    ],
+                    "isPartitioned": true,
+                    "partitionOf": null
+                }
+            ]
+        },
+        "migration-15": {
+            "id": "migration-15",
+            "version": "V15__create_partition",
+            "timestamp": 15000,
+            "operations": [
+                {
+                    "type": "CREATE_TABLE",
+                    "migrationId": "migration-15",
+                    "tableName": "measurements_2024",
+                    "columns": [],
+                    "isPartitioned": false,
+                    "partitionOf": "measurements"
+                }
+            ]
         }
     },
     "createTableMap": {
@@ -432,7 +532,41 @@
                         "DEFAULT NOW()"
                     ]
                 }
-            ]
+            ],
+            "isPartitioned": false,
+            "partitionOf": null
+        },
+        "measurements": {
+            "migrationId": "migration-14",
+            "tableName": "measurements",
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "SERIAL",
+                    "constraints": []
+                },
+                {
+                    "name": "created_at",
+                    "type": "TIMESTAMP",
+                    "constraints": [
+                        "NOT NULL"
+                    ]
+                },
+                {
+                    "name": "value",
+                    "type": "NUMERIC",
+                    "constraints": []
+                }
+            ],
+            "isPartitioned": true,
+            "partitionOf": null
+        },
+        "measurements_2024": {
+            "migrationId": "migration-15",
+            "tableName": "measurements_2024",
+            "columns": [],
+            "isPartitioned": false,
+            "partitionOf": "measurements"
         }
     }
 }

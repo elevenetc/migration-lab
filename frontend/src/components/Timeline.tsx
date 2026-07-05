@@ -15,10 +15,20 @@ interface RenameInfo {
     migrationId: string
 }
 
+interface PartitionInfo {
+    childTable: string
+    parentTable: string
+    migrationId: string
+}
+
 function formatOperationSummary(operation: Operation): string {
     if (operation.type === 'CREATE_TABLE') {
+        if (operation.partitionOf) {
+            return `partition(of:${operation.partitionOf})`
+        }
         const columnNames = operation.columns.map(c => c.name).join(', ')
-        return `create(${columnNames})`
+        const suffix = operation.isPartitioned ? ' [partitioned]' : ''
+        return `create(${columnNames})${suffix}`
     }
     if (operation.type === 'ALTER_COLUMN_TYPE') {
         return `type(${operation.columnName}→${operation.newType})`
@@ -105,12 +115,14 @@ function getNodeColor(operation: Operation): string {
 interface TableOperationsResult {
     tableOperations: Map<string, OperationEntry[]>
     renames: RenameInfo[]
+    partitions: PartitionInfo[]
     tableOrder: string[] // Explicit row ordering
 }
 
 function buildTableOperationsMap(migrations: Migration[]): TableOperationsResult {
     const tableOperations = new Map<string, OperationEntry[]>()
     const renames: RenameInfo[] = []
+    const partitions: PartitionInfo[] = []
     const tableOrder: string[] = []
 
     migrations.forEach(migration => {
@@ -131,6 +143,28 @@ function buildTableOperationsMap(migrations: Migration[]): TableOperationsResult
                     } else {
                         tableOrder.push(groupKey)
                     }
+                // Insert partition after parent and its existing children
+                } else if (operation.type === 'CREATE_TABLE' && operation.partitionOf) {
+                    const parentIndex = tableOrder.indexOf(operation.partitionOf)
+                    if (parentIndex !== -1) {
+                        // Find last existing child of this parent
+                        let insertIndex = parentIndex + 1
+                        for (let i = parentIndex + 1; i < tableOrder.length; i++) {
+                            const existingOps = tableOperations.get(tableOrder[i])
+                            const isChildOfSameParent = existingOps?.some(
+                                e => e.operation.type === 'CREATE_TABLE' &&
+                                     e.operation.partitionOf === operation.partitionOf
+                            )
+                            if (isChildOfSameParent) {
+                                insertIndex = i + 1
+                            } else {
+                                break
+                            }
+                        }
+                        tableOrder.splice(insertIndex, 0, groupKey)
+                    } else {
+                        tableOrder.push(groupKey)
+                    }
                 } else {
                     tableOrder.push(groupKey)
                 }
@@ -145,10 +179,19 @@ function buildTableOperationsMap(migrations: Migration[]): TableOperationsResult
                     migrationId: migration.id
                 })
             }
+
+            // Track partitions for cross-table edge building
+            if (operation.type === 'CREATE_TABLE' && operation.partitionOf) {
+                partitions.push({
+                    childTable: operation.tableName,
+                    parentTable: operation.partitionOf,
+                    migrationId: migration.id
+                })
+            }
         })
     })
 
-    return {tableOperations, renames, tableOrder}
+    return {tableOperations, renames, partitions, tableOrder}
 }
 
 const NODE_WIDTH = 180
@@ -213,7 +256,7 @@ export function Timeline() {
     }, [migrations])
 
     const buildEdges = useCallback((): Edge[] => {
-        const {tableOperations, renames} = buildTableOperationsMap(migrations)
+        const {tableOperations, renames, partitions} = buildTableOperationsMap(migrations)
         const edges: Edge[] = []
 
         // Build same-table edges
@@ -246,6 +289,27 @@ export function Timeline() {
                     markerEnd: {type: MarkerType.ArrowClosed},
                     style: {strokeDasharray: '5,5'}, // Dashed line to distinguish cross-table edges
                 })
+            }
+        })
+
+        // Build cross-table edges for partitions (from parent CREATE_TABLE to child partition)
+        partitions.forEach(partition => {
+            const parentOps = tableOperations.get(partition.parentTable)
+            if (parentOps && parentOps.length > 0) {
+                // Find the parent CREATE_TABLE operation
+                const parentCreateOp = parentOps.find(op => op.operation.type === 'CREATE_TABLE')
+                if (parentCreateOp) {
+                    const sourceId = `${parentCreateOp.migration.id}-${partition.parentTable}`
+                    const targetId = `${partition.migrationId}-${partition.childTable}`
+                    edges.push({
+                        id: `partition-${sourceId}->${targetId}`,
+                        source: sourceId,
+                        target: targetId,
+                        type: 'smoothstep',
+                        markerEnd: {type: MarkerType.ArrowClosed},
+                        style: {strokeDasharray: '3,3', stroke: '#38a169'}, // Dotted green line for partitions
+                    })
+                }
             }
         })
 

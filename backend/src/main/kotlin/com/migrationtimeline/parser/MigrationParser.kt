@@ -66,6 +66,12 @@ private fun AlterExpression.ColumnDataType.extractDefaultValue(): String {
     return specs.drop(defaultIndex + 1).joinToString(" ")
 }
 
+// JSQLParser doesn't support PostgreSQL PARTITION OF syntax
+private val PARTITION_OF_REGEX = Regex(
+    """CREATE\s+TABLE\s+(\w+)\s+PARTITION\s+OF\s+(\w+)""",
+    RegexOption.IGNORE_CASE
+)
+
 object MigrationParser {
 
     @Suppress("DEPRECATION")
@@ -77,15 +83,41 @@ object MigrationParser {
 
     @Suppress("DEPRECATION")
     fun parse(id: String, sql: String, timestamp: Long = 0L): Migration {
-        val statements = CCJSqlParserUtil.parseStatements(sql).statements
-        val operations = statements.flatMap { statement ->
-            when (statement) {
-                is JsqlCreateTable -> listOf(parseCreateTable(id, statement))
-                is Alter -> parseAlter(id, statement)
-                is Drop -> parseDropTable(id, statement)?.let { listOf(it) } ?: emptyList()
-                else -> emptyList()
-            }
+        val operations = mutableListOf<Operation>()
+
+        // Check for PARTITION OF statements (JSQLParser doesn't support this PostgreSQL syntax)
+        val partitionOfMatch = PARTITION_OF_REGEX.find(sql)
+        if (partitionOfMatch != null) {
+            val tableName = partitionOfMatch.groupValues[1]
+            val parentTable = partitionOfMatch.groupValues[2]
+            operations.add(
+                CreateTable(
+                    migrationId = id,
+                    tableName = tableName,
+                    columns = emptyList(),
+                    isPartitioned = false,
+                    partitionOf = parentTable
+                )
+            )
+            return Migration(id = id, version = id, timestamp = timestamp, operations = operations)
         }
+
+        // Parse with JSQLParser (handles PARTITION BY via tableOptionsStrings)
+        try {
+            val statements = CCJSqlParserUtil.parseStatements(sql).statements
+            val parsedOps = statements.flatMap { statement ->
+                when (statement) {
+                    is JsqlCreateTable -> listOf(parseCreateTable(id, statement))
+                    is Alter -> parseAlter(id, statement)
+                    is Drop -> parseDropTable(id, statement)?.let { listOf(it) } ?: emptyList()
+                    else -> emptyList()
+                }
+            }
+            operations.addAll(parsedOps)
+        } catch (_: Exception) {
+            // JSQLParser failed, no fallback available
+        }
+
         return Migration(id = id, version = id, timestamp = timestamp, operations = operations)
     }
 
@@ -123,10 +155,15 @@ object MigrationParser {
             )
         } ?: emptyList()
 
+        // JSQLParser puts PARTITION BY in tableOptionsStrings as [PARTITION, BY, LIST, (col)]
+        val isPartitioned = createTable.tableOptionsStrings
+            ?.any { it.uppercase() == "PARTITION" } ?: false
+
         return CreateTable(
             migrationId = migrationId,
             tableName = tableName,
-            columns = columns
+            columns = columns,
+            isPartitioned = isPartitioned
         )
     }
 

@@ -65,6 +65,19 @@ private val dropLastname = """
     ALTER TABLE customers DROP COLUMN lastname;
 """.trimIndent()
 
+private val createOrgsPartitioned = """
+    CREATE TABLE orgs (
+        id SERIAL,
+        address VARCHAR(255) NOT NULL,
+        archived BOOLEAN NOT NULL
+    ) PARTITION BY LIST (archived);
+""".trimIndent()
+
+private val createOrgsArchived = """
+    CREATE TABLE orgs_archived PARTITION OF orgs
+        FOR VALUES IN (true);
+""".trimIndent()
+
 fun simpleUserAndOrg(): MigrationTimelineResponse {
     return migrationsToResponse(
         mapOf(
@@ -81,7 +94,9 @@ fun simpleUserAndOrg(): MigrationTimelineResponse {
             "V11__add_unique_constraint" to addUniqueConstraint,
             "V12__drop_unique_constraint" to dropUniqueConstraint,
             "V13__drop_orgs" to dropOrgs,
-            "V14__drop_lastname" to dropLastname
+            "V14__drop_lastname" to dropLastname,
+            "V15__create_orgs_partitioned" to createOrgsPartitioned,
+            "V16__create_orgs_archived" to createOrgsArchived
         )
     )
 }

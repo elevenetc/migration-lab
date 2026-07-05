@@ -192,6 +192,38 @@ class ApiContractFixtureGenerator {
                         columnName = "legacy_field"
                     )
                 )
+            ),
+            Migration(
+                id = "migration-14",
+                version = "V14__create_partitioned_table",
+                timestamp = 14000L,
+                operations = listOf(
+                    CreateTable(
+                        migrationId = "migration-14",
+                        tableName = "measurements",
+                        columns = listOf(
+                            Column("id", "SERIAL", emptyList()),
+                            Column("created_at", "TIMESTAMP", listOf("NOT NULL")),
+                            Column("value", "NUMERIC", emptyList())
+                        ),
+                        isPartitioned = true,
+                        partitionOf = null
+                    )
+                )
+            ),
+            Migration(
+                id = "migration-15",
+                version = "V15__create_partition",
+                timestamp = 15000L,
+                operations = listOf(
+                    CreateTable(
+                        migrationId = "migration-15",
+                        tableName = "measurements_2024",
+                        columns = emptyList(),
+                        isPartitioned = false,
+                        partitionOf = "measurements"
+                    )
+                )
             )
         )
 

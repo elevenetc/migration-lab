@@ -24,12 +24,26 @@ fun String.toMigration(): Migration =
 fun List<String>.toMigrations(): List<Migration> =
     map { it.toMigration() }
 
+fun Map<Int, String>.toMigrations(): List<Migration> =
+    entries.map { (timestamp, sql) ->
+        MigrationParser.parse(timestamp.toString(), sql, timestamp.toLong())
+    }
+
+fun List<Pair<Int, String>>.toTimedMigrations(): List<Migration> =
+    mapIndexed { index, (timestamp, sql) ->
+        MigrationParser.parse("$timestamp-$index", sql, timestamp.toLong())
+    }
+
 fun Migration.isEqualTo(expectedDsl: String) {
     assertEquals(expectedDsl, toTestDsl())
 }
 
 fun List<Migration>.isEqualTo(expectedDsl: String) {
     assertEquals(expectedDsl, toTestDsl())
+}
+
+fun List<Migration>.isEqualToTimed(expectedDsl: String) {
+    assertEquals(expectedDsl, toTimedTestDsl())
 }
 
 fun List<Migration>.toTestDsl(): String =
@@ -39,10 +53,33 @@ fun List<Migration>.toTestDsl(): String =
         .map { (_, ops) -> ops.joinToString(" > ") { it.toTestDsl() } }
         .joinToString("\n")
 
+fun List<Migration>.toTimedTestDsl(): String {
+    data class OpWithTime(val op: Operation, val timestamp: Long)
+
+    val opsWithTime = flatMap { migration ->
+        migration.operations.map { OpWithTime(it, migration.timestamp) }
+    }
+
+    val grouped = opsWithTime.groupBy { it.op.tableName() }
+
+    // Sort tables by their first operation's timestamp
+    val sortedTables = grouped.entries.sortedBy { (_, ops) -> ops.minOf { it.timestamp } }
+
+    val baseTimestamp = sortedTables.firstOrNull()?.value?.minOf { it.timestamp } ?: 0L
+
+    return sortedTables.map { (_, ops) ->
+        val firstTimestamp = ops.minOf { it.timestamp }
+        val depth = (firstTimestamp - baseTimestamp).toInt()
+        val prefix = ">".repeat(depth)
+        val opsStr = ops.sortedBy { it.timestamp }.joinToString(" > ") { it.op.toTestDsl() }
+        "$prefix$opsStr"
+    }.joinToString("\n")
+}
+
 fun Migration.toTestDsl(): String =
     operations.joinToString(" > ") { it.toTestDsl() }
 
-private fun Operation.tableName(): String = when (this) {
+fun Operation.tableName(): String = when (this) {
     is CreateTable -> tableName
     is AddColumn -> tableName
     is AlterColumnType -> tableName
@@ -59,7 +96,11 @@ private fun Operation.tableName(): String = when (this) {
 }
 
 private fun Operation.toTestDsl(): String = when (this) {
-    is CreateTable -> "create(${tableName}(${columns.joinToString(",") { it.name }}))"
+    is CreateTable -> when {
+        partitionOf != null -> "createPartition(${tableName}:${partitionOf})"
+        isPartitioned -> "createPartitioned(${tableName}(${columns.joinToString(",") { it.name }}))"
+        else -> "create(${tableName}(${columns.joinToString(",") { it.name }}))"
+    }
     is AddColumn -> "addColumn(${tableName}(${column.name}))"
     is AlterColumnType -> "alterType(${tableName}(${columnName}:${newType}))"
     is SetNotNull -> "setNotNull(${tableName}(${columnName}))"

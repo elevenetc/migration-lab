@@ -5,6 +5,8 @@ SQL statements that can be parsed (backend) and rendered (frontend).
 ## Supported
 
 - `CREATE TABLE`
+- `CREATE TABLE ... PARTITION BY` (partitioned parent table)
+- `CREATE TABLE ... PARTITION OF` (child partition)
 - `ADD COLUMN`
 - `DROP COLUMN`
 - `DROP CONSTRAINT`

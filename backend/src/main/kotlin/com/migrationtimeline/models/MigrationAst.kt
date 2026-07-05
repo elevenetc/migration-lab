@@ -28,7 +28,9 @@ sealed class Operation {
 data class CreateTable(
     override val migrationId: String,
     val tableName: String,
-    val columns: List<Column> = emptyList()
+    val columns: List<Column> = emptyList(),
+    val isPartitioned: Boolean = false,
+    val partitionOf: String? = null
 ) : Operation()
 
 @Serializable
