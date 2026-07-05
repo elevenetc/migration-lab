@@ -1,6 +1,7 @@
 .git
 .gradle
 **/build
+!backend/build/libs
 **/node_modules
 **/*.log
 .idea
