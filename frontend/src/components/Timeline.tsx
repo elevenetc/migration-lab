@@ -53,8 +53,10 @@ function formatOperationSummary(operation: Operation): string {
     if (operation.type === 'DROP_COLUMN') {
         return `dropColumn(${operation.columnName})`
     }
-    const added = operation.addedColumns.map(c => c.name).join(', ')
-    return `add(${added})`
+    if (operation.type === 'ADD_COLUMN') {
+        return `add(${operation.column.name})`
+    }
+    return 'unknown'
 }
 
 function getNodeColor(operation: Operation): string {
@@ -94,7 +96,10 @@ function getNodeColor(operation: Operation): string {
     if (operation.type === 'DROP_COLUMN') {
         return '#c05621' // orange - column deletion
     }
-    return '#276749' // green
+    if (operation.type === 'ADD_COLUMN') {
+        return '#276749' // green - add column
+    }
+    return '#718096' // gray - unknown
 }
 
 interface TableOperationsResult {

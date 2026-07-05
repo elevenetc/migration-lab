@@ -42,18 +42,16 @@
             "timestamp": 2000,
             "operations": [
                 {
-                    "type": "ALTER_TABLE",
+                    "type": "ADD_COLUMN",
                     "migrationId": "migration-2",
                     "tableName": "users",
-                    "addedColumns": [
-                        {
-                            "name": "status",
-                            "type": "VARCHAR(50)",
-                            "constraints": [
-                                "DEFAULT 'active'"
-                            ]
-                        }
-                    ]
+                    "column": {
+                        "name": "status",
+                        "type": "VARCHAR(50)",
+                        "constraints": [
+                            "DEFAULT 'active'"
+                        ]
+                    }
                 }
             ]
         },
@@ -247,18 +245,16 @@
             "timestamp": 2000,
             "operations": [
                 {
-                    "type": "ALTER_TABLE",
+                    "type": "ADD_COLUMN",
                     "migrationId": "migration-2",
                     "tableName": "users",
-                    "addedColumns": [
-                        {
-                            "name": "status",
-                            "type": "VARCHAR(50)",
-                            "constraints": [
-                                "DEFAULT 'active'"
-                            ]
-                        }
-                    ]
+                    "column": {
+                        "name": "status",
+                        "type": "VARCHAR(50)",
+                        "constraints": [
+                            "DEFAULT 'active'"
+                        ]
+                    }
                 }
             ]
         },

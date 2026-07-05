@@ -1,8 +1,8 @@
 package com.migrationtimeline.contracts
 
+import com.migrationtimeline.models.AddColumn
 import com.migrationtimeline.models.AddConstraint
 import com.migrationtimeline.models.AlterColumnType
-import com.migrationtimeline.models.AlterTable
 import com.migrationtimeline.models.Column
 import com.migrationtimeline.models.CreateTable
 import com.migrationtimeline.models.DropColumn
@@ -51,12 +51,10 @@ class ApiContractFixtureGenerator {
                 version = "V2__add_user_status",
                 timestamp = 2000L,
                 operations = listOf(
-                    AlterTable(
+                    AddColumn(
                         migrationId = "migration-2",
                         tableName = "users",
-                        addedColumns = listOf(
-                            Column("status", "VARCHAR(50)", listOf("DEFAULT 'active'"))
-                        )
+                        column = Column("status", "VARCHAR(50)", listOf("DEFAULT 'active'"))
                     )
                 )
             ),

@@ -32,11 +32,11 @@ data class CreateTable(
 ) : Operation()
 
 @Serializable
-@SerialName("ALTER_TABLE")
-data class AlterTable(
+@SerialName("ADD_COLUMN")
+data class AddColumn(
     override val migrationId: String,
     val tableName: String,
-    val addedColumns: List<Column> = emptyList()
+    val column: Column
 ) : Operation()
 
 @Serializable

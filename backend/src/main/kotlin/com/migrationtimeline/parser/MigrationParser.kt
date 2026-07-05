@@ -1,8 +1,8 @@
 package com.migrationtimeline.parser
 
+import com.migrationtimeline.models.AddColumn
 import com.migrationtimeline.models.AddConstraint
 import com.migrationtimeline.models.AlterColumnType
-import com.migrationtimeline.models.AlterTable
 import com.migrationtimeline.models.Column
 import com.migrationtimeline.models.CreateTable
 import com.migrationtimeline.models.DropColumn
@@ -134,17 +134,23 @@ object MigrationParser {
         val tableName = alter.table.name
         val operations = mutableListOf<Operation>()
 
-        val addedColumns = alter.alterExpressions
+        val addColumns = alter.alterExpressions
             ?.filter { it.operation == AlterOperation.ADD && it.colDataTypeList != null }
             ?.flatMap { expr ->
                 expr.colDataTypeList.map { colDataType ->
-                    Column(
-                        name = colDataType.columnName,
-                        type = colDataType.colDataType.toString().replace(" ", ""),
-                        constraints = emptyList()
+                    AddColumn(
+                        migrationId = migrationId,
+                        tableName = tableName,
+                        column = Column(
+                            name = colDataType.columnName,
+                            type = colDataType.colDataType.toString().replace(" ", ""),
+                            constraints = emptyList()
+                        )
                     )
                 }
             } ?: emptyList()
+
+        operations.addAll(addColumns)
 
         val dropColumns = alter.alterExpressions
             ?.filter { it.operation == AlterOperation.DROP && it.columnName != null && it.constraintName == null }
@@ -157,16 +163,6 @@ object MigrationParser {
             } ?: emptyList()
 
         operations.addAll(dropColumns)
-
-        if (addedColumns.isNotEmpty()) {
-            operations.add(
-                AlterTable(
-                    migrationId = migrationId,
-                    tableName = tableName,
-                    addedColumns = addedColumns
-                )
-            )
-        }
 
         val alterColumnTypes = alter.alterExpressions
             ?.filter { it.operation == AlterOperation.ALTER && it.colDataTypeList != null }

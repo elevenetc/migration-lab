@@ -11,11 +11,11 @@ export interface CreateTable {
   columns: Column[]
 }
 
-export interface AlterTable {
-  type: 'ALTER_TABLE'
+export interface AddColumn {
+  type: 'ADD_COLUMN'
   migrationId: string
   tableName: string
-  addedColumns: Column[]
+  column: Column
 }
 
 export interface AlterColumnType {
@@ -98,7 +98,7 @@ export interface DropColumn {
   columnName: string
 }
 
-export type Operation = CreateTable | AlterTable | AlterColumnType | SetNotNull | DropNotNull | SetDefault | DropDefault | RenameTable | RenameColumn | AddConstraint | DropConstraint | DropTable | DropColumn
+export type Operation = CreateTable | AddColumn | AlterColumnType | SetNotNull | DropNotNull | SetDefault | DropDefault | RenameTable | RenameColumn | AddConstraint | DropConstraint | DropTable | DropColumn
 
 export interface Migration {
   id: string

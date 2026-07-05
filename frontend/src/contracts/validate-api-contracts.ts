@@ -13,7 +13,7 @@ function validateOperationTypes(response: MigrationTimelineResponse): void {
       switch (op.type) {
         case 'CREATE_TABLE':
           break
-        case 'ALTER_TABLE':
+        case 'ADD_COLUMN':
           break
         case 'ALTER_COLUMN_TYPE':
           break

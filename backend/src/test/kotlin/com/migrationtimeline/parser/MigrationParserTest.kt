@@ -15,7 +15,7 @@ class MigrationParserTest {
 
     @Test
     fun `parse ALTER TABLE ADD COLUMN migration`() {
-        addLastNameSql.toMigration().isEqualTo("alter(users(+last_name))")
+        addLastNameSql.toMigration().isEqualTo("addColumn(users(last_name))")
     }
 
     @Test
@@ -93,7 +93,7 @@ class MigrationParserTest {
         listOf(createUsersSql, addLastNameSql, createOrgSql).toMigrations().isEqualTo(
             """
             create(org(id,name))
-            create(users(id,name)) > alter(users(+last_name))
+            create(users(id,name)) > addColumn(users(last_name))
             """.trimIndent()
         )
     }

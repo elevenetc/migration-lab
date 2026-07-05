@@ -3,7 +3,7 @@ package com.migrationtimeline.models
 /**
  * Returns true if:
  * - first migration is table T creation
- * - all consecutive are alters of the table T
+ * - all consecutive are alters of the table T (AddColumn operations)
  */
 fun isChainedAsAlter(timeline: List<Migration>): Boolean {
     if (timeline.isEmpty()) return false
@@ -14,7 +14,7 @@ fun isChainedAsAlter(timeline: List<Migration>): Boolean {
 
     return timeline.drop(1).all { migration ->
         migration.operations.any { op ->
-            op is AlterTable && op.tableName == tableName
+            op is AddColumn && op.tableName == tableName
         }
     }
 }
