@@ -156,6 +156,7 @@ listOf(
 
 ## Debugging
 
-- use `playwright mcp` and `localhost:3000` to verify frontend implementation
+- Use `playwright mcp` and `localhost:3000` to verify frontend implementation
 - `localhost:3000` makes single request which returns content of `migrationRoutes`/`/api/migrations`
-- update `migrationRoutes` and run `just compose-apply` to see updated version at `localhost:3000`
+- Update `migrationRoutes` and run `just compose-apply` to see updated version at `localhost:3000`
+- Pass `/.playwright-mcp` to `playwright`, so it stores logs and screenshots there instead of root 
