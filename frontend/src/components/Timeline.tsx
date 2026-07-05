@@ -9,6 +9,12 @@ interface OperationEntry {
     operation: Operation
 }
 
+interface RenameInfo {
+    fromTable: string
+    toTable: string
+    migrationId: string
+}
+
 function formatOperationSummary(operation: Operation): string {
     if (operation.type === 'CREATE_TABLE') {
         const columnNames = operation.columns.map(c => c.name).join(', ')
@@ -72,20 +78,53 @@ function getNodeColor(operation: Operation): string {
     return '#276749' // green
 }
 
-function buildTableOperationsMap(migrations: Migration[]): Map<string, OperationEntry[]> {
+interface TableOperationsResult {
+    tableOperations: Map<string, OperationEntry[]>
+    renames: RenameInfo[]
+    tableOrder: string[] // Explicit row ordering
+}
+
+function buildTableOperationsMap(migrations: Migration[]): TableOperationsResult {
     const tableOperations = new Map<string, OperationEntry[]>()
+    const renames: RenameInfo[] = []
+    const tableOrder: string[] = []
 
     migrations.forEach(migration => {
         migration.operations.forEach(operation => {
-            const tableName = operation.tableName
-            if (!tableOperations.has(tableName)) {
-                tableOperations.set(tableName, [])
+            // For RENAME_TABLE, key by newTableName so it appears on the new table's row
+            const groupKey = operation.type === 'RENAME_TABLE'
+                ? operation.newTableName
+                : operation.tableName
+
+            if (!tableOperations.has(groupKey)) {
+                tableOperations.set(groupKey, [])
+
+                // Insert renamed table immediately after its source table
+                if (operation.type === 'RENAME_TABLE') {
+                    const sourceIndex = tableOrder.indexOf(operation.tableName)
+                    if (sourceIndex !== -1) {
+                        tableOrder.splice(sourceIndex + 1, 0, groupKey)
+                    } else {
+                        tableOrder.push(groupKey)
+                    }
+                } else {
+                    tableOrder.push(groupKey)
+                }
             }
-            tableOperations.get(tableName)!.push({migration, operation})
+            tableOperations.get(groupKey)!.push({migration, operation})
+
+            // Track renames for cross-table edge building
+            if (operation.type === 'RENAME_TABLE') {
+                renames.push({
+                    fromTable: operation.tableName,
+                    toTable: operation.newTableName,
+                    migrationId: migration.id
+                })
+            }
         })
     })
 
-    return tableOperations
+    return {tableOperations, renames, tableOrder}
 }
 
 const NODE_WIDTH = 180
@@ -97,16 +136,20 @@ export function Timeline() {
     const {migrations, loading, error} = useMigrationStore()
 
     const buildNodes = useCallback((): Node[] => {
-        const tableOperations = buildTableOperationsMap(migrations)
+        const {tableOperations, tableOrder} = buildTableOperationsMap(migrations)
         const nodes: Node[] = []
 
         const uniqueTimestamps = [...new Set(migrations.map(m => m.timestamp))].sort((a, b) => a - b)
         const timestampRank = new Map(uniqueTimestamps.map((ts, idx) => [ts, idx]))
 
-        let rowIndex = 0
-        tableOperations.forEach((ops, tableName) => {
+        tableOrder.forEach((tableName, rowIndex) => {
+            const ops = tableOperations.get(tableName) ?? []
             ops.forEach((item) => {
-                const nodeId = `${item.migration.id}-${item.operation.tableName}`
+                // For RENAME_TABLE, use newTableName as part of node ID (matches group key)
+                const nodeTableKey = item.operation.type === 'RENAME_TABLE'
+                    ? item.operation.newTableName
+                    : item.operation.tableName
+                const nodeId = `${item.migration.id}-${nodeTableKey}`
                 const rank = timestampRank.get(item.migration.timestamp) ?? 0
 
                 nodes.push({
@@ -140,16 +183,16 @@ export function Timeline() {
                     },
                 })
             })
-            rowIndex++
         })
 
         return nodes
     }, [migrations])
 
     const buildEdges = useCallback((): Edge[] => {
-        const tableOperations = buildTableOperationsMap(migrations)
+        const {tableOperations, renames} = buildTableOperationsMap(migrations)
         const edges: Edge[] = []
 
+        // Build same-table edges
         tableOperations.forEach((ops, tableName) => {
             for (let i = 0; i < ops.length - 1; i++) {
                 const sourceId = `${ops[i].migration.id}-${tableName}`
@@ -160,6 +203,24 @@ export function Timeline() {
                     target: targetId,
                     type: 'smoothstep',
                     markerEnd: {type: MarkerType.ArrowClosed},
+                })
+            }
+        })
+
+        // Build cross-table edges for renames (diagonal from old table's last op to rename node)
+        renames.forEach(rename => {
+            const sourceOps = tableOperations.get(rename.fromTable)
+            if (sourceOps && sourceOps.length > 0) {
+                const lastSourceOp = sourceOps[sourceOps.length - 1]
+                const sourceId = `${lastSourceOp.migration.id}-${rename.fromTable}`
+                const targetId = `${rename.migrationId}-${rename.toTable}`
+                edges.push({
+                    id: `rename-${sourceId}->${targetId}`,
+                    source: sourceId,
+                    target: targetId,
+                    type: 'smoothstep',
+                    markerEnd: {type: MarkerType.ArrowClosed},
+                    style: {strokeDasharray: '5,5'}, // Dashed line to distinguish cross-table edges
                 })
             }
         })
