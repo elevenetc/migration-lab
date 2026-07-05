@@ -1,5 +1,5 @@
-import {useCallback, useEffect, useMemo} from 'react'
-import {Background, BaseEdge, Controls, Edge, EdgeProps, MarkerType, Node, Position, ReactFlow, useEdgesState, useNodesState,} from '@xyflow/react'
+import {useCallback, useEffect, useMemo, ReactNode} from 'react'
+import {Background, BaseEdge, Controls, Edge, EdgeProps, Handle, MarkerType, Node, NodeProps, Position, ReactFlow, useEdgesState, useNodesState,} from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import {useMigrationStore} from '../store/migrationStore'
 import type {Migration, Operation} from '../api/migrationApi'
@@ -21,14 +21,21 @@ interface PartitionInfo {
     migrationId: string
 }
 
-function formatOperationSummary(operation: Operation): string {
+function formatOperationSummary(operation: Operation): ReactNode {
     if (operation.type === 'CREATE_TABLE') {
         if (operation.partitionOf) {
             return `partition(of:${operation.partitionOf})`
         }
-        const columnNames = operation.columns.map(c => c.name).join(', ')
         const suffix = operation.isPartitioned ? ' [partitioned]' : ''
-        return `create(${columnNames})${suffix}`
+        return (
+            <div style={{textAlign: 'left'}}>
+                <div>create({suffix}</div>
+                {operation.columns.map((c) => (
+                    <div key={c.name} style={{paddingLeft: 16}}>{c.name}</div>
+                ))}
+                <div>)</div>
+            </div>
+        )
     }
     if (operation.type === 'ALTER_COLUMN_TYPE') {
         return `type(${operation.columnName}→${operation.newType})`
@@ -195,10 +202,110 @@ function buildTableOperationsMap(migrations: Migration[]): TableOperationsResult
     return {tableOperations, renames, partitions, tableOrder}
 }
 
-const NODE_WIDTH = 140
-const NODE_HEIGHT = 60
-const X_GAP = 20
-const Y_GAP = 15
+const X_GAP = 10
+const Y_GAP = 5
+
+interface NodeDimensions {
+    width: number
+    height: number
+}
+
+function getOperationTextWidth(operation: Operation): number {
+    const CHAR_WIDTH = 5 // ~5px per char at 9px font
+    switch (operation.type) {
+        case 'CREATE_TABLE':
+            if (operation.partitionOf) {
+                return `partition(of:${operation.partitionOf})`.length * CHAR_WIDTH
+            }
+            const colWidths = operation.columns.map(c => c.name.length + 4)
+            const maxColWidth = colWidths.length > 0 ? Math.max(...colWidths) : 0
+            return Math.max(operation.tableName.length, maxColWidth, 8) * CHAR_WIDTH
+        case 'ALTER_COLUMN_TYPE':
+            return `type(${operation.columnName}→${operation.newType})`.length * CHAR_WIDTH
+        case 'SET_NOT_NULL':
+            return `notNull(${operation.columnName})`.length * CHAR_WIDTH
+        case 'DROP_NOT_NULL':
+            return `nullable(${operation.columnName})`.length * CHAR_WIDTH
+        case 'SET_DEFAULT':
+            return `default(${operation.columnName}=${operation.defaultValue})`.length * CHAR_WIDTH
+        case 'DROP_DEFAULT':
+            return `dropDefault(${operation.columnName})`.length * CHAR_WIDTH
+        case 'RENAME_TABLE':
+            return `rename(→${operation.newTableName})`.length * CHAR_WIDTH
+        case 'RENAME_COLUMN':
+            return `rename(${operation.columnName}→${operation.newColumnName})`.length * CHAR_WIDTH
+        case 'ADD_CONSTRAINT':
+            return `constraint(${operation.constraintName}:${operation.constraintType})`.length * CHAR_WIDTH
+        case 'DROP_CONSTRAINT':
+            return `dropConstraint(${operation.constraintName})`.length * CHAR_WIDTH
+        case 'DROP_TABLE':
+            return 'drop()'.length * CHAR_WIDTH
+        case 'DROP_COLUMN':
+            return `dropColumn(${operation.columnName})`.length * CHAR_WIDTH
+        case 'ADD_COLUMN':
+            return `add(${operation.column.name})`.length * CHAR_WIDTH
+        default:
+            return 50
+    }
+}
+
+function calculateNodeSize(operation: Operation, tableName: string, version: string): NodeDimensions {
+    const CHAR_WIDTH = 5 // ~5px per char at 9px font
+    const LINE_HEIGHT = 11
+    const PADDING = 5
+
+    const operationWidth = getOperationTextWidth(operation)
+    const tableNameWidth = tableName.length * CHAR_WIDTH
+    const versionWidth = version.length * CHAR_WIDTH
+
+    const maxTextWidth = Math.max(operationWidth, tableNameWidth, versionWidth)
+    let lineCount = 3 // header + version + operation type
+
+    if (operation.type === 'CREATE_TABLE' && !operation.partitionOf && operation.columns.length > 0) {
+        lineCount = 3 + operation.columns.length
+    }
+
+    return {
+        width: maxTextWidth + PADDING,
+        height: lineCount * LINE_HEIGHT + PADDING
+    }
+}
+
+interface OperationNodeData extends Record<string, unknown> {
+    label: ReactNode
+    background: string
+    hasSource: boolean
+    hasTarget: boolean
+}
+
+function OperationNode({data}: NodeProps<Node<OperationNodeData>>) {
+    return (
+        <div style={{
+            background: data.background,
+            color: 'white',
+            padding: 4,
+            borderRadius: 4,
+            fontSize: '9px',
+            textAlign: 'left',
+        }}>
+            {data.hasTarget && (
+                <Handle
+                    type="target"
+                    position={Position.Left}
+                    style={{background: '#555'}}
+                />
+            )}
+            {data.label}
+            {data.hasSource && (
+                <Handle
+                    type="source"
+                    position={Position.Right}
+                    style={{background: '#555'}}
+                />
+            )}
+        </div>
+    )
+}
 
 function StepDownEdge({sourceX, sourceY, targetX, targetY, markerEnd, style}: EdgeProps) {
     // Start from right side of source, go down, then right to target
@@ -209,65 +316,12 @@ function StepDownEdge({sourceX, sourceY, targetX, targetY, markerEnd, style}: Ed
 export function Timeline() {
     const {migrations, loading, error} = useMigrationStore()
 
-    const buildNodes = useCallback((): Node[] => {
-        const {tableOperations, tableOrder} = buildTableOperationsMap(migrations)
-        const nodes: Node[] = []
-
-        const uniqueTimestamps = [...new Set(migrations.map(m => m.timestamp))].sort((a, b) => a - b)
-        const timestampRank = new Map(uniqueTimestamps.map((ts, idx) => [ts, idx]))
-
-        tableOrder.forEach((tableName, rowIndex) => {
-            const ops = tableOperations.get(tableName) ?? []
-            ops.forEach((item) => {
-                // For RENAME_TABLE, use newTableName as part of node ID (matches group key)
-                const nodeTableKey = item.operation.type === 'RENAME_TABLE'
-                    ? item.operation.newTableName
-                    : item.operation.tableName
-                const nodeId = `${item.migration.id}-${nodeTableKey}`
-                const rank = timestampRank.get(item.migration.timestamp) ?? 0
-
-                nodes.push({
-                    id: nodeId,
-                    type: 'default',
-                    position: {
-                        x: rank * (NODE_WIDTH + X_GAP),
-                        y: rowIndex * (NODE_HEIGHT + Y_GAP)
-                    },
-                    sourcePosition: Position.Right,
-                    targetPosition: Position.Left,
-                    data: {
-                        label: (
-                            <div>
-                                <div style={{fontWeight: 'bold', fontSize: '9px'}}>{tableName}</div>
-                                <div style={{fontSize: '8px', color: '#a0aec0'}}>
-                                    {item.migration.version}
-                                </div>
-                                <div style={{fontSize: '8px', color: '#cbd5e0'}}>
-                                    {formatOperationSummary(item.operation)}
-                                </div>
-                            </div>
-                        ),
-                    },
-                    style: {
-                        background: getNodeColor(item.operation),
-                        color: 'white',
-                        padding: 4,
-                        borderRadius: 4,
-                        width: NODE_WIDTH,
-                        fontSize: '9px',
-                    },
-                })
-            })
-        })
-
-        return nodes
-    }, [migrations])
-
-    const buildEdges = useCallback((): Edge[] => {
+    const buildEdgeData = useCallback(() => {
         const {tableOperations, renames, partitions} = buildTableOperationsMap(migrations)
         const edges: Edge[] = []
+        const sources = new Set<string>()
+        const targets = new Set<string>()
 
-        // Build same-table edges
         tableOperations.forEach((ops, tableName) => {
             for (let i = 0; i < ops.length - 1; i++) {
                 const sourceId = `${ops[i].migration.id}-${tableName}`
@@ -279,10 +333,11 @@ export function Timeline() {
                     type: 'stepDown',
                     markerEnd: {type: MarkerType.ArrowClosed},
                 })
+                sources.add(sourceId)
+                targets.add(targetId)
             }
         })
 
-        // Build cross-table edges for renames (diagonal from old table's last op to rename node)
         renames.forEach(rename => {
             const sourceOps = tableOperations.get(rename.fromTable)
             if (sourceOps && sourceOps.length > 0) {
@@ -295,23 +350,18 @@ export function Timeline() {
                     target: targetId,
                     type: 'stepDown',
                     markerEnd: {type: MarkerType.ArrowClosed},
-                    style: {strokeDasharray: '5,5'}, // Dashed line to distinguish cross-table edges
+                    style: {strokeDasharray: '5,5'},
                 })
+                sources.add(sourceId)
+                targets.add(targetId)
             }
         })
 
-        // Build cross-table edges for partitions (from parent CREATE_TABLE to child partition)
         partitions.forEach(partition => {
             const parentOps = tableOperations.get(partition.parentTable)
-            if (!parentOps || parentOps.length === 0) {
-                console.warn(`Partition ${partition.childTable}: parent table "${partition.parentTable}" not found`)
-                return
-            }
+            if (!parentOps || parentOps.length === 0) return
             const parentCreateOp = parentOps.find(op => op.operation.type === 'CREATE_TABLE')
-            if (!parentCreateOp) {
-                console.warn(`Partition ${partition.childTable}: parent table "${partition.parentTable}" has no CREATE_TABLE operation`)
-                return
-            }
+            if (!parentCreateOp) return
             const sourceId = `${parentCreateOp.migration.id}-${partition.parentTable}`
             const targetId = `${partition.migrationId}-${partition.childTable}`
             edges.push({
@@ -320,21 +370,123 @@ export function Timeline() {
                 target: targetId,
                 type: 'stepDown',
                 markerEnd: {type: MarkerType.ArrowClosed},
-                style: {strokeDasharray: '3,3', stroke: '#38a169'}, // Dotted green line for partitions
+                style: {strokeDasharray: '3,3', stroke: '#38a169'},
+            })
+            sources.add(sourceId)
+            targets.add(targetId)
+        })
+
+        return {edges, sources, targets}
+    }, [migrations])
+
+    const buildNodes = useCallback((sources: Set<string>, targets: Set<string>): Node[] => {
+        const {tableOperations, tableOrder} = buildTableOperationsMap(migrations)
+
+        const uniqueTimestamps = [...new Set(migrations.map(m => m.timestamp))].sort((a, b) => a - b)
+        const timestampRank = new Map(uniqueTimestamps.map((ts, idx) => [ts, idx]))
+
+        // Phase 1: Calculate all node sizes and collect node data
+        const nodeSizes = new Map<string, NodeDimensions>()
+        const nodeData: Array<{
+            item: OperationEntry
+            tableName: string
+            rank: number
+            rowIndex: number
+            nodeId: string
+        }> = []
+
+        tableOrder.forEach((tableName, rowIndex) => {
+            const ops = tableOperations.get(tableName) ?? []
+            ops.forEach((item) => {
+                const nodeTableKey = item.operation.type === 'RENAME_TABLE'
+                    ? item.operation.newTableName
+                    : item.operation.tableName
+                const nodeId = `${item.migration.id}-${nodeTableKey}`
+                const rank = timestampRank.get(item.migration.timestamp) ?? 0
+
+                const size = calculateNodeSize(item.operation, tableName, item.migration.version)
+                nodeSizes.set(nodeId, size)
+                nodeData.push({item, tableName, rank, rowIndex, nodeId})
             })
         })
 
-        return edges
+        // Phase 2: Calculate column widths (max width per rank)
+        const columnWidths = new Map<number, number>()
+        nodeData.forEach(({rank, nodeId}) => {
+            const size = nodeSizes.get(nodeId)!
+            const current = columnWidths.get(rank) ?? 0
+            columnWidths.set(rank, Math.max(current, size.width))
+        })
+
+        // Phase 3: Calculate row heights (max height per row)
+        const rowHeights = new Map<number, number>()
+        nodeData.forEach(({rowIndex, nodeId}) => {
+            const size = nodeSizes.get(nodeId)!
+            const current = rowHeights.get(rowIndex) ?? 0
+            rowHeights.set(rowIndex, Math.max(current, size.height))
+        })
+
+        // Phase 4: Calculate cumulative positions
+        const columnX = new Map<number, number>()
+        let x = 0
+        const maxCol = columnWidths.size > 0 ? Math.max(...columnWidths.keys()) : 0
+        for (let col = 0; col <= maxCol; col++) {
+            columnX.set(col, x)
+            x += (columnWidths.get(col) ?? 0) + X_GAP
+        }
+
+        const rowY = new Map<number, number>()
+        let y = 0
+        const maxRow = rowHeights.size > 0 ? Math.max(...rowHeights.keys()) : 0
+        for (let row = 0; row <= maxRow; row++) {
+            rowY.set(row, y)
+            y += (rowHeights.get(row) ?? 0) + Y_GAP
+        }
+
+        // Phase 5: Create nodes with positions and explicit dimensions
+        // Center nodes vertically within their row for straight horizontal edges
+        return nodeData.map(({item, tableName, rank, rowIndex, nodeId}) => {
+            const size = nodeSizes.get(nodeId)!
+            const rowHeight = rowHeights.get(rowIndex) ?? size.height
+            const verticalOffset = (rowHeight - size.height) / 2
+
+            return {
+                id: nodeId,
+                type: 'operation',
+                position: {
+                    x: columnX.get(rank)!,
+                    y: rowY.get(rowIndex)! + verticalOffset
+                },
+                data: {
+                    label: (
+                        <div>
+                            <div style={{fontWeight: 'bold', fontSize: '9px'}}>{tableName}</div>
+                            <div style={{fontSize: '8px', color: '#a0aec0'}}>
+                                {item.migration.version}
+                            </div>
+                            <div style={{fontSize: '8px', color: '#cbd5e0'}}>
+                                {formatOperationSummary(item.operation)}
+                            </div>
+                        </div>
+                    ),
+                    background: getNodeColor(item.operation),
+                    hasSource: sources.has(nodeId),
+                    hasTarget: targets.has(nodeId),
+                },
+            }
+        })
     }, [migrations])
 
     const [nodes, setNodes] = useNodesState<Node>([])
     const [edges, setEdges] = useEdgesState<Edge>([])
     const edgeTypes = useMemo(() => ({stepDown: StepDownEdge}), [])
+    const nodeTypes = useMemo(() => ({operation: OperationNode}), [])
 
     useEffect(() => {
-        setNodes(buildNodes())
-        setEdges(buildEdges())
-    }, [migrations, buildNodes, buildEdges, setNodes, setEdges])
+        const {edges: edgeList, sources, targets} = buildEdgeData()
+        setNodes(buildNodes(sources, targets))
+        setEdges(edgeList)
+    }, [migrations, buildNodes, buildEdgeData, setNodes, setEdges])
 
     if (loading) {
         return <div style={{padding: 20}}>Loading migrations...</div>
@@ -353,6 +505,7 @@ export function Timeline() {
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
+                nodeTypes={nodeTypes}
                 edgeTypes={edgeTypes}
                 fitView
                 minZoom={0.1}
