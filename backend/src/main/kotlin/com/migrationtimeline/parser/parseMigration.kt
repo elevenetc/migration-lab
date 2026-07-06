@@ -15,7 +15,6 @@ fun parseMigration(migration: Map<String, String>): List<Migration> {
     }
 }
 
-@Suppress("DEPRECATION")
 fun parseMigration(id: String, sql: String, timestamp: Long = 0L): Migration {
     val operations = mutableListOf<Operation>()
 
@@ -66,10 +65,4 @@ fun parseMigration(id: String, sql: String, timestamp: Long = 0L): Migration {
     }
 
     return Migration(id = id, version = id, timestamp = timestamp, operations = operations)
-}
-
-@Deprecated("Use parseMigration() functions directly", ReplaceWith("parseMigration"))
-object MigrationParser {
-    fun parse(migration: Map<String, String>) = parseMigration(migration)
-    fun parse(id: String, sql: String, timestamp: Long = 0L) = parseMigration(id, sql, timestamp)
 }

@@ -1,8 +1,5 @@
 package com.migrationtimeline.routes.dummy
 
-import com.migrationtimeline.models.MigrationTimelineResponse
-import com.migrationtimeline.routes.migrationsToResponse
-
 private val createEvents = """
     CREATE TABLE events (
         id SERIAL,
@@ -21,12 +18,8 @@ private val createEvents2026 = """
         FOR VALUES IN (2026);
 """.trimIndent()
 
-fun partitionedTables(): MigrationTimelineResponse {
-    return migrationsToResponse(
-        mapOf(
-            "V1__create_events" to createEvents,
-            "V2__create_events_2025" to createEvents2025,
-            "V3__create_events_2026" to createEvents2026
-        )
-    )
-}
+val partitionedTablesMigrations: LinkedHashMap<String, String> = linkedMapOf(
+    "V1__create_events" to createEvents,
+    "V2__create_events_2025" to createEvents2025,
+    "V3__create_events_2026" to createEvents2026
+)

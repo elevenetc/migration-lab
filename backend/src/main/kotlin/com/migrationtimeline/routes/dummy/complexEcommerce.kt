@@ -1,8 +1,5 @@
 package com.migrationtimeline.routes.dummy
 
-import com.migrationtimeline.models.MigrationTimelineResponse
-import com.migrationtimeline.routes.migrationsToResponse
-
 private val createUsers = """
     CREATE TABLE users (
         id SERIAL PRIMARY KEY,
@@ -58,6 +55,7 @@ private val createOrderItems = """
 
 private val addUserProfile = """
     ALTER TABLE users ADD COLUMN first_name VARCHAR(100);
+    ALTER TABLE users ADD COLUMN phone VARCHAR(20);
 """.trimIndent()
 
 private val createAddresses = """
@@ -84,6 +82,7 @@ private val createPayments = """
 
 private val addProductDetails = """
     ALTER TABLE products ADD COLUMN description TEXT;
+    ALTER TABLE products ADD COLUMN sku VARCHAR(50);
 """.trimIndent()
 
 private val createInventory = """
@@ -157,59 +156,48 @@ private val dropUserPhone = """
     ALTER TABLE users DROP COLUMN phone;
 """.trimIndent()
 
-// ALTER COLUMN TYPE
 private val changeProductPrice = """
     ALTER TABLE products ALTER COLUMN price TYPE NUMERIC(12, 4);
 """.trimIndent()
 
-// SET NOT NULL
 private val setDescriptionNotNull = """
     ALTER TABLE products ALTER COLUMN description SET NOT NULL;
 """.trimIndent()
 
-// DROP NOT NULL
 private val dropDescriptionNotNull = """
     ALTER TABLE products ALTER COLUMN description DROP NOT NULL;
 """.trimIndent()
 
-// SET DEFAULT
 private val setOrderStatusDefault = """
     ALTER TABLE orders ALTER COLUMN status SET DEFAULT 'new';
 """.trimIndent()
 
-// DROP DEFAULT
 private val dropOrderStatusDefault = """
     ALTER TABLE orders ALTER COLUMN status DROP DEFAULT;
 """.trimIndent()
 
-// RENAME TABLE
 private val renameAuditLog = """
     ALTER TABLE audit_log RENAME TO activity_log;
 """.trimIndent()
 
-// RENAME COLUMN
 private val renameUserEmail = """
     ALTER TABLE users RENAME COLUMN email TO email_address;
 """.trimIndent()
 
-// ADD CONSTRAINT - various types
 private val addConstraints = """
     ALTER TABLE products ADD CONSTRAINT uk_products_sku UNIQUE (sku);
     ALTER TABLE orders ADD CONSTRAINT chk_orders_status CHECK (status IN ('new', 'pending', 'shipped', 'delivered', 'cancelled'));
     ALTER TABLE reviews ADD CONSTRAINT fk_reviews_products FOREIGN KEY (product_id) REFERENCES products(id);
 """.trimIndent()
 
-// DROP CONSTRAINT
 private val dropSkuConstraint = """
     ALTER TABLE products DROP CONSTRAINT uk_products_sku;
 """.trimIndent()
 
-// DROP TABLE
 private val dropNotifications = """
     DROP TABLE notifications;
 """.trimIndent()
 
-// PARTITION BY - partitioned parent table
 private val createOrdersPartitioned = """
     CREATE TABLE orders_history (
         id SERIAL,
@@ -219,7 +207,6 @@ private val createOrdersPartitioned = """
     ) PARTITION BY RANGE (changed_at);
 """.trimIndent()
 
-// PARTITION OF - child partition
 private val createOrdersHistory2024 = """
     CREATE TABLE orders_history_2024 PARTITION OF orders_history
         FOR VALUES FROM ('2024-01-01') TO ('2025-01-01');
@@ -230,38 +217,34 @@ private val createOrdersHistory2025 = """
         FOR VALUES FROM ('2025-01-01') TO ('2026-01-01');
 """.trimIndent()
 
-fun complexEcommerce(): MigrationTimelineResponse {
-    return migrationsToResponse(
-        mapOf(
-            "v1" to createUsers,
-            "v2" to createOrganizations,
-            "v3" to "$createProducts\n$createCategories",
-            "v4" to createOrders,
-            "v5" to createOrderItems,
-            "v6" to addUserProfile,
-            "v7" to createAddresses,
-            "v8" to createPayments,
-            "v9" to addProductDetails,
-            "v10" to createInventory,
-            "v11" to createReviews,
-            "v12" to addOrderTracking,
-            "v13" to "$createSubscriptions\n$createNotifications",
-            "v14" to addUserOrganization,
-            "v15" to addPaymentDetails,
-            "v16" to createAuditLog,
-            "v17" to dropUserPhone,
-            "v18" to changeProductPrice,
-            "v19" to setDescriptionNotNull,
-            "v20" to setOrderStatusDefault,
-            "v21" to addConstraints,
-            "v22" to renameUserEmail,
-            "v23" to renameAuditLog,
-            "v24" to dropSkuConstraint,
-            "v25" to dropDescriptionNotNull,
-            "v26" to dropOrderStatusDefault,
-            "v27" to dropNotifications,
-            "v28" to createOrdersPartitioned,
-            "v29" to "$createOrdersHistory2024\n$createOrdersHistory2025"
-        )
-    )
-}
+val complexEcommerceMigrations: LinkedHashMap<String, String> = linkedMapOf(
+    "v1" to createUsers,
+    "v2" to createOrganizations,
+    "v3" to "$createProducts\n$createCategories",
+    "v4" to createOrders,
+    "v5" to createOrderItems,
+    "v6" to addUserProfile,
+    "v7" to createAddresses,
+    "v8" to createPayments,
+    "v9" to addProductDetails,
+    "v10" to createInventory,
+    "v11" to createReviews,
+    "v12" to addOrderTracking,
+    "v13" to "$createSubscriptions\n$createNotifications",
+    "v14" to addUserOrganization,
+    "v15" to addPaymentDetails,
+    "v16" to createAuditLog,
+    "v17" to dropUserPhone,
+    "v18" to changeProductPrice,
+    "v19" to setDescriptionNotNull,
+    "v20" to setOrderStatusDefault,
+    "v21" to addConstraints,
+    "v22" to renameUserEmail,
+    "v23" to renameAuditLog,
+    "v24" to dropSkuConstraint,
+    "v25" to dropDescriptionNotNull,
+    "v26" to dropOrderStatusDefault,
+    "v27" to dropNotifications,
+    "v28" to createOrdersPartitioned,
+    "v29" to "$createOrdersHistory2024\n$createOrdersHistory2025"
+)

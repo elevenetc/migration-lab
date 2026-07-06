@@ -28,6 +28,10 @@ dependencies {
     // Logging
     implementation("ch.qos.logback:logback-classic:1.5.25")
 
+    // Database
+    implementation("org.testcontainers:testcontainers-postgresql:2.0.5")
+    implementation("org.postgresql:postgresql:42.7.7")
+
     // Testing
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")

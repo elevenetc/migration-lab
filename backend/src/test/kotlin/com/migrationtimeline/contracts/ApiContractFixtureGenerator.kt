@@ -15,6 +15,7 @@ import com.migrationtimeline.models.Migration
 import com.migrationtimeline.models.MigrationTimelineResponse
 import com.migrationtimeline.models.RenameColumn
 import com.migrationtimeline.models.RenameTable
+import com.migrationtimeline.models.RunMigrationsResult
 import com.migrationtimeline.models.SetDefault
 import com.migrationtimeline.models.SetNotNull
 import kotlinx.serialization.json.Json
@@ -256,6 +257,20 @@ class ApiContractFixtureGenerator {
 
         val fixture = json.encodeToString(MigrationTimelineResponse.serializer(), response)
         val outputFile = File("../api-contracts/fixtures/migration-response.json")
+        outputFile.parentFile.mkdirs()
+        outputFile.writeText(fixture)
+    }
+
+    @Test
+    fun `generate run migrations result fixture`() {
+        val result = RunMigrationsResult(
+            success = true,
+            message = "All migrations applied successfully",
+            migrationsApplied = 4
+        )
+
+        val fixture = json.encodeToString(RunMigrationsResult.serializer(), result)
+        val outputFile = File("../api-contracts/fixtures/run-migrations-result.json")
         outputFile.parentFile.mkdirs()
         outputFile.writeText(fixture)
     }

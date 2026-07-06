@@ -1,8 +1,7 @@
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-RUN addgroup -S app && adduser -S app -G app
-USER app
+RUN apk add --no-cache docker-cli
 
 COPY backend/build/libs/*-all.jar app.jar
 

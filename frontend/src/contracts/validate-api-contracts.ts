@@ -1,7 +1,9 @@
-import type { MigrationTimelineResponse, Warning } from '../api/migrationApi'
+import type { MigrationTimelineResponse, RunMigrationsResult, Warning } from '../api/migrationApi'
 import migrationFixture from '../../../api-contracts/fixtures/migration-response.json' with { type: 'json' }
+import runMigrationsFixture from '../../../api-contracts/fixtures/run-migrations-result.json' with { type: 'json' }
 
 const _validateMigrationResponse: MigrationTimelineResponse = migrationFixture as MigrationTimelineResponse
+const _validateRunMigrationsResult: RunMigrationsResult = runMigrationsFixture as RunMigrationsResult
 
 function assertExhaustive(val: never): never {
   throw new Error(`Unhandled type: ${JSON.stringify(val)}`)
@@ -93,8 +95,21 @@ function validateWarning(warning: Warning): void {
   }
 }
 
+function validateRunMigrationsResult(result: RunMigrationsResult): void {
+  if (typeof result.success !== 'boolean') {
+    throw new Error(`RunMigrationsResult.success must be boolean, got: ${typeof result.success}`)
+  }
+  if (typeof result.message !== 'string') {
+    throw new Error(`RunMigrationsResult.message must be string, got: ${typeof result.message}`)
+  }
+  if (typeof result.migrationsApplied !== 'number') {
+    throw new Error(`RunMigrationsResult.migrationsApplied must be number, got: ${typeof result.migrationsApplied}`)
+  }
+}
+
 validateOperationTypes(_validateMigrationResponse)
 validateMap(_validateMigrationResponse)
 validateCreateTableMap(_validateMigrationResponse)
 validateTimestamps(_validateMigrationResponse)
 validateWarningTypes(_validateMigrationResponse)
+validateRunMigrationsResult(_validateRunMigrationsResult)

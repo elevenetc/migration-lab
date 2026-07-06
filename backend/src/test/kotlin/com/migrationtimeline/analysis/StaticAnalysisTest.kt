@@ -1,7 +1,7 @@
 package com.migrationtimeline.analysis
 
 import com.migrationtimeline.models.AccessExclusiveLock
-import com.migrationtimeline.parser.MigrationParser
+import com.migrationtimeline.parser.parseMigration
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -10,8 +10,8 @@ class StaticAnalysisTest {
 
     @Test
     fun `ALTER on partitioned table produces warning`() {
-        val migrations = MigrationParser.parse(
-            mapOf(
+        val migrations = parseMigration(
+            linkedMapOf(
                 "V1__create_partitioned" to createPartitionedTable,
                 "V2__add_column" to addColumnToPartitioned
             )
@@ -28,8 +28,8 @@ class StaticAnalysisTest {
 
     @Test
     fun `ALTER on non-partitioned table produces no warning`() {
-        val migrations = MigrationParser.parse(
-            mapOf(
+        val migrations = parseMigration(
+            linkedMapOf(
                 "V1__create_table" to createRegularTable,
                 "V2__add_column" to addColumnToRegular
             )
@@ -42,8 +42,8 @@ class StaticAnalysisTest {
 
     @Test
     fun `multiple ALTERs on same partitioned table produce multiple warnings`() {
-        val migrations = MigrationParser.parse(
-            mapOf(
+        val migrations = parseMigration(
+            linkedMapOf(
                 "V1__create_partitioned" to createPartitionedTable,
                 "V2__add_column" to addColumnToPartitioned,
                 "V3__drop_column" to dropColumnFromPartitioned
@@ -59,8 +59,8 @@ class StaticAnalysisTest {
 
     @Test
     fun `ALTER on partition child does not produce warning`() {
-        val migrations = MigrationParser.parse(
-            mapOf(
+        val migrations = parseMigration(
+            linkedMapOf(
                 "V1__create_partitioned" to createPartitionedTable,
                 "V2__create_partition" to createPartition,
                 "V3__alter_partition" to alterPartitionChild

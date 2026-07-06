@@ -33,3 +33,4 @@ npm-debug.log*
 /.claude/settings.local.json
 /.playwright-mcp/
 .compose-build-state/
+/local/

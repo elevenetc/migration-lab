@@ -147,3 +147,17 @@ export async function fetchMigrations(): Promise<MigrationTimelineResponse> {
   }
   return response.json()
 }
+
+export interface RunMigrationsResult {
+  success: boolean
+  message: string
+  migrationsApplied: number
+}
+
+export async function runMigrations(): Promise<RunMigrationsResult> {
+  const response = await fetch('/api/migrations/run', { method: 'POST' })
+  if (!response.ok) {
+    throw new Error('Failed to run migrations')
+  }
+  return response.json()
+}

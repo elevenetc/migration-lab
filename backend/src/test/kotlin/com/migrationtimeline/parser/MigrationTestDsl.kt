@@ -19,19 +19,19 @@ import java.util.UUID
 import kotlin.test.assertEquals
 
 fun String.toMigration(): Migration =
-    MigrationParser.parse(UUID.randomUUID().toString(), this)
+    parseMigration(UUID.randomUUID().toString(), this)
 
 fun List<String>.toMigrations(): List<Migration> =
     map { it.toMigration() }
 
 fun Map<Int, String>.toMigrations(): List<Migration> =
     entries.map { (timestamp, sql) ->
-        MigrationParser.parse(timestamp.toString(), sql, timestamp.toLong())
+        parseMigration(timestamp.toString(), sql, timestamp.toLong())
     }
 
 fun List<Pair<Int, String>>.toTimedMigrations(): List<Migration> =
     mapIndexed { index, (timestamp, sql) ->
-        MigrationParser.parse("$timestamp-$index", sql, timestamp.toLong())
+        parseMigration("$timestamp-$index", sql, timestamp.toLong())
     }
 
 fun Migration.isEqualTo(expectedDsl: String) {

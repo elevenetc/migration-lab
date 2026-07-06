@@ -1,8 +1,5 @@
 package com.migrationtimeline.routes.dummy
 
-import com.migrationtimeline.models.MigrationTimelineResponse
-import com.migrationtimeline.routes.migrationsToResponse
-
 private val createUser = """
     CREATE TABLE users (
         id SERIAL PRIMARY KEY,
@@ -78,25 +75,21 @@ private val createOrgsArchived = """
         FOR VALUES IN (true);
 """.trimIndent()
 
-fun simpleUserAndOrg(): MigrationTimelineResponse {
-    return migrationsToResponse(
-        mapOf(
-            "V1__create_users" to createUser,
-            "V2__add_lastname" to addUserLastName,
-            "V3__create_orgs" to createOrg,
-            "V4__change_name_type" to changeNameType,
-            "V5__set_name_not_null" to setNameNotNull,
-            "V6__drop_lastname_not_null" to dropLastnameNotNull,
-            "V7__set_lastname_default" to setLastnameDefault,
-            "V8__drop_lastname_default" to dropLastnameDefault,
-            "V9__rename_users_to_accounts" to renameUsersToCustomers,
-            "V10__rename_name_to_full_name" to renameNameToFullName,
-            "V11__add_unique_constraint" to addUniqueConstraint,
-            "V12__drop_unique_constraint" to dropUniqueConstraint,
-            "V13__drop_orgs" to dropOrgs,
-            "V14__drop_lastname" to dropLastname,
-            "V15__create_orgs_partitioned" to createOrgsPartitioned,
-            "V16__create_orgs_archived" to createOrgsArchived
-        )
-    )
-}
+val simpleUserAndOrgMigrations: LinkedHashMap<String, String> = linkedMapOf(
+    "V1__create_users" to createUser,
+    "V2__add_lastname" to addUserLastName,
+    "V3__create_orgs" to createOrg,
+    "V4__change_name_type" to changeNameType,
+    "V5__set_name_not_null" to setNameNotNull,
+    "V6__drop_lastname_not_null" to dropLastnameNotNull,
+    "V7__set_lastname_default" to setLastnameDefault,
+    "V8__drop_lastname_default" to dropLastnameDefault,
+    "V9__rename_users_to_accounts" to renameUsersToCustomers,
+    "V10__rename_name_to_full_name" to renameNameToFullName,
+    "V11__add_unique_constraint" to addUniqueConstraint,
+    "V12__drop_unique_constraint" to dropUniqueConstraint,
+    "V13__drop_orgs" to dropOrgs,
+    "V14__drop_lastname" to dropLastname,
+    "V15__create_orgs_partitioned" to createOrgsPartitioned,
+    "V16__create_orgs_archived" to createOrgsArchived
+)

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { AnalysisResult, CreateTableMapEntry, Migration, fetchMigrations } from '../api/migrationApi'
+import { AnalysisResult, CreateTableMapEntry, Migration, RunMigrationsResult, fetchMigrations, runMigrations } from '../api/migrationApi'
 
 interface MigrationState {
   migrations: Migration[]
@@ -7,7 +7,10 @@ interface MigrationState {
   analysis: AnalysisResult | null
   loading: boolean
   error: string | null
+  running: boolean
+  runResult: RunMigrationsResult | null
   loadMigrations: () => Promise<void>
+  runMigrations: () => Promise<void>
 }
 
 export const useMigrationStore = create<MigrationState>((set) => ({
@@ -16,6 +19,8 @@ export const useMigrationStore = create<MigrationState>((set) => ({
   analysis: null,
   loading: false,
   error: null,
+  running: false,
+  runResult: null,
   loadMigrations: async () => {
     set({ loading: true, error: null })
     try {
@@ -28,6 +33,22 @@ export const useMigrationStore = create<MigrationState>((set) => ({
       })
     } catch (error) {
       set({ error: (error as Error).message, loading: false })
+    }
+  },
+  runMigrations: async () => {
+    set({ running: true, runResult: null })
+    try {
+      const result = await runMigrations()
+      set({ running: false, runResult: result })
+    } catch (error) {
+      set({
+        running: false,
+        runResult: {
+          success: false,
+          message: (error as Error).message,
+          migrationsApplied: 0
+        }
+      })
     }
   },
 }))
