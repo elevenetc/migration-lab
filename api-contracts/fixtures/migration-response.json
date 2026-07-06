@@ -250,6 +250,23 @@
                     "partitionOf": "measurements"
                 }
             ]
+        },
+        {
+            "id": "migration-16",
+            "version": "V16__alter_partitioned",
+            "timestamp": 16000,
+            "operations": [
+                {
+                    "type": "ADD_COLUMN",
+                    "migrationId": "migration-16",
+                    "tableName": "measurements",
+                    "column": {
+                        "name": "description",
+                        "type": "TEXT",
+                        "constraints": []
+                    }
+                }
+            ]
         }
     ],
     "map": {
@@ -503,6 +520,23 @@
                     "partitionOf": "measurements"
                 }
             ]
+        },
+        "migration-16": {
+            "id": "migration-16",
+            "version": "V16__alter_partitioned",
+            "timestamp": 16000,
+            "operations": [
+                {
+                    "type": "ADD_COLUMN",
+                    "migrationId": "migration-16",
+                    "tableName": "measurements",
+                    "column": {
+                        "name": "description",
+                        "type": "TEXT",
+                        "constraints": []
+                    }
+                }
+            ]
         }
     },
     "createTableMap": {
@@ -568,5 +602,18 @@
             "isPartitioned": false,
             "partitionOf": "measurements"
         }
+    },
+    "analysis": {
+        "warnings": [
+            {
+                "type": "ACCESS_EXCLUSIVE_LOCK",
+                "operationId": {
+                    "migrationId": "migration-16",
+                    "tableName": "measurements"
+                },
+                "tableName": "measurements",
+                "message": "ALTER on partitioned table 'measurements' acquires ACCESS EXCLUSIVE lock on parent and all partitions"
+            }
+        ]
     }
 }

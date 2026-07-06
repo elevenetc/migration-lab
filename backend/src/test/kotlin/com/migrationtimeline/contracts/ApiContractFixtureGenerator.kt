@@ -1,5 +1,6 @@
 package com.migrationtimeline.contracts
 
+import com.migrationtimeline.analysis.analyse
 import com.migrationtimeline.models.AddColumn
 import com.migrationtimeline.models.AddConstraint
 import com.migrationtimeline.models.AlterColumnType
@@ -224,6 +225,18 @@ class ApiContractFixtureGenerator {
                         partitionOf = "measurements"
                     )
                 )
+            ),
+            Migration(
+                id = "migration-16",
+                version = "V16__alter_partitioned",
+                timestamp = 16000L,
+                operations = listOf(
+                    AddColumn(
+                        migrationId = "migration-16",
+                        tableName = "measurements",
+                        column = Column("description", "TEXT", emptyList())
+                    )
+                )
             )
         )
 
@@ -232,10 +245,13 @@ class ApiContractFixtureGenerator {
             .filterIsInstance<CreateTable>()
             .associateBy { it.tableName }
 
+        val analysis = analyse(migrations)
+
         val response = MigrationTimelineResponse(
             timeline = migrations,
             map = migrations.associateBy { it.id },
-            createTableMap = createTableMap
+            createTableMap = createTableMap,
+            analysis = analysis
         )
 
         val fixture = json.encodeToString(MigrationTimelineResponse.serializer(), response)

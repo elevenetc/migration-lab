@@ -7,7 +7,8 @@ import kotlinx.serialization.Serializable
 data class MigrationTimelineResponse(
     val timeline: List<Migration>,
     val map: Map<String, Migration>, // migrationId -> Migration
-    val createTableMap: Map<String, CreateTable> // tableName -> CreateTable
+    val createTableMap: Map<String, CreateTable>, // tableName -> CreateTable
+    val analysis: AnalysisResult
 )
 
 @Serializable

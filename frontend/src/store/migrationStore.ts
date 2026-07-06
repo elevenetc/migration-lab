@@ -1,9 +1,10 @@
 import { create } from 'zustand'
-import { CreateTableMapEntry, Migration, fetchMigrations } from '../api/migrationApi'
+import { AnalysisResult, CreateTableMapEntry, Migration, fetchMigrations } from '../api/migrationApi'
 
 interface MigrationState {
   migrations: Migration[]
   createTableMap: Record<string, CreateTableMapEntry>
+  analysis: AnalysisResult | null
   loading: boolean
   error: string | null
   loadMigrations: () => Promise<void>
@@ -12,6 +13,7 @@ interface MigrationState {
 export const useMigrationStore = create<MigrationState>((set) => ({
   migrations: [],
   createTableMap: {},
+  analysis: null,
   loading: false,
   error: null,
   loadMigrations: async () => {
@@ -21,6 +23,7 @@ export const useMigrationStore = create<MigrationState>((set) => ({
       set({
         migrations: response.timeline,
         createTableMap: response.createTableMap,
+        analysis: response.analysis,
         loading: false
       })
     } catch (error) {

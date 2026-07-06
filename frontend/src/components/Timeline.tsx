@@ -2,7 +2,7 @@ import {useCallback, useEffect, useMemo, ReactNode} from 'react'
 import {Background, BaseEdge, Controls, Edge, EdgeProps, Handle, MarkerType, Node, NodeProps, Position, ReactFlow, useEdgesState, useNodesState,} from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import {useMigrationStore} from '../store/migrationStore'
-import type {Migration, Operation} from '../api/migrationApi'
+import type {Migration, Operation, Warning} from '../api/migrationApi'
 
 interface OperationEntry {
     migration: Migration
@@ -276,18 +276,45 @@ interface OperationNodeData extends Record<string, unknown> {
     background: string
     hasSource: boolean
     hasTarget: boolean
+    warnings: Warning[]
 }
 
 function OperationNode({data}: NodeProps<Node<OperationNodeData>>) {
+    const hasWarnings = data.warnings.length > 0
+    const warningMessage = hasWarnings ? data.warnings.map(w => w.message).join('\n') : undefined
+
     return (
-        <div style={{
-            background: data.background,
-            color: 'white',
-            padding: 4,
-            borderRadius: 4,
-            fontSize: '9px',
-            textAlign: 'left',
-        }}>
+        <div
+            style={{
+                background: data.background,
+                color: 'white',
+                padding: 4,
+                borderRadius: 4,
+                fontSize: '9px',
+                textAlign: 'left',
+                border: hasWarnings ? '2px solid #ed8936' : undefined,
+                position: 'relative',
+            }}
+            title={warningMessage}
+        >
+            {hasWarnings && (
+                <div style={{
+                    position: 'absolute',
+                    top: -6,
+                    right: -6,
+                    width: 14,
+                    height: 14,
+                    background: '#ed8936',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '10px',
+                    fontWeight: 'bold',
+                }}>
+                    ⚠
+                </div>
+            )}
             {data.hasTarget && (
                 <Handle
                     type="target"
@@ -313,8 +340,19 @@ function StepDownEdge({sourceX, sourceY, targetX, targetY, markerEnd, style}: Ed
     return <BaseEdge path={path} markerEnd={markerEnd} style={style}/>
 }
 
+function buildWarningMap(warnings: Warning[]): Map<string, Warning[]> {
+    const map = new Map<string, Warning[]>()
+    for (const warning of warnings) {
+        const key = `${warning.operationId.migrationId}-${warning.operationId.tableName}`
+        const existing = map.get(key) ?? []
+        existing.push(warning)
+        map.set(key, existing)
+    }
+    return map
+}
+
 export function Timeline() {
-    const {migrations, loading, error} = useMigrationStore()
+    const {migrations, analysis, loading, error} = useMigrationStore()
 
     const buildEdgeData = useCallback(() => {
         const {tableOperations, renames, partitions} = buildTableOperationsMap(migrations)
@@ -378,6 +416,8 @@ export function Timeline() {
 
         return {edges, sources, targets}
     }, [migrations])
+
+    const warningMap = useMemo(() => buildWarningMap(analysis?.warnings ?? []), [analysis])
 
     const buildNodes = useCallback((sources: Set<string>, targets: Set<string>): Node[] => {
         const {tableOperations, tableOrder} = buildTableOperationsMap(migrations)
@@ -449,6 +489,7 @@ export function Timeline() {
             const size = nodeSizes.get(nodeId)!
             const rowHeight = rowHeights.get(rowIndex) ?? size.height
             const verticalOffset = (rowHeight - size.height) / 2
+            const nodeWarnings = warningMap.get(nodeId) ?? []
 
             return {
                 id: nodeId,
@@ -472,10 +513,11 @@ export function Timeline() {
                     background: getNodeColor(item.operation),
                     hasSource: sources.has(nodeId),
                     hasTarget: targets.has(nodeId),
+                    warnings: nodeWarnings,
                 },
             }
         })
-    }, [migrations])
+    }, [migrations, warningMap])
 
     const [nodes, setNodes] = useNodesState<Node>([])
     const [edges, setEdges] = useEdgesState<Edge>([])

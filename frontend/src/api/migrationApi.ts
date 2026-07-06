@@ -115,10 +115,29 @@ export interface CreateTableMapEntry {
   columns: Column[]
 }
 
+export interface OperationId {
+  migrationId: string
+  tableName: string
+}
+
+export interface AccessExclusiveLock {
+  type: 'ACCESS_EXCLUSIVE_LOCK'
+  operationId: OperationId
+  tableName: string
+  message: string
+}
+
+export type Warning = AccessExclusiveLock
+
+export interface AnalysisResult {
+  warnings: Warning[]
+}
+
 export interface MigrationTimelineResponse {
   timeline: Migration[]
   map: Record<string, Migration>
   createTableMap: Record<string, CreateTableMapEntry>
+  analysis: AnalysisResult
 }
 
 export async function fetchMigrations(): Promise<MigrationTimelineResponse> {

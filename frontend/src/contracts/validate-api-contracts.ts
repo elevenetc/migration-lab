@@ -1,10 +1,10 @@
-import type { MigrationTimelineResponse } from '../api/migrationApi'
+import type { MigrationTimelineResponse, Warning } from '../api/migrationApi'
 import migrationFixture from '../../../api-contracts/fixtures/migration-response.json' with { type: 'json' }
 
 const _validateMigrationResponse: MigrationTimelineResponse = migrationFixture as MigrationTimelineResponse
 
-function assertExhaustive(op: never): never {
-  throw new Error(`Unhandled operation type: ${JSON.stringify(op)}`)
+function assertExhaustive(val: never): never {
+  throw new Error(`Unhandled type: ${JSON.stringify(val)}`)
 }
 
 function validateOperationTypes(response: MigrationTimelineResponse): void {
@@ -71,7 +71,30 @@ function validateCreateTableMap(response: MigrationTimelineResponse): void {
   }
 }
 
+function validateWarningTypes(response: MigrationTimelineResponse): void {
+  for (const warning of response.analysis.warnings) {
+    validateWarning(warning)
+  }
+}
+
+function validateWarning(warning: Warning): void {
+  if (warning.type === 'ACCESS_EXCLUSIVE_LOCK') {
+    if (!warning.operationId.migrationId || !warning.operationId.tableName) {
+      throw new Error('AccessExclusiveLock missing operationId fields')
+    }
+    if (!warning.tableName) {
+      throw new Error('AccessExclusiveLock missing tableName')
+    }
+    if (!warning.message) {
+      throw new Error('AccessExclusiveLock missing message')
+    }
+  } else {
+    assertExhaustive(warning.type as never)
+  }
+}
+
 validateOperationTypes(_validateMigrationResponse)
 validateMap(_validateMigrationResponse)
 validateCreateTableMap(_validateMigrationResponse)
 validateTimestamps(_validateMigrationResponse)
+validateWarningTypes(_validateMigrationResponse)

@@ -1,4 +1,4 @@
-# Supported SQL
+# Supported Operations
 
 SQL statements that can be parsed (backend) and rendered (frontend).
 
@@ -20,6 +20,3 @@ SQL statements that can be parsed (backend) and rendered (frontend).
 - `RENAME COLUMN`
 - `ADD CONSTRAINT` (PRIMARY KEY, UNIQUE, FOREIGN KEY, CHECK, EXCLUDE)
 
-## Not Supported
-
-- Indicate lock: `ACCESS SHARE`, `ROW EXCLUSIVE`, `ACCESS EXCLUSIVE`

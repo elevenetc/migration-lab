@@ -142,9 +142,9 @@ listOf(
 
 - PostgreSQL and Flyway migrations only
 - Frontend simplicity prioritized over polish for MVP
-- See [supported-sql.md](supported-sql.md) for supported SQL statements
+- See [docs/supported-operations.md](docs/supported-operations.md) for supported SQL statements
 
-## Features implementation process
+## Operations implementation process
 
 1. Identify SQL statement or operation
 2. Implement backend parser
@@ -152,11 +152,30 @@ listOf(
 4. Implement frontend rendering
 5. Add dummy example `com.migrationtimeline.routes.dummy`
 6. Run tests
-7. Update [supported-sql.md](supported-sql.md)
+7. Update [docs/supported-operations.md](docs/supported-operations.md)
+
+## Static analysis implementation process
+
+1. Create detection function in `analysis/` (e.g., `detectSomething.kt`)
+2. Add to `analyzeOperation()` in `analyse.kt`
+3. Add warning type to `staticAnalysis.kt`
+4. Add test in `StaticAnalysisTest.kt`
+5. Update [docs/supported-static-analysis.md](docs/supported-static-analysis.md)
 
 ## Debugging
 
 - Use `playwright mcp` and `localhost:3000` to verify frontend implementation
 - `localhost:3000` makes single request which returns content of `migrationRoutes`/`/api/migrations`
 - Update `migrationRoutes` and run `just compose-apply` to see updated version at `localhost:3000`
-- Pass `/.playwright-mcp` to `playwright`, so it stores logs and screenshots there instead of root 
+- Pass `/.playwright-mcp` to `playwright`, so it stores logs and screenshots there instead of root
+
+## Backward compatibility
+
+The project is in MVP stage, so breaking changes are expected, backward compatibility is not required.
+
+## Code style
+
+- Prefer functional style over OOP
+- Prefer having single file - single function
+- Prioritize making functions as pure as possible. For example, instead of passing a mutable list to a function, prefer
+  returning a new immutable list with result.
