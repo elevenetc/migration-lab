@@ -1,6 +1,3 @@
-# Suppress Java 25 native access warnings for Gradle
-export GRADLE_OPTS := "--enable-native-access=ALL-UNNAMED"
-
 # List available commands
 default:
     @just --list
@@ -10,7 +7,7 @@ test: generate-contracts test-backend test-contracts
 
 # Generate API contract fixtures from backend models
 generate-contracts:
-    ./gradlew :backend:test --tests "*.ApiContractFixtureGenerator"
+    cd backend && go test ./internal/contracts/...
 
 # Validate frontend types against API contracts
 test-contracts:
@@ -18,11 +15,11 @@ test-contracts:
 
 # Run all backend tests
 test-backend:
-    ./gradlew :backend:test
+    cd backend && go test ./...
 
 # Run backend server
-run-backend:
-    ./gradlew :backend:run
+run-backend *args:
+    cd backend && go run ./cmd/server {{ args }}
 
 # Install frontend dependencies
 install-frontend:
@@ -34,7 +31,8 @@ run-frontend:
 
 # Build backend
 build-backend:
-    ./gradlew :backend:build
+    mkdir -p build
+    cd backend && go build -o ../build/server ./cmd/server
 
 # Build frontend
 build-frontend:
@@ -42,7 +40,8 @@ build-frontend:
 
 # Clean all
 clean:
-    ./gradlew :backend:clean
+    rm -rf build
+    cd backend/internal/report && rm -rf dist
     cd frontend && rm -rf node_modules dist
 
 # Build and run all services with Docker Compose (detached)
@@ -58,8 +57,39 @@ compose-apply:
     #!/usr/bin/env bash
     set -euo pipefail
 
-    # Build backend locally (Gradle handles incremental compilation)
-    ./gradlew :backend:buildFatJar --quiet
+    # Build backend locally
+    mkdir -p build
+    cd backend && go build -o ../build/server ./cmd/server
 
     # Rebuild Docker images and restart
     docker compose up --build -d
+
+# Run Go CLI to analyze migrations (default behavior)
+cli-analyze sql:
+    @cd backend && go run ./cmd/cli "{{ sql }}"
+
+# Run Go CLI with --run flag to also execute migrations (requires Docker)
+cli-run sql:
+    @cd backend && go run ./cmd/cli --run "{{ sql }}"
+
+# Generate HTML report from migrations (requires build-cli first)
+cli-report path output="report.html":
+    @./build/migration-timeline --report="{{ output }}" "{{ path }}"
+
+# Build CLI binary with embedded frontend assets
+build-cli:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    echo "Building frontend..."
+    (cd frontend && npm run build)
+
+    echo "Copying frontend dist to backend/internal/report..."
+    rm -rf backend/internal/report/dist
+    cp -r frontend/dist backend/internal/report/dist
+
+    echo "Building CLI binary..."
+    mkdir -p build
+    (cd backend && go build -o ../build/migration-timeline ./cmd/cli)
+
+    echo "Done! Binary: build/migration-timeline"

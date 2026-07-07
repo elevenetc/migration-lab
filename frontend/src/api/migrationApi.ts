@@ -1,3 +1,9 @@
+declare global {
+  interface Window {
+    __MIGRATION_DATA__?: MigrationTimelineResponse
+  }
+}
+
 export interface Column {
   name: string
   type: string
@@ -141,6 +147,9 @@ export interface MigrationTimelineResponse {
 }
 
 export async function fetchMigrations(): Promise<MigrationTimelineResponse> {
+  if (window.__MIGRATION_DATA__) {
+    return window.__MIGRATION_DATA__
+  }
   const response = await fetch('/api/migrations')
   if (!response.ok) {
     throw new Error('Failed to fetch migrations')

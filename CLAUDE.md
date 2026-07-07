@@ -11,17 +11,17 @@ builds AST representations, and renders interactive timelines.
 
 Two-module monorepo:
 
-- **backend/**: Kotlin + Ktor + Gradle service for migration parsing and AST generation
+- **backend/**: Go service for migration parsing, AST generation, and static analysis
 - **frontend/**: React + TypeScript + Zustand web client for visualization
 
 ## Tech Stack
 
 ### Backend
 
-- Kotlin with Ktor framework
-- Gradle build system
-- JSQLParser and pg_query for SQL parsing
-- Flyway for migration analysis
+- Go with Echo framework
+- pg_query_go for SQL parsing
+- Cobra for CLI
+- Testcontainers for integration tests
 
 ### Frontend
 
@@ -38,7 +38,7 @@ Two-module monorepo:
 
 #### Data Flow
 
-1. App mounts → calls `loadMigrations()`
+1. App mounts -> calls `loadMigrations()`
 2. Store fetches `/api/migrations`
 3. Timeline reads store, groups by table, renders graph
 
@@ -48,6 +48,50 @@ Two-module monorepo:
 - X-axis: migrations with same timestamp align vertically in same column
 - Edges connect operations on same table chronologically
 - CREATE_TABLE (blue) vs ALTER_TABLE (darker blue)
+
+## CLI
+
+The CLI (`backend/cmd/cli`) outputs static analysis JSON by default:
+
+- Default - Parse migrations and output static analysis as JSON
+- `--run` - Also run migrations against a PostgreSQL container (requires Docker)
+- `--report` - Generate self-contained HTML report instead of JSON
+
+### Building CLI with Report Support
+
+```bash
+just build-cli
+```
+
+This builds the frontend, embeds assets into `backend/internal/report/dist/`, and produces `build/migration-timeline`.
+
+### Analyzing Migrations (Default)
+
+```bash
+# From directory
+./build/migration-timeline /path/to/migrations
+
+# From inline SQL
+./build/migration-timeline "CREATE TABLE users (id INT);"
+
+# With migration runner (requires Docker)
+./build/migration-timeline --run /path/to/migrations
+```
+
+### Generating Reports
+
+```bash
+# From directory
+./build/migration-timeline --report /path/to/migrations
+
+# With custom output path
+./build/migration-timeline --report=output.html /path/to/migrations
+
+# From inline SQL
+./build/migration-timeline --report "CREATE TABLE users (id INT);"
+```
+
+The generated HTML is fully self-contained (inlined CSS, JS, and data) and opens directly in a browser.
 
 ## Verification
 
@@ -61,82 +105,18 @@ just test
 
 Backend and frontend types are kept in sync via compile-time contract validation:
 
-1. `ApiContractFixtureGenerator.kt` generates JSON fixtures from backend models to `api-contracts/fixtures/`
+1. `generate_test.go` generates JSON fixtures from backend models to `api-contracts/fixtures/`
 2. `validate-api-contracts.ts` imports fixtures and validates against TypeScript types
 3. Exhaustive switch ensures all Operation variants are handled
 
 When adding new Operation types:
 
-1. Add to `MigrationAst.kt` with `@SerialName`
+1. Add to `internal/models/operation.go`
 2. Add to `migrationApi.ts` and update `Operation` union
 3. Add case to `validate-api-contracts.ts` switch
-4. Update `ApiContractFixtureGenerator.kt` to include example
+4. Update `internal/contracts/generate_test.go` to include example
 
 `just test` fails if types drift.
-
-## Test DSL
-
-The test DSL (`MigrationTestDsl.kt`) serves two purposes:
-
-1. **Readability** - concise assertions for parsed migrations
-2. **Timeline depiction** - output mirrors how frontend renders the timeline
-
-### Basic DSL (untimed)
-
-Groups operations by table name (alphabetically sorted), joins with ` > `:
-
-```kotlin
-listOf(createUsersSql, addLastNameSql, createOrgSql).toMigrations().isEqualTo(
-    """
-    create(org(id,name))
-    create(users(id,name)) > addColumn(users(last_name))
-    """.trimIndent()
-)
-```
-
-### Timed DSL
-
-Use `toTimedMigrations()` with `List<Pair<Int, String>>` to specify timestamps:
-
-```kotlin
-listOf(
-    1 to createTableA,
-    2 to createTableB,
-    3 to alterTableA
-).toTimedMigrations().isEqualToTimed(
-    """
-    create(a(id)) > addColumn(a(name))
-    >create(b(id))
-    """.trimIndent()
-)
-```
-
-**Rules:**
-
-- **Grouping**: one line per table, operations joined with ` > `
-- **Sorting**: tables sorted by first appearance timestamp
-- **Timing prefix**: `>` count = timestamp difference from first migration
-- Same timestamp = same prefix depth
-
-### Operation formats
-
-| Operation                 | DSL format                        |
-|---------------------------|-----------------------------------|
-| CREATE TABLE              | `create(table(col1,col2))`        |
-| CREATE TABLE PARTITION BY | `createPartitioned(table(cols))`  |
-| CREATE TABLE PARTITION OF | `createPartition(child:parent)`   |
-| ADD COLUMN                | `addColumn(table(col))`           |
-| DROP COLUMN               | `dropColumn(table(col))`          |
-| ALTER COLUMN TYPE         | `alterType(table(col:TYPE))`      |
-| SET NOT NULL              | `setNotNull(table(col))`          |
-| DROP NOT NULL             | `dropNotNull(table(col))`         |
-| SET DEFAULT               | `setDefault(table(col=value))`    |
-| DROP DEFAULT              | `dropDefault(table(col))`         |
-| RENAME TABLE              | `renameTable(old->new)`           |
-| RENAME COLUMN             | `renameColumn(table(old->new))`   |
-| ADD CONSTRAINT            | `addConstraint(table(name:TYPE))` |
-| DROP CONSTRAINT           | `dropConstraint(table(name))`     |
-| DROP TABLE                | `drop(table)`                     |
 
 ## Constraints
 
@@ -147,26 +127,26 @@ listOf(
 ## Operations implementation process
 
 1. Identify SQL statement or operation
-2. Implement backend parser
-3. Add backend test(s)
+2. Implement backend parser in `internal/parser/`
+3. Add backend test(s) in `internal/parser/parse_test.go`
 4. Implement frontend rendering
-5. Add dummy example `com.migrationtimeline.routes.dummy`
+5. Add dummy example in `internal/server/dummy/`
 6. Run tests
 7. Update [docs/supported-operations.md](docs/supported-operations.md)
 
 ## Static analysis implementation process
 
-1. Create detection function in `analysis/` (e.g., `detectSomething.kt`)
-2. Add to `analyzeOperation()` in `analyse.kt`
-3. Add warning type to `staticAnalysis.kt`
-4. Add test in `StaticAnalysisTest.kt`
+1. Create detection function in `internal/analysis/` (e.g., `detect_something.go`)
+2. Add to `analyzeOperation()` in `analyse.go`
+3. Add warning type to `internal/models/analysis.go`
+4. Add test in `internal/analysis/analysis_test.go`
 5. Update [docs/supported-static-analysis.md](docs/supported-static-analysis.md)
 
 ## Debugging
 
 - Use `playwright mcp` and `localhost:3000` to verify frontend implementation
-- `localhost:3000` makes single request which returns content of `migrationRoutes`/`/api/migrations`
-- Update `migrationRoutes` and run `just compose-apply` to see updated version at `localhost:3000`
+- `localhost:3000` makes single request which returns content of `/api/migrations`
+- Update `internal/server/dummy/` and run `just compose-apply` to see updated version at `localhost:3000`
 - Pass `/.playwright-mcp` to `playwright`, so it stores logs and screenshots there instead of root
 
 ## Backward compatibility
