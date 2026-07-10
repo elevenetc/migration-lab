@@ -38,13 +38,27 @@ build-backend:
 build-frontend:
     cd frontend && npm run build
 
+# Install frontend2 (canvas) dependencies
+install-frontend2:
+    cd frontend2 && npm install
+
+# Run frontend2 (canvas) dev server
+run-frontend2:
+    cd frontend2 && npm run dev
+
+# Build frontend2 (canvas)
+build-frontend2:
+    cd frontend2 && npm run build
+
 # Clean all
 clean:
     rm -rf build
     cd backend/internal/report && rm -rf dist
     cd frontend && rm -rf node_modules dist
 
-# Build and run all services with Docker Compose (detached)
+# Build and run all services with Docker Compose (detached).
+# Frontends run as Vite dev servers with HMR (docker-compose.override.yml), so
+# frontend/frontend2 edits reload live without compose-apply.
 compose-up:
     docker compose up --build -d
 
@@ -52,7 +66,7 @@ compose-up:
 compose-down *args:
     docker compose down {{ if args == "clear" { "-v" } else { "" } }}
 
-# Rebuild and reload only changed services
+# Rebuild and restart the backend (frontends hot-reload via HMR, no rebuild needed)
 compose-apply:
     #!/usr/bin/env bash
     set -euo pipefail

@@ -25,7 +25,10 @@ func main() {
 	switch *migrationsSource {
 	case "dummy":
 		provider = dummy.GetComplexEcommerceMigrations
-		runProvider = dummy.GetComplexEcommerceMigrationsForRunner
+		runProvider = dummy.GetRenameWithNewTableInBetweenMigrationsForRunner
+	case "partition":
+		provider = dummy.GetSimplePartitionMigrations
+		runProvider = dummy.GetSimplePartitionMigrationsForRunner
 	default:
 		// Treat as directory path
 		dir := *migrationsSource

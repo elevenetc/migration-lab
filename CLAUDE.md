@@ -144,9 +144,12 @@ When adding new Operation types:
 
 ## Debugging
 
-- Use `playwright mcp` and `localhost:3000` to verify frontend implementation
+- Use `playwright mcp` and `localhost:3000` (frontend) or `localhost:3001` (frontend2) to verify frontend implementation
 - `localhost:3000` makes single request which returns content of `/api/migrations`
-- Update `internal/server/dummy/` and run `just compose-apply` to see updated version at `localhost:3000`
+- `just compose-up` runs the frontends as Vite dev servers with HMR (see `docker-compose.override.yml`), so
+  frontend/frontend2 source edits reload live — no `compose-apply` needed for frontend changes
+- `just compose-apply` is only needed to pick up backend changes (rebuilds and restarts the backend)
+- After editing `internal/server/dummy/`, run `just compose-apply` to see the updated data at `localhost:3000`
 - Pass `/.playwright-mcp` to `playwright`, so it stores logs and screenshots there instead of root
 
 ## Backward compatibility
