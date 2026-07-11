@@ -59,12 +59,14 @@ func TestMigrationsEndpoint(t *testing.T) {
 		t.Fatalf("failed to unmarshal response: %v", err)
 	}
 
-	if len(response.Timeline) != 29 {
-		t.Errorf("expected 29 migrations in timeline, got %d", len(response.Timeline))
+	want := len(dummy.Datasets()["ecommerce"])
+
+	if len(response.Timeline) != want {
+		t.Errorf("expected %d migrations in timeline, got %d", want, len(response.Timeline))
 	}
 
-	if len(response.Map) != 29 {
-		t.Errorf("expected 29 entries in map, got %d", len(response.Map))
+	if len(response.Map) != want {
+		t.Errorf("expected %d entries in map, got %d", want, len(response.Map))
 	}
 
 	if _, ok := response.Map["v1"]; !ok {
