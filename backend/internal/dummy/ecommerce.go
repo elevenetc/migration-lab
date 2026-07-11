@@ -1,14 +1,6 @@
 package dummy
 
-import (
-	"migration-timeline/backend/internal/models"
-	"migration-timeline/backend/internal/parser"
-)
-
-var complexEcommerceMigrations = []struct {
-	version string
-	sql     string
-}{
+var complexEcommerceMigrations = []migration{
 	{"v1", createUsers},
 	{"v2", createOrganizations},
 	{"v3", createProducts + "\n" + createCategories},
@@ -38,30 +30,6 @@ var complexEcommerceMigrations = []struct {
 	{"v27", dropNotifications},
 	{"v28", createOrdersPartitioned},
 	{"v29", createOrdersHistory2024 + "\n" + createOrdersHistory2025},
-}
-
-func GetComplexEcommerceMigrations() ([]*models.Migration, error) {
-	var migrations []*models.Migration
-	for i, m := range complexEcommerceMigrations {
-		migration, err := parser.ParseMigration(m.version, m.sql, int64(i+1))
-		if err != nil {
-			return nil, err
-		}
-		migrations = append(migrations, migration)
-	}
-	return migrations, nil
-}
-
-func GetComplexEcommerceMigrationsForRunner() []models.MigrationInfo {
-	var migrations []models.MigrationInfo
-	for i, m := range complexEcommerceMigrations {
-		migrations = append(migrations, models.MigrationInfo{
-			ID:        m.version,
-			SQL:       m.sql,
-			Timestamp: int64(i + 1),
-		})
-	}
-	return migrations
 }
 
 const createUsers = `CREATE TABLE users (

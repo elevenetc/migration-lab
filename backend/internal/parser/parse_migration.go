@@ -51,6 +51,7 @@ func ParseMigration(migrationID, sql string, timestamp int64) (*models.Migration
 		Version:    version,
 		Timestamp:  timestamp,
 		Operations: ops,
+		SQL:        sql,
 	}, nil
 }
 

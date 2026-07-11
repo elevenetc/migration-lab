@@ -1,13 +1,15 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"migration-timeline/backend/internal/database"
+	"migration-timeline/backend/internal/dummy"
 	"migration-timeline/backend/internal/models"
-	"migration-timeline/backend/internal/server/dummy"
 )
 
 // rawResponse is used for testing JSON structure without full deserialization
@@ -18,14 +20,32 @@ type rawResponse struct {
 	Analysis       json.RawMessage            `json:"analysis"`
 }
 
-func TestMigrationsEndpoint(t *testing.T) {
-	cfg := Config{
-		Port:               8081,
-		MigrationsProvider: dummy.GetComplexEcommerceMigrations,
-	}
-	e := New(cfg)
+type fakeStore struct {
+	migrations []models.Migration
+	err        error
+}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/migrations", nil)
+func (f fakeStore) Migrations(string) ([]models.Migration, error) {
+	return f.migrations, f.err
+}
+
+type fakeRunner struct {
+	result models.RunMigrationsResult
+	err    error
+}
+
+func (f fakeRunner) Run(context.Context, string) (models.RunMigrationsResult, error) {
+	return f.result, f.err
+}
+
+func dummyDB() *database.Database {
+	return database.New(dummy.Datasets())
+}
+
+func TestMigrationsEndpoint(t *testing.T) {
+	e := New(Config{Port: 8081, Store: dummyDB()})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/migrations?migrationId=ecommerce", nil)
 	rec := httptest.NewRecorder()
 
 	e.ServeHTTP(rec, req)
@@ -61,32 +81,26 @@ func TestMigrationsEndpoint(t *testing.T) {
 }
 
 func TestResponseStructure(t *testing.T) {
-	provider := func() ([]*models.Migration, error) {
-		return []*models.Migration{
-			{
-				ID:        "v1",
-				Version:   "1",
-				Timestamp: 1,
-				Operations: []models.Operation{
-					models.CreateTable{
-						MigrationID: "v1",
-						TableName:   "test",
-						Columns: []models.Column{
-							{Name: "id", Type: "serial", Constraints: []string{"PRIMARY KEY"}},
-						},
+	store := fakeStore{migrations: []models.Migration{
+		{
+			ID:        "v1",
+			Version:   "1",
+			Timestamp: 1,
+			Operations: []models.Operation{
+				models.CreateTable{
+					MigrationID: "v1",
+					TableName:   "test",
+					Columns: []models.Column{
+						{Name: "id", Type: "serial", Constraints: []string{"PRIMARY KEY"}},
 					},
 				},
 			},
-		}, nil
-	}
+		},
+	}}
 
-	cfg := Config{
-		Port:               8081,
-		MigrationsProvider: provider,
-	}
-	e := New(cfg)
+	e := New(Config{Port: 8081, Store: store})
 
-	req := httptest.NewRequest(http.MethodGet, "/api/migrations", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/migrations?migrationId=test", nil)
 	rec := httptest.NewRecorder()
 
 	e.ServeHTTP(rec, req)
@@ -104,12 +118,32 @@ func TestResponseStructure(t *testing.T) {
 	}
 }
 
-func TestCORSHeaders(t *testing.T) {
-	cfg := Config{
-		Port:               8081,
-		MigrationsProvider: func() ([]*models.Migration, error) { return nil, nil },
+func TestMissingMigrationIdReturns404(t *testing.T) {
+	e := New(Config{Port: 8081, Store: dummyDB()})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/migrations", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("expected status %d for missing migrationId, got %d", http.StatusNotFound, rec.Code)
 	}
-	e := New(cfg)
+}
+
+func TestUnknownMigrationIdReturns404(t *testing.T) {
+	e := New(Config{Port: 8081, Store: dummyDB()})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/migrations?migrationId=bogus", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("expected status %d for unknown migrationId, got %d", http.StatusNotFound, rec.Code)
+	}
+}
+
+func TestCORSHeaders(t *testing.T) {
+	e := New(Config{Port: 8081, Store: fakeStore{}})
 
 	req := httptest.NewRequest(http.MethodOptions, "/api/migrations", nil)
 	req.Header.Set("Origin", "http://localhost:3000")
@@ -123,21 +157,15 @@ func TestCORSHeaders(t *testing.T) {
 	}
 }
 
-func TestRunMigrationsEndpointRegistered(t *testing.T) {
-	cfg := Config{
-		Port:                  8081,
-		MigrationsProvider:    func() ([]*models.Migration, error) { return nil, nil },
-		MigrationsRunProvider: dummy.GetComplexEcommerceMigrationsForRunner,
-	}
-	e := New(cfg)
+func TestRunMigrationsUnknownIdReturns404(t *testing.T) {
+	e := New(Config{Port: 8081, Runner: fakeRunner{err: models.ErrNotFound}})
 
-	req := httptest.NewRequest(http.MethodPost, "/api/migrations/run", nil)
+	req := httptest.NewRequest(http.MethodPost, "/api/migrations/run?migrationId=bogus", nil)
 	rec := httptest.NewRecorder()
 
 	e.ServeHTTP(rec, req)
 
-	// Should return OK, not 404 (route not found)
-	if rec.Code == http.StatusNotFound {
-		t.Error("expected /api/migrations/run endpoint to be registered")
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("expected status %d for unknown migrationId, got %d", http.StatusNotFound, rec.Code)
 	}
 }

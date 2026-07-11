@@ -1,17 +1,29 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"migration-timeline/backend/internal/models"
 )
 
 type Config struct {
-	Port                  int
-	MigrationsProvider    MigrationsProvider
-	MigrationsRunProvider MigrationsRunProvider
+	Port   int
+	Store  MigrationStore
+	Runner MigrationRunner
+}
+
+// MigrationStore queries parsed migrations by dataset id (satisfied by *database.Database).
+type MigrationStore interface {
+	Migrations(migrationId string) ([]models.Migration, error)
+}
+
+// MigrationRunner runs a dataset's migrations by id (satisfied by runner.MigrationRunner).
+type MigrationRunner interface {
+	Run(ctx context.Context, migrationId string) (models.RunMigrationsResult, error)
 }
 
 func New(cfg Config) *echo.Echo {
@@ -24,10 +36,8 @@ func New(cfg Config) *echo.Echo {
 	}))
 
 	e.GET("/health", healthHandler)
-	e.GET("/api/migrations", migrationsHandler(cfg.MigrationsProvider))
-	if cfg.MigrationsRunProvider != nil {
-		e.POST("/api/migrations/run", runMigrationsHandler(cfg.MigrationsRunProvider))
-	}
+	e.GET("/api/migrations", migrationsHandler(cfg.Store))
+	e.POST("/api/migrations/run", runMigrationsHandler(cfg.Runner))
 
 	return e
 }

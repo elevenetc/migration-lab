@@ -8,49 +8,48 @@ import (
 	"sort"
 	"strings"
 
+	"migration-timeline/backend/internal/database"
+	"migration-timeline/backend/internal/dummy"
 	"migration-timeline/backend/internal/models"
 	"migration-timeline/backend/internal/parser"
+	"migration-timeline/backend/internal/runner"
 	"migration-timeline/backend/internal/server"
-	"migration-timeline/backend/internal/server/dummy"
 )
 
 func main() {
 	port := flag.Int("port", 8080, "Server port")
-	migrationsSource := flag.String("migrations", "dummy", "Migrations source (dummy)")
-	flag.Parse()
+	cfg := initConfig(port)
 
-	var provider server.MigrationsProvider
-	var runProvider server.MigrationsRunProvider
-
-	switch *migrationsSource {
-	case "dummy":
-		provider = dummy.GetComplexEcommerceMigrations
-		runProvider = dummy.GetRenameWithNewTableInBetweenMigrationsForRunner
-	case "partition":
-		provider = dummy.GetSimplePartitionMigrations
-		runProvider = dummy.GetSimplePartitionMigrationsForRunner
-	default:
-		// Treat as directory path
-		dir := *migrationsSource
-		provider = func() ([]*models.Migration, error) {
-			return loadMigrationsFromDir(dir)
-		}
-		runProvider = nil
-	}
-
-	cfg := server.Config{
-		Port:                  *port,
-		MigrationsProvider:    provider,
-		MigrationsRunProvider: runProvider,
-	}
-
-	log.Printf("Starting server on port %d with migrations source: %s", *port, *migrationsSource)
+	log.Printf("Starting server on port %d", *port)
 	if err := server.Start(cfg); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func loadMigrationsFromDir(dir string) ([]*models.Migration, error) {
+func initConfig(port *int) server.Config {
+	migrationsDir := flag.String("migrations", "", "Optional directory of .sql migrations, served under its base-name id")
+	flag.Parse()
+
+	datasets := dummy.Datasets()
+
+	if *migrationsDir != "" {
+		infos, err := loadMigrationInfosFromDir(*migrationsDir)
+		if err != nil {
+			log.Fatal(err)
+		}
+		datasets[filepath.Base(*migrationsDir)] = infos
+	}
+
+	db := database.New(datasets)
+	cfg := server.Config{
+		Port:   *port,
+		Store:  db,
+		Runner: runner.MigrationRunner{Store: db},
+	}
+	return cfg
+}
+
+func loadMigrationInfosFromDir(dir string) ([]models.MigrationInfo, error) {
 	files, err := filepath.Glob(filepath.Join(dir, "*.sql"))
 	if err != nil {
 		return nil, err
@@ -76,13 +75,5 @@ func loadMigrationsFromDir(dir string) ([]*models.Migration, error) {
 		return infos[i].Timestamp < infos[j].Timestamp
 	})
 
-	var migrations []*models.Migration
-	for _, info := range infos {
-		m, err := parser.ParseMigration(info.ID, info.SQL, info.Timestamp)
-		if err != nil {
-			return nil, err
-		}
-		migrations = append(migrations, m)
-	}
-	return migrations, nil
+	return infos, nil
 }

@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { AnalysisResult, CreateTableMapEntry, Migration, RunMigrationsResult, fetchMigrations, runMigrations } from '../api/migrationApi'
 
 interface MigrationState {
+  migrationId: string | null
   migrations: Migration[]
   createTableMap: Record<string, CreateTableMapEntry>
   analysis: AnalysisResult | null
@@ -13,7 +14,10 @@ interface MigrationState {
   runMigrations: () => Promise<void>
 }
 
-export const useMigrationStore = create<MigrationState>((set) => ({
+const migrationId = new URLSearchParams(window.location.search).get('migrationId')
+
+export const useMigrationStore = create<MigrationState>((set, get) => ({
+  migrationId,
   migrations: [],
   createTableMap: {},
   analysis: null,
@@ -24,7 +28,7 @@ export const useMigrationStore = create<MigrationState>((set) => ({
   loadMigrations: async () => {
     set({ loading: true, error: null })
     try {
-      const response = await fetchMigrations()
+      const response = await fetchMigrations(get().migrationId)
       set({
         migrations: response.timeline,
         createTableMap: response.createTableMap,
@@ -38,7 +42,7 @@ export const useMigrationStore = create<MigrationState>((set) => ({
   runMigrations: async () => {
     set({ running: true, runResult: null })
     try {
-      const result = await runMigrations()
+      const result = await runMigrations(get().migrationId)
       set({ running: false, runResult: result })
     } catch (error) {
       set({

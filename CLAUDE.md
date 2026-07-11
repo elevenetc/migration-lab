@@ -130,7 +130,7 @@ When adding new Operation types:
 2. Implement backend parser in `internal/parser/`
 3. Add backend test(s) in `internal/parser/parse_test.go`
 4. Implement frontend rendering
-5. Add dummy example in `internal/server/dummy/`
+5. Add dummy example in `internal/dummy/` (registered in `Datasets()`, served via `internal/database`)
 6. Run tests
 7. Update [docs/supported-operations.md](docs/supported-operations.md)
 
@@ -145,11 +145,13 @@ When adding new Operation types:
 ## Debugging
 
 - Use `playwright mcp` and `localhost:3000` (frontend) or `localhost:3001` (frontend2) to verify frontend implementation
-- `localhost:3000` makes single request which returns content of `/api/migrations`
+- `localhost:3000` makes single request which returns content of `/api/migrations?migrationId=<id>`;
+  the id comes from the page URL (`?migrationId=`). Dataset ids are the keys of `dummy.Datasets()`
+  (e.g. `ecommerce`, `simple-partition`). A missing/unknown id returns 404.
 - `just compose-up` runs the frontends as Vite dev servers with HMR (see `docker-compose.override.yml`), so
   frontend/frontend2 source edits reload live — no `compose-apply` needed for frontend changes
 - `just compose-apply` is only needed to pick up backend changes (rebuilds and restarts the backend)
-- After editing `internal/server/dummy/`, run `just compose-apply` to see the updated data at `localhost:3000`
+- After editing `internal/dummy/`, run `just compose-apply` to see the updated data at `localhost:3000`
 - Pass `/.playwright-mcp` to `playwright`, so it stores logs and screenshots there instead of root
 
 ## Backward compatibility

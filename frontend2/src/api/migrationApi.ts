@@ -146,11 +146,15 @@ export interface MigrationTimelineResponse {
   analysis: AnalysisResult
 }
 
-export async function fetchMigrations(): Promise<MigrationTimelineResponse> {
+function withMigrationId(path: string, migrationId: string | null): string {
+  return migrationId ? `${path}?migrationId=${encodeURIComponent(migrationId)}` : path
+}
+
+export async function fetchMigrations(migrationId: string | null): Promise<MigrationTimelineResponse> {
   if (window.__MIGRATION_DATA__) {
     return window.__MIGRATION_DATA__
   }
-  const response = await fetch('/api/migrations')
+  const response = await fetch(withMigrationId('/api/migrations', migrationId))
   if (!response.ok) {
     throw new Error('Failed to fetch migrations')
   }
@@ -163,8 +167,8 @@ export interface RunMigrationsResult {
   migrationsApplied: number
 }
 
-export async function runMigrations(): Promise<RunMigrationsResult> {
-  const response = await fetch('/api/migrations/run', { method: 'POST' })
+export async function runMigrations(migrationId: string | null): Promise<RunMigrationsResult> {
+  const response = await fetch(withMigrationId('/api/migrations/run', migrationId), { method: 'POST' })
   if (!response.ok) {
     throw new Error('Failed to run migrations')
   }

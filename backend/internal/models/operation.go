@@ -13,6 +13,7 @@ type Migration struct {
 	Version    string      `json:"version"`
 	Timestamp  int64       `json:"timestamp"`
 	Operations []Operation `json:"operations"`
+	SQL        string      `json:"-"`
 }
 
 type Operation interface {
