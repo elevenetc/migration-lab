@@ -1,25 +1,37 @@
-import {Migration, RenameTable} from '../api/migrationApi'
-import {computeLayout, OperationLayoutInfo, TABLE_ROW_HEIGHT, TRANSITION_TAG_SHIFT} from './layoutInfo.ts'
+import {RenameTable} from '../api/migrationApi'
+import {LayoutInfo, OperationLayoutInfo, TABLE_ROW_HEIGHT, TRANSITION_TAG_SHIFT} from './layoutInfo.ts'
 import {drawOperation} from './drawOperation.ts'
 import {drawTransitionRibbon, RibbonInfo} from "./drawTransitionRibbon.ts";
 import {getColorFromString} from "./getColorFromString.ts";
 
-// Computes the layout for the given migrations and paints it onto the canvas,
-// sizing the canvas to the content and accounting for device pixel ratio.
-export function renderTimeline(canvas: HTMLCanvasElement, migrations: Migration[]): void {
-    const layout = computeLayout(migrations)
+// Paints the precomputed layout onto a viewport-sized canvas, translating the
+// world by the scroll offset so scrolling is owned here rather than by the
+// browser. Accounts for device pixel ratio.
+export function renderTimeline(
+    canvas: HTMLCanvasElement,
+    layout: LayoutInfo,
+    viewport: { width: number; height: number },
+    scroll: { x: number; y: number },
+): void {
     const dpr = window.devicePixelRatio || 1
+    const backingWidth = Math.round(viewport.width * dpr)
+    const backingHeight = Math.round(viewport.height * dpr)
 
-    canvas.width = layout.width * dpr
-    canvas.height = layout.height * dpr
-    canvas.style.width = `${layout.width}px`
-    canvas.style.height = `${layout.height}px`
+    // Only resize when needed; reassigning canvas.width/height clears and
+    // reallocates the backing store, which we want to avoid on every scroll.
+    if (canvas.width !== backingWidth || canvas.height !== backingHeight) {
+        canvas.width = backingWidth
+        canvas.height = backingHeight
+        canvas.style.width = `${viewport.width}px`
+        canvas.style.height = `${viewport.height}px`
+    }
 
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    ctx.clearRect(0, 0, layout.width, layout.height)
+    ctx.clearRect(0, 0, viewport.width, viewport.height)
+    ctx.translate(-scroll.x, -scroll.y)
 
     let renamedTables = new Map<string, OperationLayoutInfo>()
     let partitionedTables = new Map<string, OperationLayoutInfo[]>()
