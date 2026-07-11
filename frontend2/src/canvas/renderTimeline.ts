@@ -1,5 +1,5 @@
 import {Migration} from '../api/migrationApi'
-import {computeLayout, OperationLayoutInfo, TABLE_ROW_HEIGHT} from './layoutInfo.ts'
+import {computeLayout, OperationLayoutInfo, TABLE_ROW_HEIGHT, TRANSITION_TAG_SHIFT} from './layoutInfo.ts'
 import {drawMigration} from './drawMigration'
 import {drawTransitionRibbon, RibbonInfo} from "./drawTransitionRibbon.ts";
 import {getOperationColor} from "./getOperationColor.ts";
@@ -24,7 +24,11 @@ export function renderTimeline(canvas: HTMLCanvasElement, migrations: Migration[
     let renamedTables = new Map<string, OperationLayoutInfo>()
     let partitionedTables = new Map<string, OperationLayoutInfo[]>()
     let transitionRibbons: RibbonInfo[] = []
-    const migrationsToDraw: { op: OperationLayoutInfo; nextMig: OperationLayoutInfo | null; renderGradient: boolean }[] = []
+    const migrationsToDraw: {
+        op: OperationLayoutInfo;
+        nextMig: OperationLayoutInfo | null;
+        renderGradient: boolean
+    }[] = []
 
     // Painted last table first, and within each table last migration first,
     // so rendering starts from the last migration of the last table.
@@ -58,10 +62,10 @@ export function renderTimeline(canvas: HTMLCanvasElement, migrations: Migration[
 
                     const r: RibbonInfo = {
                         leftX: renamedOpLayoutInfo.x,
-                        leftY: renamedOpLayoutInfo.y,
-                        rightX: currentOp.x + currentOp.w,
-                        rightY: currentOp.y,
-                        height: TABLE_ROW_HEIGHT,
+                        leftY: renamedOpLayoutInfo.y + TRANSITION_TAG_SHIFT,
+                        rightX: currentOp.x,
+                        rightY: currentOp.y + TRANSITION_TAG_SHIFT,
+                        height: TABLE_ROW_HEIGHT - TRANSITION_TAG_SHIFT,
                         leftColor: getOperationColor(renamedOpLayoutInfo.operation),
                         rightColor: getOperationColor(currentOp.operation),
                     }
@@ -78,10 +82,10 @@ export function renderTimeline(canvas: HTMLCanvasElement, migrations: Migration[
                 children.forEach(child => {
                     transitionRibbons.push({
                         leftX: child.x,
-                        leftY: child.y,
+                        leftY: child.y + TRANSITION_TAG_SHIFT,
                         rightX: currentOp.x,
-                        rightY: currentOp.y,
-                        height: TABLE_ROW_HEIGHT,
+                        rightY: currentOp.y + TRANSITION_TAG_SHIFT,
+                        height: TABLE_ROW_HEIGHT - TRANSITION_TAG_SHIFT,
                         leftColor: getOperationColor(child.operation),
                         rightColor: getOperationColor(currentOp.operation),
                     })
