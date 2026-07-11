@@ -76,7 +76,7 @@ export class LayoutInfo {
 
 const GUTTER = 160 // left space for table-name row labels
 export const TABLE_ROW_HEIGHT = 45
-const Y_GAP = 2
+const Y_GAP = 3
 const X_GAP = 0
 const CHAR_WIDTH = 8 // ~8px per char at 13px font
 const PADDING = 10

@@ -1,8 +1,8 @@
-import {Migration} from '../api/migrationApi'
+import {Migration, RenameTable} from '../api/migrationApi'
 import {computeLayout, OperationLayoutInfo, TABLE_ROW_HEIGHT, TRANSITION_TAG_SHIFT} from './layoutInfo.ts'
-import {drawMigration} from './drawMigration'
+import {drawOperation} from './drawOperation.ts'
 import {drawTransitionRibbon, RibbonInfo} from "./drawTransitionRibbon.ts";
-import {getOperationColor} from "./getOperationColor.ts";
+import {getColorFromString} from "./getColorFromString.ts";
 
 // Computes the layout for the given migrations and paints it onto the canvas,
 // sizing the canvas to the content and accounting for device pixel ratio.
@@ -26,6 +26,7 @@ export function renderTimeline(canvas: HTMLCanvasElement, migrations: Migration[
     let transitionRibbons: RibbonInfo[] = []
     const migrationsToDraw: {
         op: OperationLayoutInfo;
+        prevMig: OperationLayoutInfo | null;
         nextMig: OperationLayoutInfo | null;
         renderGradient: boolean
     }[] = []
@@ -34,18 +35,19 @@ export function renderTimeline(canvas: HTMLCanvasElement, migrations: Migration[
     // so rendering starts from the last migration of the last table.
     const entries = [...layout.tableMigrations]
     for (let t = entries.length - 1; t >= 0; t--) {
-        const [table, tableMigrations] = entries[t]
+        const [table, tableOperations] = entries[t]
 
         // Row label (table name) in the left gutter
-        ctx.fillStyle = '#e2e8f0'
+        ctx.fillStyle = getColorFromString(table.tableName)
         ctx.font = '13px sans-serif'
         ctx.textAlign = 'left'
         ctx.textBaseline = 'middle'
         ctx.fillText(table.tableName, 8, table.y + table.h / 2)
 
-        for (let m = tableMigrations.length - 1; m >= 0; m--) {
-            const nextMig = tableMigrations[m + 1] ?? null
-            const currentOp = tableMigrations[m];
+        for (let m = tableOperations.length - 1; m >= 0; m--) {
+            const nextOp = tableOperations[m + 1] ?? null
+            const prevOp = tableOperations[m - 1] ?? null
+            const currentOp = tableOperations[m];
             const op = currentOp.operation
             let renderGradient = true
             if (op.type === 'RENAME_TABLE') {
@@ -66,8 +68,9 @@ export function renderTimeline(canvas: HTMLCanvasElement, migrations: Migration[
                         rightX: currentOp.x,
                         rightY: currentOp.y + TRANSITION_TAG_SHIFT,
                         height: TABLE_ROW_HEIGHT - TRANSITION_TAG_SHIFT,
-                        leftColor: getOperationColor(renamedOpLayoutInfo.operation),
-                        rightColor: getOperationColor(currentOp.operation),
+                        leftColor: getColorFromString((renamedOpLayoutInfo.operation as RenameTable).newTableName),
+                        rightColor: getColorFromString(currentOp.operation.tableName),
+                        init: prevOp === null
                     }
                     transitionRibbons.push(r)
                 }
@@ -86,16 +89,17 @@ export function renderTimeline(canvas: HTMLCanvasElement, migrations: Migration[
                         rightX: currentOp.x,
                         rightY: currentOp.y + TRANSITION_TAG_SHIFT,
                         height: TABLE_ROW_HEIGHT - TRANSITION_TAG_SHIFT,
-                        leftColor: getOperationColor(child.operation),
-                        rightColor: getOperationColor(currentOp.operation),
+                        leftColor: getColorFromString(child.operation.tableName),
+                        rightColor: getColorFromString(currentOp.operation.tableName),
+                        init: prevOp === null
                     })
                 })
             }
-            migrationsToDraw.push({op: currentOp, nextMig, renderGradient})
+            migrationsToDraw.push({op: currentOp, prevMig: prevOp, nextMig: nextOp, renderGradient})
         }
     }
 
     // Ribbons first, migrations on top, so boxes are never overlapped by ribbons.
     transitionRibbons.forEach(r => drawTransitionRibbon(ctx, r))
-    migrationsToDraw.forEach(m => drawMigration(ctx, m.op, m.nextMig, m.renderGradient))
+    migrationsToDraw.forEach(m => drawOperation(ctx, m.op, m.prevMig, m.nextMig, m.renderGradient))
 }
