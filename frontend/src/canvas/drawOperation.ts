@@ -1,79 +1,24 @@
 import {OperationLayoutInfo, TRANSITION_TAG_SHIFT} from './layoutInfo.ts'
 import {getOperationTitle} from "./getOperationTitle.ts";
-import {getOperationColor} from "./getOperationColor.ts";
-import {getStringWidth} from "./getStringWidth.ts";
-import {getStringHeight} from "./getStringHeight.ts";
 import {debugRect} from "./debugRect.ts";
 import {getTableColor} from "./getTableColor.ts";
+import {drawFlag} from "./drawFlag.ts";
 
 export const debugRender = false
 
 export function drawOperation(
     ctx: CanvasRenderingContext2D,
-    operation: OperationLayoutInfo,
-    prevOperation: OperationLayoutInfo | null,
-    nextOperation: OperationLayoutInfo | null,
+    op: OperationLayoutInfo,
+    prevOp: OperationLayoutInfo | null,
+    nextOp: OperationLayoutInfo | null,
     drawGradient: boolean
 ): void {
     if (debugRender) {
-        debugRect(ctx, operation)
+        debugRect(ctx, op)
     } else {
-        if (drawGradient) drawBackground(prevOperation, nextOperation, operation, ctx);
+        if (drawGradient) drawBackground(prevOp, nextOp, op, ctx);
     }
-
-    drawTitle(ctx, operation);
-}
-
-const TITLE_CORNER_RADIUS = 4
-const TITLE_FLAG_NOTCH = 4
-
-function drawTitle(ctx: CanvasRenderingContext2D, op: OperationLayoutInfo) {
-
-    let title = getOperationTitle(op.operation)
-    let titleWidth = getStringWidth(title, ctx) + 15
-    let titleHeight = getStringHeight('A', ctx) + 6
-
-    const x = op.x
-    const y = op.y
-    const w = titleWidth
-    const h = titleHeight
-    const r = TITLE_CORNER_RADIUS
-    const notch = TITLE_FLAG_NOTCH
-
-    const gradient = ctx.createLinearGradient(x, y, x + w, y)
-    gradient.addColorStop(0, getTableColor(op.operation))
-    gradient.addColorStop(1, getOperationColor(op.operation))
-    ctx.fillStyle = gradient
-
-    ctx.beginPath()
-    ctx.moveTo(x + r, y)
-    ctx.lineTo(x + w, y)
-    ctx.lineTo(x + w - notch, y + h / 2)
-    ctx.lineTo(x + w, y + h)
-    ctx.lineTo(x + r, y + h)
-    ctx.arcTo(x, y + h, x, y + h - r, r)
-    ctx.lineTo(x, y + r)
-    ctx.arcTo(x, y, x + r, y, r)
-    ctx.closePath()
-    ctx.fill()
-
-    ctx.beginPath()
-    ctx.moveTo(x + 1, y + 5)
-    ctx.lineTo(x + 1, y + 30)
-    ctx.strokeStyle = getTableColor(op.operation)
-    ctx.lineWidth = 2
-    ctx.stroke()
-
-    ctx.fillStyle = '#ffffff'
-    ctx.font = '13px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-
-    ctx.fillText(
-        title,
-        op.x + titleWidth / 2,
-        op.y + titleHeight / 2
-    )
+    drawFlag(getOperationTitle(op.operation), true, op, ctx);
 }
 
 const BACKGROUND_CORNER_RADIUS = 4
