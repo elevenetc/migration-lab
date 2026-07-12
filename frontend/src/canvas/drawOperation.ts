@@ -13,16 +13,19 @@ export function drawOperation(
     op: OperationLayoutInfo,
     prevOp: OperationLayoutInfo | null,
     nextOp: OperationLayoutInfo | null,
-    drawGradient: boolean
+    drawGradient: boolean,
+    showFlags: boolean,
+    showText: boolean
 ): void {
     if (debugRender) {
         debugRect(ctx, op)
     } else {
         if (drawGradient) drawBackground(prevOp, nextOp, op, ctx);
     }
-    let x = drawFlag(getOperationTitle(op.operation), true, op.x, op.y, operationFlagColor(op.operation), ctx)
+    if (!showFlags) return
+    let x = drawFlag(getOperationTitle(op.operation), true, op.x, op.y, operationFlagColor(op.operation), showText, ctx)
     op.warnings.forEach(w => {
-        x = drawFlag(getWarningTitle(w), false, x, op.y, warningFlagColor, ctx)
+        x = drawFlag(getWarningTitle(w), false, x, op.y, warningFlagColor, showText, ctx)
     })
 }
 

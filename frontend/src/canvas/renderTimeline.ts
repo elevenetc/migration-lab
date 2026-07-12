@@ -1,24 +1,31 @@
 import {RenameTable} from '../api/migrationApi'
-import {LayoutInfo, OperationLayoutInfo, TABLE_ROW_HEIGHT, TRANSITION_TAG_SHIFT} from './layoutInfo.ts'
+import {LayoutInfo, OperationLayoutInfo, TRANSITION_TAG_SHIFT} from './layoutInfo.ts'
 import {drawOperation} from './drawOperation.ts'
 import {drawTransitionRibbon, RibbonInfo} from "./drawTransitionRibbon.ts";
 import {getColorFromString} from "./getColorFromString.ts";
 
-// Paints the precomputed layout onto a viewport-sized canvas, translating the
-// world by the scroll offset so scrolling is owned here rather than by the
-// browser. Accounts for device pixel ratio.
+// On-screen pixel thresholds below which texts and flags are hidden.
+const FONT_SIZE = 13
+const MIN_TEXT_PX = 7
+const FLAG_HEIGHT = FONT_SIZE + 6 // world height of a flag, see drawFlag
+const MIN_FLAG_PX = 5
+
+// Paints the precomputed layout onto a viewport-sized canvas, uniformly scaled
+// so the whole timeline fits the viewport and centered in the leftover space.
+// Texts and flags are hidden once the scale makes them unreadable.
+// Accounts for device pixel ratio.
 export function renderTimeline(
     canvas: HTMLCanvasElement,
     layout: LayoutInfo,
     viewport: { width: number; height: number },
-    scroll: { x: number; y: number },
+    scale: number,
 ): void {
     const dpr = window.devicePixelRatio || 1
     const backingWidth = Math.round(viewport.width * dpr)
     const backingHeight = Math.round(viewport.height * dpr)
 
     // Only resize when needed; reassigning canvas.width/height clears and
-    // reallocates the backing store, which we want to avoid on every scroll.
+    // reallocates the backing store.
     if (canvas.width !== backingWidth || canvas.height !== backingHeight) {
         canvas.width = backingWidth
         canvas.height = backingHeight
@@ -31,7 +38,11 @@ export function renderTimeline(
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, viewport.width, viewport.height)
-    ctx.translate(-scroll.x, -scroll.y)
+    ctx.translate((viewport.width - layout.width * scale) / 2, (viewport.height - layout.height * scale) / 2)
+    ctx.scale(scale, scale)
+
+    const showText = FONT_SIZE * scale >= MIN_TEXT_PX
+    const showFlags = FLAG_HEIGHT * scale >= MIN_FLAG_PX
 
     let renamedTables = new Map<string, OperationLayoutInfo>()
     let partitionedTables = new Map<string, OperationLayoutInfo[]>()
@@ -50,11 +61,13 @@ export function renderTimeline(
         const [table, tableOperations] = entries[t]
 
         // Row label (table name) in the left gutter
-        ctx.fillStyle = getColorFromString(table.tableName)
-        ctx.font = '13px sans-serif'
-        ctx.textAlign = 'left'
-        ctx.textBaseline = 'middle'
-        ctx.fillText(table.tableName, 8, table.y + table.h / 2)
+        if (showText) {
+            ctx.fillStyle = getColorFromString(table.tableName)
+            ctx.font = '13px sans-serif'
+            ctx.textAlign = 'left'
+            ctx.textBaseline = 'middle'
+            ctx.fillText(table.tableName, 8, table.y + table.h / 2)
+        }
 
         for (let m = tableOperations.length - 1; m >= 0; m--) {
             const nextOp = tableOperations[m + 1] ?? null
@@ -79,7 +92,7 @@ export function renderTimeline(
                         leftY: renamedOpLayoutInfo.y + TRANSITION_TAG_SHIFT,
                         rightX: currentOp.x,
                         rightY: currentOp.y + TRANSITION_TAG_SHIFT,
-                        height: TABLE_ROW_HEIGHT - TRANSITION_TAG_SHIFT,
+                        height: currentOp.h - TRANSITION_TAG_SHIFT,
                         leftColor: getColorFromString((renamedOpLayoutInfo.operation as RenameTable).newTableName),
                         rightColor: getColorFromString(currentOp.operation.tableName),
                         init: prevOp === null
@@ -100,7 +113,7 @@ export function renderTimeline(
                         leftY: child.y + TRANSITION_TAG_SHIFT,
                         rightX: currentOp.x,
                         rightY: currentOp.y + TRANSITION_TAG_SHIFT,
-                        height: TABLE_ROW_HEIGHT - TRANSITION_TAG_SHIFT,
+                        height: currentOp.h - TRANSITION_TAG_SHIFT,
                         leftColor: getColorFromString(child.operation.tableName),
                         rightColor: getColorFromString(currentOp.operation.tableName),
                         init: prevOp === null
@@ -113,5 +126,5 @@ export function renderTimeline(
 
     // Ribbons first, migrations on top, so boxes are never overlapped by ribbons.
     transitionRibbons.forEach(r => drawTransitionRibbon(ctx, r))
-    migrationsToDraw.forEach(m => drawOperation(ctx, m.op, m.prevMig, m.nextMig, m.renderGradient))
+    migrationsToDraw.forEach(m => drawOperation(ctx, m.op, m.prevMig, m.nextMig, m.renderGradient, showFlags, showText))
 }

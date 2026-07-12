@@ -62,7 +62,22 @@ datasets and CLI assign timestamps. `timestamp` is therefore an ordinal rank, no
 - Tables as rows, operations as nodes positioned by timestamp (ordinal rank; see Ordering)
 - X-axis: migrations with same timestamp align vertically in same column
 - Ribbons connect operations on same table chronologically
-- CREATE_TABLE (blue) vs ALTER_TABLE (darker blue)
+- Colors: each table row gets a stable hash-derived hue (`getColorFromString`); operation flags are
+  colored by category — add (green), remove (orange), change (blue) — via `getOperationColor`
+
+#### Rendering
+
+- `computeLayout` produces world-space coordinates (fixed 45px row height, content-derived column
+  widths) — it knows nothing about the viewport
+- `renderTimeline` fits the whole timeline into the window: uniform scale
+  `min(1, viewportW/layoutW, viewportH/layoutH)` (never upscaled), then centers it in the leftover
+  space on both axes
+- Texts and flags hide when too small on screen: table names/flag text below ~7px effective font
+  size, flags entirely below ~5px effective height (thresholds in `renderTimeline.ts`)
+- Canvas backing store = viewport × `devicePixelRatio`; the dpr transform composes with the fit scale
+- No scrolling and no zoom yet — the full timeline is always visible; zoom levels are planned and
+  scrolling returns with them
+- A `ResizeObserver` in `Timeline.tsx` repaints on container resize, recomputing the scale
 
 ## CLI
 

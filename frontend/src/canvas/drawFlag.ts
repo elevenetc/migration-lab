@@ -13,6 +13,7 @@ export function drawFlag(
     x: number,
     y: number,
     color: FlagColor,
+    showText: boolean,
     ctx: CanvasRenderingContext2D
 ): number {
     const w = getStringWidth(title, ctx) + 15
@@ -43,11 +44,13 @@ export function drawFlag(
     ctx.closePath()
     ctx.fill()
 
-    ctx.fillStyle = color.text
-    ctx.font = '13px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(title, x + w / 2, y + h / 2)
+    if (showText) {
+        ctx.fillStyle = color.text
+        ctx.font = '13px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(title, x + w / 2, y + h / 2)
+    }
 
     return x + w
 }
