@@ -37,11 +37,17 @@ Two-module monorepo:
 - `src/canvas/` - Canvas rendering helpers (layout, drawing, colors)
 - `src/contracts/` - API contract validation
 
+#### Data Model
+
+`migration > statement > operation`: a migration holds SQL statements (`Statement`: index, kind,
+sql), and each statement yields one or more operations (e.g. `ALTER TABLE t ADD a, DROP b` is one
+statement with two operations; `DROP TABLE a, b` is one statement with an operation per table).
+
 #### Data Flow
 
 1. App mounts -> calls `loadMigrations()`
 2. Store fetches `/api/migrations`
-3. Timeline reads store, groups by table, renders to canvas
+3. Timeline reads store, groups statements' operations by table, renders to canvas
 
 #### Visualization
 
@@ -153,7 +159,7 @@ When adding new Operation types:
 ## Static analysis implementation process
 
 1. Create detection function in `internal/analysis/` (e.g., `detect_something.go`)
-2. Add to `analyzeOperation()` in `analyse.go`
+2. Add to `analyzeStatement()` in `analyse.go` (statement-scoped warnings use `OpIndex = -1`)
 3. Add warning type to `internal/models/analysis.go`
 4. Add test in `internal/analysis/analysis_test.go`
 5. Update [docs/supported-static-analysis.md](docs/supported-static-analysis.md)

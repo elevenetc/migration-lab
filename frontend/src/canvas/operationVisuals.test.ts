@@ -21,41 +21,41 @@ describe('getColorFromString', () => {
 
 describe('getOperationColor', () => {
   it('colors additive operations green', () => {
-    const create: Operation = { type: 'CREATE_TABLE', migrationId: 'm', tableName: 't', columns: [], isPartitioned: false, partitionOf: null }
+    const create: Operation = { type: 'CREATE_TABLE', tableName: 't', columns: [], isPartitioned: false, partitionOf: null }
     expect(getOperationColor(create)).toBe('#28b828')
   })
 
   it('colors destructive operations orange', () => {
-    const drop: Operation = { type: 'DROP_TABLE', migrationId: 'm', tableName: 't' }
+    const drop: Operation = { type: 'DROP_TABLE', tableName: 't' }
     expect(getOperationColor(drop)).toBe('#ff5900')
   })
 
   it('colors mutating operations blue', () => {
-    const rename: Operation = { type: 'RENAME_TABLE', migrationId: 'm', tableName: 't', newTableName: 't2' }
+    const rename: Operation = { type: 'RENAME_TABLE', tableName: 't', newTableName: 't2' }
     expect(getOperationColor(rename)).toBe('#2682cd')
   })
 })
 
 describe('getOperationTitle', () => {
   it('labels a plain create table', () => {
-    const create: Operation = { type: 'CREATE_TABLE', migrationId: 'm', tableName: 't', columns: [], isPartitioned: false, partitionOf: null }
+    const create: Operation = { type: 'CREATE_TABLE', tableName: 't', columns: [], isPartitioned: false, partitionOf: null }
     expect(getOperationTitle(create)).toBe('create table')
   })
 
   it('labels a partition create table as add partition', () => {
-    const partition: Operation = { type: 'CREATE_TABLE', migrationId: 'm', tableName: 't', columns: [], isPartitioned: false, partitionOf: 'parent' }
+    const partition: Operation = { type: 'CREATE_TABLE', tableName: 't', columns: [], isPartitioned: false, partitionOf: 'parent' }
     expect(getOperationTitle(partition)).toBe('add partition')
   })
 
   it('labels an add column', () => {
-    const add: Operation = { type: 'ADD_COLUMN', migrationId: 'm', tableName: 't', column: { name: 'c', type: 'int', constraints: [] } }
+    const add: Operation = { type: 'ADD_COLUMN', tableName: 't', column: { name: 'c', type: 'int', constraints: [] } }
     expect(getOperationTitle(add)).toBe('add column')
   })
 })
 
 describe('getTableColor', () => {
   it('keys a renamed table by its new name', () => {
-    const rename: Operation = { type: 'RENAME_TABLE', migrationId: 'm', tableName: 'old', newTableName: 'new' }
+    const rename: Operation = { type: 'RENAME_TABLE', tableName: 'old', newTableName: 'new' }
     expect(getTableColor(rename)).toBe(getColorFromString('new'))
   })
 })

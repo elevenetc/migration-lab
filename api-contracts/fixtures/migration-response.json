@@ -4,36 +4,42 @@
             "id": "migration-1",
             "version": "V1__create_users",
             "timestamp": 1000,
-            "operations": [
+            "statements": [
                 {
-                    "columns": [
+                    "index": 0,
+                    "kind": "CREATE_TABLE",
+                    "sql": "CREATE TABLE users (id SERIAL PRIMARY KEY, email VARCHAR(255) NOT NULL UNIQUE, created_at TIMESTAMP DEFAULT NOW())",
+                    "operations": [
                         {
-                            "constraints": [
-                                "PRIMARY KEY"
+                            "columns": [
+                                {
+                                    "constraints": [
+                                        "PRIMARY KEY"
+                                    ],
+                                    "name": "id",
+                                    "type": "SERIAL"
+                                },
+                                {
+                                    "constraints": [
+                                        "NOT NULL",
+                                        "UNIQUE"
+                                    ],
+                                    "name": "email",
+                                    "type": "VARCHAR(255)"
+                                },
+                                {
+                                    "constraints": [
+                                        "DEFAULT NOW()"
+                                    ],
+                                    "name": "created_at",
+                                    "type": "TIMESTAMP"
+                                }
                             ],
-                            "name": "id",
-                            "type": "SERIAL"
-                        },
-                        {
-                            "constraints": [
-                                "NOT NULL",
-                                "UNIQUE"
-                            ],
-                            "name": "email",
-                            "type": "VARCHAR(255)"
-                        },
-                        {
-                            "constraints": [
-                                "DEFAULT NOW()"
-                            ],
-                            "name": "created_at",
-                            "type": "TIMESTAMP"
+                            "isPartitioned": false,
+                            "tableName": "users",
+                            "type": "CREATE_TABLE"
                         }
-                    ],
-                    "isPartitioned": false,
-                    "migrationId": "migration-1",
-                    "tableName": "users",
-                    "type": "CREATE_TABLE"
+                    ]
                 }
             ]
         },
@@ -41,18 +47,24 @@
             "id": "migration-2",
             "version": "V2__add_user_status",
             "timestamp": 2000,
-            "operations": [
+            "statements": [
                 {
-                    "column": {
-                        "constraints": [
-                            "DEFAULT 'active'"
-                        ],
-                        "name": "status",
-                        "type": "VARCHAR(50)"
-                    },
-                    "migrationId": "migration-2",
-                    "tableName": "users",
-                    "type": "ADD_COLUMN"
+                    "index": 0,
+                    "kind": "ALTER_TABLE",
+                    "sql": "ALTER TABLE users ADD COLUMN status VARCHAR(50) DEFAULT 'active'",
+                    "operations": [
+                        {
+                            "column": {
+                                "constraints": [
+                                    "DEFAULT 'active'"
+                                ],
+                                "name": "status",
+                                "type": "VARCHAR(50)"
+                            },
+                            "tableName": "users",
+                            "type": "ADD_COLUMN"
+                        }
+                    ]
                 }
             ]
         },
@@ -60,13 +72,19 @@
             "id": "migration-3",
             "version": "V3__change_email_type",
             "timestamp": 3000,
-            "operations": [
+            "statements": [
                 {
-                    "columnName": "email",
-                    "migrationId": "migration-3",
-                    "newType": "TEXT",
-                    "tableName": "users",
-                    "type": "ALTER_COLUMN_TYPE"
+                    "index": 0,
+                    "kind": "ALTER_TABLE",
+                    "sql": "ALTER TABLE users ALTER COLUMN email TYPE TEXT",
+                    "operations": [
+                        {
+                            "columnName": "email",
+                            "newType": "TEXT",
+                            "tableName": "users",
+                            "type": "ALTER_COLUMN_TYPE"
+                        }
+                    ]
                 }
             ]
         },
@@ -74,12 +92,18 @@
             "id": "migration-4",
             "version": "V4__set_email_not_null",
             "timestamp": 4000,
-            "operations": [
+            "statements": [
                 {
-                    "columnName": "email",
-                    "migrationId": "migration-4",
-                    "tableName": "users",
-                    "type": "SET_NOT_NULL"
+                    "index": 0,
+                    "kind": "ALTER_TABLE",
+                    "sql": "ALTER TABLE users ALTER COLUMN email SET NOT NULL",
+                    "operations": [
+                        {
+                            "columnName": "email",
+                            "tableName": "users",
+                            "type": "SET_NOT_NULL"
+                        }
+                    ]
                 }
             ]
         },
@@ -87,12 +111,18 @@
             "id": "migration-5",
             "version": "V5__drop_status_not_null",
             "timestamp": 5000,
-            "operations": [
+            "statements": [
                 {
-                    "columnName": "status",
-                    "migrationId": "migration-5",
-                    "tableName": "users",
-                    "type": "DROP_NOT_NULL"
+                    "index": 0,
+                    "kind": "ALTER_TABLE",
+                    "sql": "ALTER TABLE users ALTER COLUMN status DROP NOT NULL",
+                    "operations": [
+                        {
+                            "columnName": "status",
+                            "tableName": "users",
+                            "type": "DROP_NOT_NULL"
+                        }
+                    ]
                 }
             ]
         },
@@ -100,13 +130,19 @@
             "id": "migration-6",
             "version": "V6__set_status_default",
             "timestamp": 6000,
-            "operations": [
+            "statements": [
                 {
-                    "columnName": "status",
-                    "defaultValue": "'active'",
-                    "migrationId": "migration-6",
-                    "tableName": "users",
-                    "type": "SET_DEFAULT"
+                    "index": 0,
+                    "kind": "ALTER_TABLE",
+                    "sql": "ALTER TABLE users ALTER COLUMN status SET DEFAULT 'active'",
+                    "operations": [
+                        {
+                            "columnName": "status",
+                            "defaultValue": "'active'",
+                            "tableName": "users",
+                            "type": "SET_DEFAULT"
+                        }
+                    ]
                 }
             ]
         },
@@ -114,12 +150,18 @@
             "id": "migration-7",
             "version": "V7__drop_status_default",
             "timestamp": 7000,
-            "operations": [
+            "statements": [
                 {
-                    "columnName": "status",
-                    "migrationId": "migration-7",
-                    "tableName": "users",
-                    "type": "DROP_DEFAULT"
+                    "index": 0,
+                    "kind": "ALTER_TABLE",
+                    "sql": "ALTER TABLE users ALTER COLUMN status DROP DEFAULT",
+                    "operations": [
+                        {
+                            "columnName": "status",
+                            "tableName": "users",
+                            "type": "DROP_DEFAULT"
+                        }
+                    ]
                 }
             ]
         },
@@ -127,12 +169,18 @@
             "id": "migration-8",
             "version": "V8__rename_users_to_accounts",
             "timestamp": 8000,
-            "operations": [
+            "statements": [
                 {
-                    "migrationId": "migration-8",
-                    "newTableName": "accounts",
-                    "tableName": "users",
-                    "type": "RENAME_TABLE"
+                    "index": 0,
+                    "kind": "RENAME",
+                    "sql": "ALTER TABLE users RENAME TO accounts",
+                    "operations": [
+                        {
+                            "newTableName": "accounts",
+                            "tableName": "users",
+                            "type": "RENAME_TABLE"
+                        }
+                    ]
                 }
             ]
         },
@@ -140,13 +188,19 @@
             "id": "migration-9",
             "version": "V9__rename_email_to_email_address",
             "timestamp": 9000,
-            "operations": [
+            "statements": [
                 {
-                    "columnName": "email",
-                    "migrationId": "migration-9",
-                    "newColumnName": "email_address",
-                    "tableName": "accounts",
-                    "type": "RENAME_COLUMN"
+                    "index": 0,
+                    "kind": "RENAME",
+                    "sql": "ALTER TABLE accounts RENAME COLUMN email TO email_address",
+                    "operations": [
+                        {
+                            "columnName": "email",
+                            "newColumnName": "email_address",
+                            "tableName": "accounts",
+                            "type": "RENAME_COLUMN"
+                        }
+                    ]
                 }
             ]
         },
@@ -154,13 +208,19 @@
             "id": "migration-10",
             "version": "V10__add_unique_constraint",
             "timestamp": 10000,
-            "operations": [
+            "statements": [
                 {
-                    "constraintName": "uk_accounts_email",
-                    "constraintType": "UNIQUE",
-                    "migrationId": "migration-10",
-                    "tableName": "accounts",
-                    "type": "ADD_CONSTRAINT"
+                    "index": 0,
+                    "kind": "ALTER_TABLE",
+                    "sql": "ALTER TABLE accounts ADD CONSTRAINT uk_accounts_email UNIQUE (email_address)",
+                    "operations": [
+                        {
+                            "constraintName": "uk_accounts_email",
+                            "constraintType": "UNIQUE",
+                            "tableName": "accounts",
+                            "type": "ADD_CONSTRAINT"
+                        }
+                    ]
                 }
             ]
         },
@@ -168,12 +228,18 @@
             "id": "migration-11",
             "version": "V11__drop_unique_constraint",
             "timestamp": 11000,
-            "operations": [
+            "statements": [
                 {
-                    "constraintName": "uk_accounts_email",
-                    "migrationId": "migration-11",
-                    "tableName": "accounts",
-                    "type": "DROP_CONSTRAINT"
+                    "index": 0,
+                    "kind": "ALTER_TABLE",
+                    "sql": "ALTER TABLE accounts DROP CONSTRAINT uk_accounts_email",
+                    "operations": [
+                        {
+                            "constraintName": "uk_accounts_email",
+                            "tableName": "accounts",
+                            "type": "DROP_CONSTRAINT"
+                        }
+                    ]
                 }
             ]
         },
@@ -181,11 +247,17 @@
             "id": "migration-12",
             "version": "V12__drop_accounts",
             "timestamp": 12000,
-            "operations": [
+            "statements": [
                 {
-                    "migrationId": "migration-12",
-                    "tableName": "accounts",
-                    "type": "DROP_TABLE"
+                    "index": 0,
+                    "kind": "DROP_TABLE",
+                    "sql": "DROP TABLE accounts",
+                    "operations": [
+                        {
+                            "tableName": "accounts",
+                            "type": "DROP_TABLE"
+                        }
+                    ]
                 }
             ]
         },
@@ -193,12 +265,18 @@
             "id": "migration-13",
             "version": "V13__drop_legacy_column",
             "timestamp": 13000,
-            "operations": [
+            "statements": [
                 {
-                    "columnName": "legacy_field",
-                    "migrationId": "migration-13",
-                    "tableName": "users",
-                    "type": "DROP_COLUMN"
+                    "index": 0,
+                    "kind": "ALTER_TABLE",
+                    "sql": "ALTER TABLE users DROP COLUMN legacy_field",
+                    "operations": [
+                        {
+                            "columnName": "legacy_field",
+                            "tableName": "users",
+                            "type": "DROP_COLUMN"
+                        }
+                    ]
                 }
             ]
         },
@@ -206,31 +284,37 @@
             "id": "migration-14",
             "version": "V14__create_partitioned_table",
             "timestamp": 14000,
-            "operations": [
+            "statements": [
                 {
-                    "columns": [
+                    "index": 0,
+                    "kind": "CREATE_TABLE",
+                    "sql": "CREATE TABLE measurements (id SERIAL, created_at TIMESTAMP NOT NULL, value NUMERIC) PARTITION BY RANGE (created_at)",
+                    "operations": [
                         {
-                            "constraints": [],
-                            "name": "id",
-                            "type": "SERIAL"
-                        },
-                        {
-                            "constraints": [
-                                "NOT NULL"
+                            "columns": [
+                                {
+                                    "constraints": [],
+                                    "name": "id",
+                                    "type": "SERIAL"
+                                },
+                                {
+                                    "constraints": [
+                                        "NOT NULL"
+                                    ],
+                                    "name": "created_at",
+                                    "type": "TIMESTAMP"
+                                },
+                                {
+                                    "constraints": [],
+                                    "name": "value",
+                                    "type": "NUMERIC"
+                                }
                             ],
-                            "name": "created_at",
-                            "type": "TIMESTAMP"
-                        },
-                        {
-                            "constraints": [],
-                            "name": "value",
-                            "type": "NUMERIC"
+                            "isPartitioned": true,
+                            "tableName": "measurements",
+                            "type": "CREATE_TABLE"
                         }
-                    ],
-                    "isPartitioned": true,
-                    "migrationId": "migration-14",
-                    "tableName": "measurements",
-                    "type": "CREATE_TABLE"
+                    ]
                 }
             ]
         },
@@ -238,14 +322,20 @@
             "id": "migration-15",
             "version": "V15__create_partition",
             "timestamp": 15000,
-            "operations": [
+            "statements": [
                 {
-                    "columns": [],
-                    "isPartitioned": false,
-                    "migrationId": "migration-15",
-                    "partitionOf": "measurements",
-                    "tableName": "measurements_2024",
-                    "type": "CREATE_TABLE"
+                    "index": 0,
+                    "kind": "CREATE_TABLE",
+                    "sql": "CREATE TABLE measurements_2024 PARTITION OF measurements FOR VALUES FROM ('2024-01-01') TO ('2025-01-01')",
+                    "operations": [
+                        {
+                            "columns": [],
+                            "isPartitioned": false,
+                            "partitionOf": "measurements",
+                            "tableName": "measurements_2024",
+                            "type": "CREATE_TABLE"
+                        }
+                    ]
                 }
             ]
         },
@@ -253,16 +343,22 @@
             "id": "migration-16",
             "version": "V16__alter_partitioned",
             "timestamp": 16000,
-            "operations": [
+            "statements": [
                 {
-                    "column": {
-                        "constraints": [],
-                        "name": "description",
-                        "type": "TEXT"
-                    },
-                    "migrationId": "migration-16",
-                    "tableName": "measurements",
-                    "type": "ADD_COLUMN"
+                    "index": 0,
+                    "kind": "ALTER_TABLE",
+                    "sql": "ALTER TABLE measurements ADD COLUMN description TEXT",
+                    "operations": [
+                        {
+                            "column": {
+                                "constraints": [],
+                                "name": "description",
+                                "type": "TEXT"
+                            },
+                            "tableName": "measurements",
+                            "type": "ADD_COLUMN"
+                        }
+                    ]
                 }
             ]
         }
@@ -272,36 +368,42 @@
             "id": "migration-1",
             "version": "V1__create_users",
             "timestamp": 1000,
-            "operations": [
+            "statements": [
                 {
-                    "columns": [
+                    "index": 0,
+                    "kind": "CREATE_TABLE",
+                    "sql": "CREATE TABLE users (id SERIAL PRIMARY KEY, email VARCHAR(255) NOT NULL UNIQUE, created_at TIMESTAMP DEFAULT NOW())",
+                    "operations": [
                         {
-                            "constraints": [
-                                "PRIMARY KEY"
+                            "columns": [
+                                {
+                                    "constraints": [
+                                        "PRIMARY KEY"
+                                    ],
+                                    "name": "id",
+                                    "type": "SERIAL"
+                                },
+                                {
+                                    "constraints": [
+                                        "NOT NULL",
+                                        "UNIQUE"
+                                    ],
+                                    "name": "email",
+                                    "type": "VARCHAR(255)"
+                                },
+                                {
+                                    "constraints": [
+                                        "DEFAULT NOW()"
+                                    ],
+                                    "name": "created_at",
+                                    "type": "TIMESTAMP"
+                                }
                             ],
-                            "name": "id",
-                            "type": "SERIAL"
-                        },
-                        {
-                            "constraints": [
-                                "NOT NULL",
-                                "UNIQUE"
-                            ],
-                            "name": "email",
-                            "type": "VARCHAR(255)"
-                        },
-                        {
-                            "constraints": [
-                                "DEFAULT NOW()"
-                            ],
-                            "name": "created_at",
-                            "type": "TIMESTAMP"
+                            "isPartitioned": false,
+                            "tableName": "users",
+                            "type": "CREATE_TABLE"
                         }
-                    ],
-                    "isPartitioned": false,
-                    "migrationId": "migration-1",
-                    "tableName": "users",
-                    "type": "CREATE_TABLE"
+                    ]
                 }
             ]
         },
@@ -309,13 +411,19 @@
             "id": "migration-10",
             "version": "V10__add_unique_constraint",
             "timestamp": 10000,
-            "operations": [
+            "statements": [
                 {
-                    "constraintName": "uk_accounts_email",
-                    "constraintType": "UNIQUE",
-                    "migrationId": "migration-10",
-                    "tableName": "accounts",
-                    "type": "ADD_CONSTRAINT"
+                    "index": 0,
+                    "kind": "ALTER_TABLE",
+                    "sql": "ALTER TABLE accounts ADD CONSTRAINT uk_accounts_email UNIQUE (email_address)",
+                    "operations": [
+                        {
+                            "constraintName": "uk_accounts_email",
+                            "constraintType": "UNIQUE",
+                            "tableName": "accounts",
+                            "type": "ADD_CONSTRAINT"
+                        }
+                    ]
                 }
             ]
         },
@@ -323,12 +431,18 @@
             "id": "migration-11",
             "version": "V11__drop_unique_constraint",
             "timestamp": 11000,
-            "operations": [
+            "statements": [
                 {
-                    "constraintName": "uk_accounts_email",
-                    "migrationId": "migration-11",
-                    "tableName": "accounts",
-                    "type": "DROP_CONSTRAINT"
+                    "index": 0,
+                    "kind": "ALTER_TABLE",
+                    "sql": "ALTER TABLE accounts DROP CONSTRAINT uk_accounts_email",
+                    "operations": [
+                        {
+                            "constraintName": "uk_accounts_email",
+                            "tableName": "accounts",
+                            "type": "DROP_CONSTRAINT"
+                        }
+                    ]
                 }
             ]
         },
@@ -336,11 +450,17 @@
             "id": "migration-12",
             "version": "V12__drop_accounts",
             "timestamp": 12000,
-            "operations": [
+            "statements": [
                 {
-                    "migrationId": "migration-12",
-                    "tableName": "accounts",
-                    "type": "DROP_TABLE"
+                    "index": 0,
+                    "kind": "DROP_TABLE",
+                    "sql": "DROP TABLE accounts",
+                    "operations": [
+                        {
+                            "tableName": "accounts",
+                            "type": "DROP_TABLE"
+                        }
+                    ]
                 }
             ]
         },
@@ -348,12 +468,18 @@
             "id": "migration-13",
             "version": "V13__drop_legacy_column",
             "timestamp": 13000,
-            "operations": [
+            "statements": [
                 {
-                    "columnName": "legacy_field",
-                    "migrationId": "migration-13",
-                    "tableName": "users",
-                    "type": "DROP_COLUMN"
+                    "index": 0,
+                    "kind": "ALTER_TABLE",
+                    "sql": "ALTER TABLE users DROP COLUMN legacy_field",
+                    "operations": [
+                        {
+                            "columnName": "legacy_field",
+                            "tableName": "users",
+                            "type": "DROP_COLUMN"
+                        }
+                    ]
                 }
             ]
         },
@@ -361,31 +487,37 @@
             "id": "migration-14",
             "version": "V14__create_partitioned_table",
             "timestamp": 14000,
-            "operations": [
+            "statements": [
                 {
-                    "columns": [
+                    "index": 0,
+                    "kind": "CREATE_TABLE",
+                    "sql": "CREATE TABLE measurements (id SERIAL, created_at TIMESTAMP NOT NULL, value NUMERIC) PARTITION BY RANGE (created_at)",
+                    "operations": [
                         {
-                            "constraints": [],
-                            "name": "id",
-                            "type": "SERIAL"
-                        },
-                        {
-                            "constraints": [
-                                "NOT NULL"
+                            "columns": [
+                                {
+                                    "constraints": [],
+                                    "name": "id",
+                                    "type": "SERIAL"
+                                },
+                                {
+                                    "constraints": [
+                                        "NOT NULL"
+                                    ],
+                                    "name": "created_at",
+                                    "type": "TIMESTAMP"
+                                },
+                                {
+                                    "constraints": [],
+                                    "name": "value",
+                                    "type": "NUMERIC"
+                                }
                             ],
-                            "name": "created_at",
-                            "type": "TIMESTAMP"
-                        },
-                        {
-                            "constraints": [],
-                            "name": "value",
-                            "type": "NUMERIC"
+                            "isPartitioned": true,
+                            "tableName": "measurements",
+                            "type": "CREATE_TABLE"
                         }
-                    ],
-                    "isPartitioned": true,
-                    "migrationId": "migration-14",
-                    "tableName": "measurements",
-                    "type": "CREATE_TABLE"
+                    ]
                 }
             ]
         },
@@ -393,14 +525,20 @@
             "id": "migration-15",
             "version": "V15__create_partition",
             "timestamp": 15000,
-            "operations": [
+            "statements": [
                 {
-                    "columns": [],
-                    "isPartitioned": false,
-                    "migrationId": "migration-15",
-                    "partitionOf": "measurements",
-                    "tableName": "measurements_2024",
-                    "type": "CREATE_TABLE"
+                    "index": 0,
+                    "kind": "CREATE_TABLE",
+                    "sql": "CREATE TABLE measurements_2024 PARTITION OF measurements FOR VALUES FROM ('2024-01-01') TO ('2025-01-01')",
+                    "operations": [
+                        {
+                            "columns": [],
+                            "isPartitioned": false,
+                            "partitionOf": "measurements",
+                            "tableName": "measurements_2024",
+                            "type": "CREATE_TABLE"
+                        }
+                    ]
                 }
             ]
         },
@@ -408,16 +546,22 @@
             "id": "migration-16",
             "version": "V16__alter_partitioned",
             "timestamp": 16000,
-            "operations": [
+            "statements": [
                 {
-                    "column": {
-                        "constraints": [],
-                        "name": "description",
-                        "type": "TEXT"
-                    },
-                    "migrationId": "migration-16",
-                    "tableName": "measurements",
-                    "type": "ADD_COLUMN"
+                    "index": 0,
+                    "kind": "ALTER_TABLE",
+                    "sql": "ALTER TABLE measurements ADD COLUMN description TEXT",
+                    "operations": [
+                        {
+                            "column": {
+                                "constraints": [],
+                                "name": "description",
+                                "type": "TEXT"
+                            },
+                            "tableName": "measurements",
+                            "type": "ADD_COLUMN"
+                        }
+                    ]
                 }
             ]
         },
@@ -425,18 +569,24 @@
             "id": "migration-2",
             "version": "V2__add_user_status",
             "timestamp": 2000,
-            "operations": [
+            "statements": [
                 {
-                    "column": {
-                        "constraints": [
-                            "DEFAULT 'active'"
-                        ],
-                        "name": "status",
-                        "type": "VARCHAR(50)"
-                    },
-                    "migrationId": "migration-2",
-                    "tableName": "users",
-                    "type": "ADD_COLUMN"
+                    "index": 0,
+                    "kind": "ALTER_TABLE",
+                    "sql": "ALTER TABLE users ADD COLUMN status VARCHAR(50) DEFAULT 'active'",
+                    "operations": [
+                        {
+                            "column": {
+                                "constraints": [
+                                    "DEFAULT 'active'"
+                                ],
+                                "name": "status",
+                                "type": "VARCHAR(50)"
+                            },
+                            "tableName": "users",
+                            "type": "ADD_COLUMN"
+                        }
+                    ]
                 }
             ]
         },
@@ -444,13 +594,19 @@
             "id": "migration-3",
             "version": "V3__change_email_type",
             "timestamp": 3000,
-            "operations": [
+            "statements": [
                 {
-                    "columnName": "email",
-                    "migrationId": "migration-3",
-                    "newType": "TEXT",
-                    "tableName": "users",
-                    "type": "ALTER_COLUMN_TYPE"
+                    "index": 0,
+                    "kind": "ALTER_TABLE",
+                    "sql": "ALTER TABLE users ALTER COLUMN email TYPE TEXT",
+                    "operations": [
+                        {
+                            "columnName": "email",
+                            "newType": "TEXT",
+                            "tableName": "users",
+                            "type": "ALTER_COLUMN_TYPE"
+                        }
+                    ]
                 }
             ]
         },
@@ -458,12 +614,18 @@
             "id": "migration-4",
             "version": "V4__set_email_not_null",
             "timestamp": 4000,
-            "operations": [
+            "statements": [
                 {
-                    "columnName": "email",
-                    "migrationId": "migration-4",
-                    "tableName": "users",
-                    "type": "SET_NOT_NULL"
+                    "index": 0,
+                    "kind": "ALTER_TABLE",
+                    "sql": "ALTER TABLE users ALTER COLUMN email SET NOT NULL",
+                    "operations": [
+                        {
+                            "columnName": "email",
+                            "tableName": "users",
+                            "type": "SET_NOT_NULL"
+                        }
+                    ]
                 }
             ]
         },
@@ -471,12 +633,18 @@
             "id": "migration-5",
             "version": "V5__drop_status_not_null",
             "timestamp": 5000,
-            "operations": [
+            "statements": [
                 {
-                    "columnName": "status",
-                    "migrationId": "migration-5",
-                    "tableName": "users",
-                    "type": "DROP_NOT_NULL"
+                    "index": 0,
+                    "kind": "ALTER_TABLE",
+                    "sql": "ALTER TABLE users ALTER COLUMN status DROP NOT NULL",
+                    "operations": [
+                        {
+                            "columnName": "status",
+                            "tableName": "users",
+                            "type": "DROP_NOT_NULL"
+                        }
+                    ]
                 }
             ]
         },
@@ -484,13 +652,19 @@
             "id": "migration-6",
             "version": "V6__set_status_default",
             "timestamp": 6000,
-            "operations": [
+            "statements": [
                 {
-                    "columnName": "status",
-                    "defaultValue": "'active'",
-                    "migrationId": "migration-6",
-                    "tableName": "users",
-                    "type": "SET_DEFAULT"
+                    "index": 0,
+                    "kind": "ALTER_TABLE",
+                    "sql": "ALTER TABLE users ALTER COLUMN status SET DEFAULT 'active'",
+                    "operations": [
+                        {
+                            "columnName": "status",
+                            "defaultValue": "'active'",
+                            "tableName": "users",
+                            "type": "SET_DEFAULT"
+                        }
+                    ]
                 }
             ]
         },
@@ -498,12 +672,18 @@
             "id": "migration-7",
             "version": "V7__drop_status_default",
             "timestamp": 7000,
-            "operations": [
+            "statements": [
                 {
-                    "columnName": "status",
-                    "migrationId": "migration-7",
-                    "tableName": "users",
-                    "type": "DROP_DEFAULT"
+                    "index": 0,
+                    "kind": "ALTER_TABLE",
+                    "sql": "ALTER TABLE users ALTER COLUMN status DROP DEFAULT",
+                    "operations": [
+                        {
+                            "columnName": "status",
+                            "tableName": "users",
+                            "type": "DROP_DEFAULT"
+                        }
+                    ]
                 }
             ]
         },
@@ -511,12 +691,18 @@
             "id": "migration-8",
             "version": "V8__rename_users_to_accounts",
             "timestamp": 8000,
-            "operations": [
+            "statements": [
                 {
-                    "migrationId": "migration-8",
-                    "newTableName": "accounts",
-                    "tableName": "users",
-                    "type": "RENAME_TABLE"
+                    "index": 0,
+                    "kind": "RENAME",
+                    "sql": "ALTER TABLE users RENAME TO accounts",
+                    "operations": [
+                        {
+                            "newTableName": "accounts",
+                            "tableName": "users",
+                            "type": "RENAME_TABLE"
+                        }
+                    ]
                 }
             ]
         },
@@ -524,20 +710,25 @@
             "id": "migration-9",
             "version": "V9__rename_email_to_email_address",
             "timestamp": 9000,
-            "operations": [
+            "statements": [
                 {
-                    "columnName": "email",
-                    "migrationId": "migration-9",
-                    "newColumnName": "email_address",
-                    "tableName": "accounts",
-                    "type": "RENAME_COLUMN"
+                    "index": 0,
+                    "kind": "RENAME",
+                    "sql": "ALTER TABLE accounts RENAME COLUMN email TO email_address",
+                    "operations": [
+                        {
+                            "columnName": "email",
+                            "newColumnName": "email_address",
+                            "tableName": "accounts",
+                            "type": "RENAME_COLUMN"
+                        }
+                    ]
                 }
             ]
         }
     },
     "createTableMap": {
         "measurements": {
-            "migrationId": "migration-14",
             "tableName": "measurements",
             "columns": [
                 {
@@ -561,14 +752,12 @@
             "isPartitioned": true
         },
         "measurements_2024": {
-            "migrationId": "migration-15",
             "tableName": "measurements_2024",
             "columns": [],
             "isPartitioned": false,
             "partitionOf": "measurements"
         },
         "users": {
-            "migrationId": "migration-1",
             "tableName": "users",
             "columns": [
                 {
@@ -603,36 +792,42 @@
                 "id": "migration-1",
                 "version": "V1__create_users",
                 "timestamp": 1000,
-                "operations": [
+                "statements": [
                     {
-                        "columns": [
+                        "index": 0,
+                        "kind": "CREATE_TABLE",
+                        "sql": "CREATE TABLE users (id SERIAL PRIMARY KEY, email VARCHAR(255) NOT NULL UNIQUE, created_at TIMESTAMP DEFAULT NOW())",
+                        "operations": [
                             {
-                                "constraints": [
-                                    "PRIMARY KEY"
+                                "columns": [
+                                    {
+                                        "constraints": [
+                                            "PRIMARY KEY"
+                                        ],
+                                        "name": "id",
+                                        "type": "SERIAL"
+                                    },
+                                    {
+                                        "constraints": [
+                                            "NOT NULL",
+                                            "UNIQUE"
+                                        ],
+                                        "name": "email",
+                                        "type": "VARCHAR(255)"
+                                    },
+                                    {
+                                        "constraints": [
+                                            "DEFAULT NOW()"
+                                        ],
+                                        "name": "created_at",
+                                        "type": "TIMESTAMP"
+                                    }
                                 ],
-                                "name": "id",
-                                "type": "SERIAL"
-                            },
-                            {
-                                "constraints": [
-                                    "NOT NULL",
-                                    "UNIQUE"
-                                ],
-                                "name": "email",
-                                "type": "VARCHAR(255)"
-                            },
-                            {
-                                "constraints": [
-                                    "DEFAULT NOW()"
-                                ],
-                                "name": "created_at",
-                                "type": "TIMESTAMP"
+                                "isPartitioned": false,
+                                "tableName": "users",
+                                "type": "CREATE_TABLE"
                             }
-                        ],
-                        "isPartitioned": false,
-                        "migrationId": "migration-1",
-                        "tableName": "users",
-                        "type": "CREATE_TABLE"
+                        ]
                     }
                 ]
             },
@@ -640,18 +835,24 @@
                 "id": "migration-2",
                 "version": "V2__add_user_status",
                 "timestamp": 2000,
-                "operations": [
+                "statements": [
                     {
-                        "column": {
-                            "constraints": [
-                                "DEFAULT 'active'"
-                            ],
-                            "name": "status",
-                            "type": "VARCHAR(50)"
-                        },
-                        "migrationId": "migration-2",
-                        "tableName": "users",
-                        "type": "ADD_COLUMN"
+                        "index": 0,
+                        "kind": "ALTER_TABLE",
+                        "sql": "ALTER TABLE users ADD COLUMN status VARCHAR(50) DEFAULT 'active'",
+                        "operations": [
+                            {
+                                "column": {
+                                    "constraints": [
+                                        "DEFAULT 'active'"
+                                    ],
+                                    "name": "status",
+                                    "type": "VARCHAR(50)"
+                                },
+                                "tableName": "users",
+                                "type": "ADD_COLUMN"
+                            }
+                        ]
                     }
                 ]
             },
@@ -659,13 +860,19 @@
                 "id": "migration-3",
                 "version": "V3__change_email_type",
                 "timestamp": 3000,
-                "operations": [
+                "statements": [
                     {
-                        "columnName": "email",
-                        "migrationId": "migration-3",
-                        "newType": "TEXT",
-                        "tableName": "users",
-                        "type": "ALTER_COLUMN_TYPE"
+                        "index": 0,
+                        "kind": "ALTER_TABLE",
+                        "sql": "ALTER TABLE users ALTER COLUMN email TYPE TEXT",
+                        "operations": [
+                            {
+                                "columnName": "email",
+                                "newType": "TEXT",
+                                "tableName": "users",
+                                "type": "ALTER_COLUMN_TYPE"
+                            }
+                        ]
                     }
                 ]
             },
@@ -673,12 +880,18 @@
                 "id": "migration-4",
                 "version": "V4__set_email_not_null",
                 "timestamp": 4000,
-                "operations": [
+                "statements": [
                     {
-                        "columnName": "email",
-                        "migrationId": "migration-4",
-                        "tableName": "users",
-                        "type": "SET_NOT_NULL"
+                        "index": 0,
+                        "kind": "ALTER_TABLE",
+                        "sql": "ALTER TABLE users ALTER COLUMN email SET NOT NULL",
+                        "operations": [
+                            {
+                                "columnName": "email",
+                                "tableName": "users",
+                                "type": "SET_NOT_NULL"
+                            }
+                        ]
                     }
                 ]
             },
@@ -686,12 +899,18 @@
                 "id": "migration-5",
                 "version": "V5__drop_status_not_null",
                 "timestamp": 5000,
-                "operations": [
+                "statements": [
                     {
-                        "columnName": "status",
-                        "migrationId": "migration-5",
-                        "tableName": "users",
-                        "type": "DROP_NOT_NULL"
+                        "index": 0,
+                        "kind": "ALTER_TABLE",
+                        "sql": "ALTER TABLE users ALTER COLUMN status DROP NOT NULL",
+                        "operations": [
+                            {
+                                "columnName": "status",
+                                "tableName": "users",
+                                "type": "DROP_NOT_NULL"
+                            }
+                        ]
                     }
                 ]
             },
@@ -699,13 +918,19 @@
                 "id": "migration-6",
                 "version": "V6__set_status_default",
                 "timestamp": 6000,
-                "operations": [
+                "statements": [
                     {
-                        "columnName": "status",
-                        "defaultValue": "'active'",
-                        "migrationId": "migration-6",
-                        "tableName": "users",
-                        "type": "SET_DEFAULT"
+                        "index": 0,
+                        "kind": "ALTER_TABLE",
+                        "sql": "ALTER TABLE users ALTER COLUMN status SET DEFAULT 'active'",
+                        "operations": [
+                            {
+                                "columnName": "status",
+                                "defaultValue": "'active'",
+                                "tableName": "users",
+                                "type": "SET_DEFAULT"
+                            }
+                        ]
                     }
                 ]
             },
@@ -713,12 +938,18 @@
                 "id": "migration-7",
                 "version": "V7__drop_status_default",
                 "timestamp": 7000,
-                "operations": [
+                "statements": [
                     {
-                        "columnName": "status",
-                        "migrationId": "migration-7",
-                        "tableName": "users",
-                        "type": "DROP_DEFAULT"
+                        "index": 0,
+                        "kind": "ALTER_TABLE",
+                        "sql": "ALTER TABLE users ALTER COLUMN status DROP DEFAULT",
+                        "operations": [
+                            {
+                                "columnName": "status",
+                                "tableName": "users",
+                                "type": "DROP_DEFAULT"
+                            }
+                        ]
                     }
                 ]
             },
@@ -726,12 +957,18 @@
                 "id": "migration-8",
                 "version": "V8__rename_users_to_accounts",
                 "timestamp": 8000,
-                "operations": [
+                "statements": [
                     {
-                        "migrationId": "migration-8",
-                        "newTableName": "accounts",
-                        "tableName": "users",
-                        "type": "RENAME_TABLE"
+                        "index": 0,
+                        "kind": "RENAME",
+                        "sql": "ALTER TABLE users RENAME TO accounts",
+                        "operations": [
+                            {
+                                "newTableName": "accounts",
+                                "tableName": "users",
+                                "type": "RENAME_TABLE"
+                            }
+                        ]
                     }
                 ]
             },
@@ -739,13 +976,19 @@
                 "id": "migration-9",
                 "version": "V9__rename_email_to_email_address",
                 "timestamp": 9000,
-                "operations": [
+                "statements": [
                     {
-                        "columnName": "email",
-                        "migrationId": "migration-9",
-                        "newColumnName": "email_address",
-                        "tableName": "accounts",
-                        "type": "RENAME_COLUMN"
+                        "index": 0,
+                        "kind": "RENAME",
+                        "sql": "ALTER TABLE accounts RENAME COLUMN email TO email_address",
+                        "operations": [
+                            {
+                                "columnName": "email",
+                                "newColumnName": "email_address",
+                                "tableName": "accounts",
+                                "type": "RENAME_COLUMN"
+                            }
+                        ]
                     }
                 ]
             },
@@ -753,13 +996,19 @@
                 "id": "migration-10",
                 "version": "V10__add_unique_constraint",
                 "timestamp": 10000,
-                "operations": [
+                "statements": [
                     {
-                        "constraintName": "uk_accounts_email",
-                        "constraintType": "UNIQUE",
-                        "migrationId": "migration-10",
-                        "tableName": "accounts",
-                        "type": "ADD_CONSTRAINT"
+                        "index": 0,
+                        "kind": "ALTER_TABLE",
+                        "sql": "ALTER TABLE accounts ADD CONSTRAINT uk_accounts_email UNIQUE (email_address)",
+                        "operations": [
+                            {
+                                "constraintName": "uk_accounts_email",
+                                "constraintType": "UNIQUE",
+                                "tableName": "accounts",
+                                "type": "ADD_CONSTRAINT"
+                            }
+                        ]
                     }
                 ]
             },
@@ -767,12 +1016,18 @@
                 "id": "migration-11",
                 "version": "V11__drop_unique_constraint",
                 "timestamp": 11000,
-                "operations": [
+                "statements": [
                     {
-                        "constraintName": "uk_accounts_email",
-                        "migrationId": "migration-11",
-                        "tableName": "accounts",
-                        "type": "DROP_CONSTRAINT"
+                        "index": 0,
+                        "kind": "ALTER_TABLE",
+                        "sql": "ALTER TABLE accounts DROP CONSTRAINT uk_accounts_email",
+                        "operations": [
+                            {
+                                "constraintName": "uk_accounts_email",
+                                "tableName": "accounts",
+                                "type": "DROP_CONSTRAINT"
+                            }
+                        ]
                     }
                 ]
             },
@@ -780,11 +1035,17 @@
                 "id": "migration-12",
                 "version": "V12__drop_accounts",
                 "timestamp": 12000,
-                "operations": [
+                "statements": [
                     {
-                        "migrationId": "migration-12",
-                        "tableName": "accounts",
-                        "type": "DROP_TABLE"
+                        "index": 0,
+                        "kind": "DROP_TABLE",
+                        "sql": "DROP TABLE accounts",
+                        "operations": [
+                            {
+                                "tableName": "accounts",
+                                "type": "DROP_TABLE"
+                            }
+                        ]
                     }
                 ]
             },
@@ -792,12 +1053,18 @@
                 "id": "migration-13",
                 "version": "V13__drop_legacy_column",
                 "timestamp": 13000,
-                "operations": [
+                "statements": [
                     {
-                        "columnName": "legacy_field",
-                        "migrationId": "migration-13",
-                        "tableName": "users",
-                        "type": "DROP_COLUMN"
+                        "index": 0,
+                        "kind": "ALTER_TABLE",
+                        "sql": "ALTER TABLE users DROP COLUMN legacy_field",
+                        "operations": [
+                            {
+                                "columnName": "legacy_field",
+                                "tableName": "users",
+                                "type": "DROP_COLUMN"
+                            }
+                        ]
                     }
                 ]
             },
@@ -805,31 +1072,37 @@
                 "id": "migration-14",
                 "version": "V14__create_partitioned_table",
                 "timestamp": 14000,
-                "operations": [
+                "statements": [
                     {
-                        "columns": [
+                        "index": 0,
+                        "kind": "CREATE_TABLE",
+                        "sql": "CREATE TABLE measurements (id SERIAL, created_at TIMESTAMP NOT NULL, value NUMERIC) PARTITION BY RANGE (created_at)",
+                        "operations": [
                             {
-                                "constraints": [],
-                                "name": "id",
-                                "type": "SERIAL"
-                            },
-                            {
-                                "constraints": [
-                                    "NOT NULL"
+                                "columns": [
+                                    {
+                                        "constraints": [],
+                                        "name": "id",
+                                        "type": "SERIAL"
+                                    },
+                                    {
+                                        "constraints": [
+                                            "NOT NULL"
+                                        ],
+                                        "name": "created_at",
+                                        "type": "TIMESTAMP"
+                                    },
+                                    {
+                                        "constraints": [],
+                                        "name": "value",
+                                        "type": "NUMERIC"
+                                    }
                                 ],
-                                "name": "created_at",
-                                "type": "TIMESTAMP"
-                            },
-                            {
-                                "constraints": [],
-                                "name": "value",
-                                "type": "NUMERIC"
+                                "isPartitioned": true,
+                                "tableName": "measurements",
+                                "type": "CREATE_TABLE"
                             }
-                        ],
-                        "isPartitioned": true,
-                        "migrationId": "migration-14",
-                        "tableName": "measurements",
-                        "type": "CREATE_TABLE"
+                        ]
                     }
                 ]
             },
@@ -837,14 +1110,20 @@
                 "id": "migration-15",
                 "version": "V15__create_partition",
                 "timestamp": 15000,
-                "operations": [
+                "statements": [
                     {
-                        "columns": [],
-                        "isPartitioned": false,
-                        "migrationId": "migration-15",
-                        "partitionOf": "measurements",
-                        "tableName": "measurements_2024",
-                        "type": "CREATE_TABLE"
+                        "index": 0,
+                        "kind": "CREATE_TABLE",
+                        "sql": "CREATE TABLE measurements_2024 PARTITION OF measurements FOR VALUES FROM ('2024-01-01') TO ('2025-01-01')",
+                        "operations": [
+                            {
+                                "columns": [],
+                                "isPartitioned": false,
+                                "partitionOf": "measurements",
+                                "tableName": "measurements_2024",
+                                "type": "CREATE_TABLE"
+                            }
+                        ]
                     }
                 ]
             },
@@ -852,16 +1131,22 @@
                 "id": "migration-16",
                 "version": "V16__alter_partitioned",
                 "timestamp": 16000,
-                "operations": [
+                "statements": [
                     {
-                        "column": {
-                            "constraints": [],
-                            "name": "description",
-                            "type": "TEXT"
-                        },
-                        "migrationId": "migration-16",
-                        "tableName": "measurements",
-                        "type": "ADD_COLUMN"
+                        "index": 0,
+                        "kind": "ALTER_TABLE",
+                        "sql": "ALTER TABLE measurements ADD COLUMN description TEXT",
+                        "operations": [
+                            {
+                                "column": {
+                                    "constraints": [],
+                                    "name": "description",
+                                    "type": "TEXT"
+                                },
+                                "tableName": "measurements",
+                                "type": "ADD_COLUMN"
+                            }
+                        ]
                     }
                 ]
             }
@@ -871,7 +1156,8 @@
                 "message": "ALTER on partitioned table 'measurements' acquires ACCESS EXCLUSIVE lock on parent and all partitions",
                 "operationId": {
                     "migrationId": "migration-16",
-                    "tableName": "measurements"
+                    "opIndex": -1,
+                    "statementIndex": 0
                 },
                 "tableName": "measurements",
                 "type": "ACCESS_EXCLUSIVE_LOCK"

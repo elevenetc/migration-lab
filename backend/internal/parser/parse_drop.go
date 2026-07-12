@@ -5,7 +5,7 @@ import (
 	"migration-timeline/backend/internal/models"
 )
 
-func parseDropStmt(migrationID string, dropStmt *pgquery.DropStmt) []models.Operation {
+func parseDropStmt(dropStmt *pgquery.DropStmt) []models.Operation {
 	var ops []models.Operation
 
 	if dropStmt.RemoveType != pgquery.ObjectType_OBJECT_TABLE {
@@ -21,8 +21,7 @@ func parseDropStmt(migrationID string, dropStmt *pgquery.DropStmt) []models.Oper
 		for _, item := range list.Items {
 			if s := item.GetString_(); s != nil {
 				ops = append(ops, models.DropTable{
-					MigrationID: migrationID,
-					TableName:   s.Sval,
+					TableName: s.Sval,
 				})
 			}
 		}

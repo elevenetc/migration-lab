@@ -10,222 +10,212 @@ import (
 	"migration-timeline/backend/internal/models"
 )
 
+func singleStatement(kind, sql string, ops ...models.Operation) []models.Statement {
+	return []models.Statement{{Index: 0, Kind: kind, SQL: sql, Operations: ops}}
+}
+
 func TestGenerateMigrationResponseFixture(t *testing.T) {
 	migrations := []*models.Migration{
 		{
 			ID:        "migration-1",
 			Version:   "V1__create_users",
 			Timestamp: 1000,
-			Operations: []models.Operation{
+			Statements: singleStatement("CREATE_TABLE",
+				"CREATE TABLE users (id SERIAL PRIMARY KEY, email VARCHAR(255) NOT NULL UNIQUE, created_at TIMESTAMP DEFAULT NOW())",
 				models.CreateTable{
-					MigrationID: "migration-1",
-					TableName:   "users",
+					TableName: "users",
 					Columns: []models.Column{
 						{Name: "id", Type: "SERIAL", Constraints: []string{"PRIMARY KEY"}},
 						{Name: "email", Type: "VARCHAR(255)", Constraints: []string{"NOT NULL", "UNIQUE"}},
 						{Name: "created_at", Type: "TIMESTAMP", Constraints: []string{"DEFAULT NOW()"}},
 					},
 					IsPartitioned: false,
-				},
-			},
+				}),
 		},
 		{
 			ID:        "migration-2",
 			Version:   "V2__add_user_status",
 			Timestamp: 2000,
-			Operations: []models.Operation{
+			Statements: singleStatement("ALTER_TABLE",
+				"ALTER TABLE users ADD COLUMN status VARCHAR(50) DEFAULT 'active'",
 				models.AddColumn{
-					MigrationID: "migration-2",
-					TableName:   "users",
-					Column:      models.Column{Name: "status", Type: "VARCHAR(50)", Constraints: []string{"DEFAULT 'active'"}},
-				},
-			},
+					TableName: "users",
+					Column:    models.Column{Name: "status", Type: "VARCHAR(50)", Constraints: []string{"DEFAULT 'active'"}},
+				}),
 		},
 		{
 			ID:        "migration-3",
 			Version:   "V3__change_email_type",
 			Timestamp: 3000,
-			Operations: []models.Operation{
+			Statements: singleStatement("ALTER_TABLE",
+				"ALTER TABLE users ALTER COLUMN email TYPE TEXT",
 				models.AlterColumnType{
-					MigrationID: "migration-3",
-					TableName:   "users",
-					ColumnName:  "email",
-					NewType:     "TEXT",
-				},
-			},
+					TableName:  "users",
+					ColumnName: "email",
+					NewType:    "TEXT",
+				}),
 		},
 		{
 			ID:        "migration-4",
 			Version:   "V4__set_email_not_null",
 			Timestamp: 4000,
-			Operations: []models.Operation{
+			Statements: singleStatement("ALTER_TABLE",
+				"ALTER TABLE users ALTER COLUMN email SET NOT NULL",
 				models.SetNotNull{
-					MigrationID: "migration-4",
-					TableName:   "users",
-					ColumnName:  "email",
-				},
-			},
+					TableName:  "users",
+					ColumnName: "email",
+				}),
 		},
 		{
 			ID:        "migration-5",
 			Version:   "V5__drop_status_not_null",
 			Timestamp: 5000,
-			Operations: []models.Operation{
+			Statements: singleStatement("ALTER_TABLE",
+				"ALTER TABLE users ALTER COLUMN status DROP NOT NULL",
 				models.DropNotNull{
-					MigrationID: "migration-5",
-					TableName:   "users",
-					ColumnName:  "status",
-				},
-			},
+					TableName:  "users",
+					ColumnName: "status",
+				}),
 		},
 		{
 			ID:        "migration-6",
 			Version:   "V6__set_status_default",
 			Timestamp: 6000,
-			Operations: []models.Operation{
+			Statements: singleStatement("ALTER_TABLE",
+				"ALTER TABLE users ALTER COLUMN status SET DEFAULT 'active'",
 				models.SetDefault{
-					MigrationID:  "migration-6",
 					TableName:    "users",
 					ColumnName:   "status",
 					DefaultValue: "'active'",
-				},
-			},
+				}),
 		},
 		{
 			ID:        "migration-7",
 			Version:   "V7__drop_status_default",
 			Timestamp: 7000,
-			Operations: []models.Operation{
+			Statements: singleStatement("ALTER_TABLE",
+				"ALTER TABLE users ALTER COLUMN status DROP DEFAULT",
 				models.DropDefault{
-					MigrationID: "migration-7",
-					TableName:   "users",
-					ColumnName:  "status",
-				},
-			},
+					TableName:  "users",
+					ColumnName: "status",
+				}),
 		},
 		{
 			ID:        "migration-8",
 			Version:   "V8__rename_users_to_accounts",
 			Timestamp: 8000,
-			Operations: []models.Operation{
+			Statements: singleStatement("RENAME",
+				"ALTER TABLE users RENAME TO accounts",
 				models.RenameTable{
-					MigrationID:  "migration-8",
 					TableName:    "users",
 					NewTableName: "accounts",
-				},
-			},
+				}),
 		},
 		{
 			ID:        "migration-9",
 			Version:   "V9__rename_email_to_email_address",
 			Timestamp: 9000,
-			Operations: []models.Operation{
+			Statements: singleStatement("RENAME",
+				"ALTER TABLE accounts RENAME COLUMN email TO email_address",
 				models.RenameColumn{
-					MigrationID:   "migration-9",
 					TableName:     "accounts",
 					ColumnName:    "email",
 					NewColumnName: "email_address",
-				},
-			},
+				}),
 		},
 		{
 			ID:        "migration-10",
 			Version:   "V10__add_unique_constraint",
 			Timestamp: 10000,
-			Operations: []models.Operation{
+			Statements: singleStatement("ALTER_TABLE",
+				"ALTER TABLE accounts ADD CONSTRAINT uk_accounts_email UNIQUE (email_address)",
 				models.AddConstraint{
-					MigrationID:    "migration-10",
 					TableName:      "accounts",
 					ConstraintName: "uk_accounts_email",
 					ConstraintType: "UNIQUE",
-				},
-			},
+				}),
 		},
 		{
 			ID:        "migration-11",
 			Version:   "V11__drop_unique_constraint",
 			Timestamp: 11000,
-			Operations: []models.Operation{
+			Statements: singleStatement("ALTER_TABLE",
+				"ALTER TABLE accounts DROP CONSTRAINT uk_accounts_email",
 				models.DropConstraint{
-					MigrationID:    "migration-11",
 					TableName:      "accounts",
 					ConstraintName: "uk_accounts_email",
-				},
-			},
+				}),
 		},
 		{
 			ID:        "migration-12",
 			Version:   "V12__drop_accounts",
 			Timestamp: 12000,
-			Operations: []models.Operation{
+			Statements: singleStatement("DROP_TABLE",
+				"DROP TABLE accounts",
 				models.DropTable{
-					MigrationID: "migration-12",
-					TableName:   "accounts",
-				},
-			},
+					TableName: "accounts",
+				}),
 		},
 		{
 			ID:        "migration-13",
 			Version:   "V13__drop_legacy_column",
 			Timestamp: 13000,
-			Operations: []models.Operation{
+			Statements: singleStatement("ALTER_TABLE",
+				"ALTER TABLE users DROP COLUMN legacy_field",
 				models.DropColumn{
-					MigrationID: "migration-13",
-					TableName:   "users",
-					ColumnName:  "legacy_field",
-				},
-			},
+					TableName:  "users",
+					ColumnName: "legacy_field",
+				}),
 		},
 		{
 			ID:        "migration-14",
 			Version:   "V14__create_partitioned_table",
 			Timestamp: 14000,
-			Operations: []models.Operation{
+			Statements: singleStatement("CREATE_TABLE",
+				"CREATE TABLE measurements (id SERIAL, created_at TIMESTAMP NOT NULL, value NUMERIC) PARTITION BY RANGE (created_at)",
 				models.CreateTable{
-					MigrationID: "migration-14",
-					TableName:   "measurements",
+					TableName: "measurements",
 					Columns: []models.Column{
 						{Name: "id", Type: "SERIAL", Constraints: []string{}},
 						{Name: "created_at", Type: "TIMESTAMP", Constraints: []string{"NOT NULL"}},
 						{Name: "value", Type: "NUMERIC", Constraints: []string{}},
 					},
 					IsPartitioned: true,
-				},
-			},
+				}),
 		},
 		{
 			ID:        "migration-15",
 			Version:   "V15__create_partition",
 			Timestamp: 15000,
-			Operations: []models.Operation{
+			Statements: singleStatement("CREATE_TABLE",
+				"CREATE TABLE measurements_2024 PARTITION OF measurements FOR VALUES FROM ('2024-01-01') TO ('2025-01-01')",
 				models.CreateTable{
-					MigrationID:   "migration-15",
 					TableName:     "measurements_2024",
 					Columns:       []models.Column{},
 					IsPartitioned: false,
 					PartitionOf:   strPtr("measurements"),
-				},
-			},
+				}),
 		},
 		{
 			ID:        "migration-16",
 			Version:   "V16__alter_partitioned",
 			Timestamp: 16000,
-			Operations: []models.Operation{
+			Statements: singleStatement("ALTER_TABLE",
+				"ALTER TABLE measurements ADD COLUMN description TEXT",
 				models.AddColumn{
-					MigrationID: "migration-16",
-					TableName:   "measurements",
-					Column:      models.Column{Name: "description", Type: "TEXT", Constraints: []string{}},
-				},
-			},
+					TableName: "measurements",
+					Column:    models.Column{Name: "description", Type: "TEXT", Constraints: []string{}},
+				}),
 		},
 	}
 
 	createTableMap := make(map[string]models.CreateTable)
 	for _, m := range migrations {
-		for _, op := range m.Operations {
-			if ct, ok := op.(models.CreateTable); ok {
-				createTableMap[ct.TableName] = ct
+		for _, stmt := range m.Statements {
+			for _, op := range stmt.Operations {
+				if ct, ok := op.(models.CreateTable); ok {
+					createTableMap[ct.TableName] = ct
+				}
 			}
 		}
 	}

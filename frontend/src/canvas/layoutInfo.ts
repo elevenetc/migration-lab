@@ -17,7 +17,7 @@ export function buildTableOperationsMap(migrations: Migration[]): TableOperation
     const tableOrder: string[] = []
 
     migrations.forEach(migration => {
-        migration.operations.forEach(operation => {
+        migration.statements.flatMap(statement => statement.operations).forEach(operation => {
             const tableName = operation.type === 'RENAME_TABLE'
                 ? operation.newTableName
                 : operation.tableName
@@ -117,11 +117,11 @@ export function computeLayout(migrations: Migration[], warnings: Warning[] = [])
             seenMigrations.add(migration.id)
             placed.push({
                 timestampRank: timestampRank.get(migration.timestamp) ?? 0,
-                title: migration.operations.map(op => op.type).join(', '),
+                title: migration.statements.flatMap(s => s.operations).map(op => op.type).join(', '),
                 migration: migration,
                 operation: operation,
                 warnings: warnings.filter(w =>
-                    w.operationId.migrationId === migration.id && w.operationId.tableName === tableName)
+                    w.operationId.migrationId === migration.id && w.tableName === tableName)
             })
         })
         return {tableName, placed}

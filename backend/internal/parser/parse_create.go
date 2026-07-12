@@ -8,7 +8,7 @@ import (
 	"migration-timeline/backend/internal/models"
 )
 
-func parseCreateStmt(migrationID string, createStmt *pgquery.CreateStmt) models.Operation {
+func parseCreateStmt(createStmt *pgquery.CreateStmt) models.Operation {
 	tableName := createStmt.Relation.Relname
 
 	var columns []models.Column
@@ -30,7 +30,6 @@ func parseCreateStmt(migrationID string, createStmt *pgquery.CreateStmt) models.
 	}
 
 	return models.CreateTable{
-		MigrationID:   migrationID,
 		TableName:     tableName,
 		Columns:       columns,
 		IsPartitioned: createStmt.Partspec != nil,
@@ -38,7 +37,7 @@ func parseCreateStmt(migrationID string, createStmt *pgquery.CreateStmt) models.
 	}
 }
 
-func ParseCreateTable(migrationID string, sql string) (*models.CreateTable, error) {
+func ParseCreateTable(sql string) (*models.CreateTable, error) {
 	result, err := pgquery.Parse(sql)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse SQL: %w", err)
@@ -54,7 +53,7 @@ func ParseCreateTable(migrationID string, sql string) (*models.CreateTable, erro
 		return nil, fmt.Errorf("not a CREATE TABLE statement")
 	}
 
-	op := parseCreateStmt(migrationID, createStmt)
+	op := parseCreateStmt(createStmt)
 	ct := op.(models.CreateTable)
 	return &ct, nil
 }

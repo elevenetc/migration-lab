@@ -147,9 +147,11 @@ func toTimelineResponse(migrations []*models.Migration) *models.MigrationTimelin
 
 	for _, m := range migrations {
 		migrationMap[m.ID] = m
-		for _, op := range m.Operations {
-			if ct, ok := op.(models.CreateTable); ok {
-				createTableMap[ct.TableName] = ct
+		for _, stmt := range m.Statements {
+			for _, op := range stmt.Operations {
+				if ct, ok := op.(models.CreateTable); ok {
+					createTableMap[ct.TableName] = ct
+				}
 			}
 		}
 	}

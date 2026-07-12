@@ -9,13 +9,9 @@ import (
 func TestParseCreateTable(t *testing.T) {
 	sql := `CREATE TABLE users (id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL);`
 
-	result, err := ParseCreateTable("test-migration", sql)
+	result, err := ParseCreateTable(sql)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if result.MigrationID != "test-migration" {
-		t.Errorf("expected migrationID 'test-migration', got '%s'", result.MigrationID)
 	}
 
 	if result.TableName != "users" {
@@ -57,7 +53,17 @@ func TestParseMigration_CreateTable(t *testing.T) {
 	if m.Version != "1" {
 		t.Errorf("expected version '1', got '%s'", m.Version)
 	}
-	op := m.Operations[0].(models.CreateTable)
+	stmt := m.Statements[0]
+	if stmt.Index != 0 {
+		t.Errorf("expected statement index 0, got %d", stmt.Index)
+	}
+	if stmt.Kind != "CREATE_TABLE" {
+		t.Errorf("expected statement kind 'CREATE_TABLE', got '%s'", stmt.Kind)
+	}
+	if stmt.SQL != "CREATE TABLE users (id SERIAL PRIMARY KEY)" {
+		t.Errorf("unexpected statement SQL: '%s'", stmt.SQL)
+	}
+	op := stmt.Operations[0].(models.CreateTable)
 	if op.TableName != "users" {
 		t.Errorf("expected table name 'users', got '%s'", op.TableName)
 	}
@@ -201,12 +207,29 @@ func TestParseMigration_MultiStatement(t *testing.T) {
 		ALTER TABLE users ADD COLUMN name VARCHAR(255);
 		ALTER TABLE users ADD COLUMN email VARCHAR(255);
 	`, 0)
-	if len(m.Operations) != 3 {
-		t.Fatalf("expected 3 operations, got %d", len(m.Operations))
+	if len(m.Statements) != 3 {
+		t.Fatalf("expected 3 statements, got %d", len(m.Statements))
 	}
-	_ = m.Operations[0].(models.CreateTable)
-	_ = m.Operations[1].(models.AddColumn)
-	_ = m.Operations[2].(models.AddColumn)
+	for i, stmt := range m.Statements {
+		if stmt.Index != i {
+			t.Errorf("expected statement index %d, got %d", i, stmt.Index)
+		}
+		if len(stmt.Operations) != 1 {
+			t.Fatalf("expected 1 operation in statement %d, got %d", i, len(stmt.Operations))
+		}
+	}
+	if m.Statements[0].Kind != "CREATE_TABLE" {
+		t.Errorf("expected statement kind 'CREATE_TABLE', got '%s'", m.Statements[0].Kind)
+	}
+	if m.Statements[1].Kind != "ALTER_TABLE" {
+		t.Errorf("expected statement kind 'ALTER_TABLE', got '%s'", m.Statements[1].Kind)
+	}
+	if m.Statements[2].SQL != "ALTER TABLE users ADD COLUMN email VARCHAR(255)" {
+		t.Errorf("unexpected statement SQL: '%s'", m.Statements[2].SQL)
+	}
+	_ = m.Statements[0].Operations[0].(models.CreateTable)
+	_ = m.Statements[1].Operations[0].(models.AddColumn)
+	_ = m.Statements[2].Operations[0].(models.AddColumn)
 }
 
 func TestParseMigration_DropTableIfExists(t *testing.T) {
@@ -218,11 +241,18 @@ func TestParseMigration_DropTableIfExists(t *testing.T) {
 
 func TestParseMigration_DropMultipleTables(t *testing.T) {
 	m := parseMigrationTest(t, "test", `DROP TABLE users, orders;`, 0)
-	if len(m.Operations) != 2 {
-		t.Fatalf("expected 2 operations, got %d", len(m.Operations))
+	if len(m.Statements) != 1 {
+		t.Fatalf("expected 1 statement, got %d", len(m.Statements))
 	}
-	op1 := m.Operations[0].(models.DropTable)
-	op2 := m.Operations[1].(models.DropTable)
+	stmt := m.Statements[0]
+	if stmt.Kind != "DROP_TABLE" {
+		t.Errorf("expected statement kind 'DROP_TABLE', got '%s'", stmt.Kind)
+	}
+	if len(stmt.Operations) != 2 {
+		t.Fatalf("expected 2 operations, got %d", len(stmt.Operations))
+	}
+	op1 := stmt.Operations[0].(models.DropTable)
+	op2 := stmt.Operations[1].(models.DropTable)
 	if op1.TableName != "users" {
 		t.Errorf("expected table name 'users', got '%s'", op1.TableName)
 	}
@@ -272,7 +302,7 @@ func containsConstraint(constraints []string, target string) bool {
 
 func parseSingleOp(t *testing.T, sql string) models.Operation {
 	t.Helper()
-	return parseMigrationTest(t, "test", sql, 0).Operations[0]
+	return parseMigrationTest(t, "test", sql, 0).Statements[0].Operations[0]
 }
 
 func parseMigrationTest(t *testing.T, id, sql string, timestamp int64) *models.Migration {

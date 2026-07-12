@@ -1,17 +1,17 @@
 import { describe, it, expect } from 'vitest'
-import type { Migration, Operation } from '../api/migrationApi'
+import type { Migration, Operation, Warning } from '../api/migrationApi'
 import { buildTableOperationsMap, computeLayout, TABLE_ROW_HEIGHT } from './layoutInfo'
 
 function createTable(tableName: string): Operation {
-  return { type: 'CREATE_TABLE', migrationId: '', tableName, columns: [], isPartitioned: false, partitionOf: null }
+  return { type: 'CREATE_TABLE', tableName, columns: [], isPartitioned: false, partitionOf: null }
 }
 
 function addColumn(tableName: string): Operation {
-  return { type: 'ADD_COLUMN', migrationId: '', tableName, column: { name: 'c', type: 'int', constraints: [] } }
+  return { type: 'ADD_COLUMN', tableName, column: { name: 'c', type: 'int', constraints: [] } }
 }
 
 function migration(id: string, timestamp: number, operations: Operation[]): Migration {
-  return { id, version: id, timestamp, operations: operations.map(op => ({ ...op, migrationId: id })) }
+  return { id, version: id, timestamp, statements: [{ index: 0, kind: 'ALTER_TABLE', sql: '', operations }] }
 }
 
 describe('buildTableOperationsMap', () => {
@@ -30,7 +30,7 @@ describe('buildTableOperationsMap', () => {
   })
 
   it('keys a renamed table row by its new name', () => {
-    const rename: Operation = { type: 'RENAME_TABLE', migrationId: '', tableName: 'old', newTableName: 'new' }
+    const rename: Operation = { type: 'RENAME_TABLE', tableName: 'old', newTableName: 'new' }
     const migrations = [migration('m1', 1, [rename])]
 
     const { tableOrder } = buildTableOperationsMap(migrations)
@@ -76,6 +76,26 @@ describe('computeLayout', () => {
 
     expect(layout.tables).toEqual(['users', 'orders'])
     expect(layout.height).toBe(2 * (TABLE_ROW_HEIGHT + 3))
+  })
+
+  it('attaches a warning to the rectangle of its migration and table', () => {
+    const migrations = [
+      migration('m1', 1, [createTable('users')]),
+      migration('m2', 2, [addColumn('users'), createTable('orders')]),
+    ]
+    const warning: Warning = {
+      type: 'ACCESS_EXCLUSIVE_LOCK',
+      operationId: { migrationId: 'm2', statementIndex: 0, opIndex: -1 },
+      tableName: 'users',
+      message: 'lock',
+    }
+
+    const rects = [...computeLayout(migrations, [warning]).tableMigrations.values()].flat()
+
+    const flagged = rects.filter(r => r.warnings.length > 0)
+    expect(flagged).toHaveLength(1)
+    expect(flagged[0].migration.id).toBe('m2')
+    expect(flagged[0].operation.tableName).toBe('users')
   })
 
   it('resolves the migrations of the row directly below a table', () => {

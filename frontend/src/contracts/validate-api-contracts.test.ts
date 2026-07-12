@@ -14,7 +14,7 @@ function assertExhaustive(val: never): never {
 
 function validateOperationTypes(response: MigrationTimelineResponse): void {
   for (const migration of response.timeline) {
-    for (const op of migration.operations) {
+    for (const op of migration.statements.flatMap(statement => statement.operations)) {
       switch (op.type) {
         case 'CREATE_TABLE':
           break
@@ -70,15 +70,14 @@ function validateCreateTableMap(response: MigrationTimelineResponse): void {
     if (entry.tableName !== tableName) {
       throw new Error(`createTableMap key "${tableName}" does not match entry.tableName "${entry.tableName}"`)
     }
-    if (!entry.migrationId) {
-      throw new Error(`createTableMap entry for "${tableName}" missing migrationId`)
-    }
   }
 }
 
 function validateWarning(warning: Warning): void {
   if (warning.type === 'ACCESS_EXCLUSIVE_LOCK') {
-    if (!warning.operationId.migrationId || !warning.operationId.tableName) {
+    if (!warning.operationId.migrationId
+      || typeof warning.operationId.statementIndex !== 'number'
+      || typeof warning.operationId.opIndex !== 'number') {
       throw new Error('AccessExclusiveLock missing operationId fields')
     }
     if (!warning.tableName) {

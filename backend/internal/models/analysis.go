@@ -2,9 +2,14 @@ package models
 
 import "encoding/json"
 
+// StatementScoped marks a warning that applies to a whole statement rather
+// than a single operation within it.
+const StatementScoped = -1
+
 type OperationID struct {
-	MigrationID string `json:"migrationId"`
-	TableName   string `json:"tableName"`
+	MigrationID    string `json:"migrationId"`
+	StatementIndex int    `json:"statementIndex"`
+	OpIndex        int    `json:"opIndex"` // StatementScoped (-1) for statement-level warnings
 }
 
 type Warning interface {

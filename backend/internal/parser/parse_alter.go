@@ -5,7 +5,7 @@ import (
 	"migration-timeline/backend/internal/models"
 )
 
-func parseAlterTableStmt(migrationID string, alterStmt *pgquery.AlterTableStmt) []models.Operation {
+func parseAlterTableStmt(alterStmt *pgquery.AlterTableStmt) []models.Operation {
 	var ops []models.Operation
 	tableName := alterStmt.Relation.Relname
 
@@ -17,48 +17,43 @@ func parseAlterTableStmt(migrationID string, alterStmt *pgquery.AlterTableStmt) 
 
 		switch alterCmd.Subtype {
 		case pgquery.AlterTableType_AT_AddColumn:
-			if op := parseAddColumn(migrationID, tableName, alterCmd); op != nil {
+			if op := parseAddColumn(tableName, alterCmd); op != nil {
 				ops = append(ops, op)
 			}
 		case pgquery.AlterTableType_AT_DropColumn:
 			ops = append(ops, models.DropColumn{
-				MigrationID: migrationID,
-				TableName:   tableName,
-				ColumnName:  alterCmd.Name,
+				TableName:  tableName,
+				ColumnName: alterCmd.Name,
 			})
 		case pgquery.AlterTableType_AT_AlterColumnType:
-			if op := parseAlterColumnType(migrationID, tableName, alterCmd); op != nil {
+			if op := parseAlterColumnType(tableName, alterCmd); op != nil {
 				ops = append(ops, op)
 			}
 		case pgquery.AlterTableType_AT_SetNotNull:
 			ops = append(ops, models.SetNotNull{
-				MigrationID: migrationID,
-				TableName:   tableName,
-				ColumnName:  alterCmd.Name,
+				TableName:  tableName,
+				ColumnName: alterCmd.Name,
 			})
 		case pgquery.AlterTableType_AT_DropNotNull:
 			ops = append(ops, models.DropNotNull{
-				MigrationID: migrationID,
-				TableName:   tableName,
-				ColumnName:  alterCmd.Name,
+				TableName:  tableName,
+				ColumnName: alterCmd.Name,
 			})
 		case pgquery.AlterTableType_AT_ColumnDefault:
 			if alterCmd.Def != nil {
-				ops = append(ops, parseSetDefault(migrationID, tableName, alterCmd))
+				ops = append(ops, parseSetDefault(tableName, alterCmd))
 			} else {
 				ops = append(ops, models.DropDefault{
-					MigrationID: migrationID,
-					TableName:   tableName,
-					ColumnName:  alterCmd.Name,
+					TableName:  tableName,
+					ColumnName: alterCmd.Name,
 				})
 			}
 		case pgquery.AlterTableType_AT_AddConstraint:
-			if op := parseAddConstraint(migrationID, tableName, alterCmd); op != nil {
+			if op := parseAddConstraint(tableName, alterCmd); op != nil {
 				ops = append(ops, op)
 			}
 		case pgquery.AlterTableType_AT_DropConstraint:
 			ops = append(ops, models.DropConstraint{
-				MigrationID:    migrationID,
 				TableName:      tableName,
 				ConstraintName: alterCmd.Name,
 			})
@@ -68,7 +63,7 @@ func parseAlterTableStmt(migrationID string, alterStmt *pgquery.AlterTableStmt) 
 	return ops
 }
 
-func parseAddColumn(migrationID, tableName string, cmd *pgquery.AlterTableCmd) models.Operation {
+func parseAddColumn(tableName string, cmd *pgquery.AlterTableCmd) models.Operation {
 	def := cmd.Def
 	if def == nil {
 		return nil
@@ -80,8 +75,7 @@ func parseAddColumn(migrationID, tableName string, cmd *pgquery.AlterTableCmd) m
 	}
 
 	return models.AddColumn{
-		MigrationID: migrationID,
-		TableName:   tableName,
+		TableName: tableName,
 		Column: models.Column{
 			Name:        colDef.Colname,
 			Type:        extractTypeName(colDef.TypeName),
@@ -90,7 +84,7 @@ func parseAddColumn(migrationID, tableName string, cmd *pgquery.AlterTableCmd) m
 	}
 }
 
-func parseAlterColumnType(migrationID, tableName string, cmd *pgquery.AlterTableCmd) models.Operation {
+func parseAlterColumnType(tableName string, cmd *pgquery.AlterTableCmd) models.Operation {
 	def := cmd.Def
 	if def == nil {
 		return nil
@@ -102,24 +96,22 @@ func parseAlterColumnType(migrationID, tableName string, cmd *pgquery.AlterTable
 	}
 
 	return models.AlterColumnType{
-		MigrationID: migrationID,
-		TableName:   tableName,
-		ColumnName:  cmd.Name,
-		NewType:     extractTypeName(colDef.TypeName),
+		TableName:  tableName,
+		ColumnName: cmd.Name,
+		NewType:    extractTypeName(colDef.TypeName),
 	}
 }
 
-func parseSetDefault(migrationID, tableName string, cmd *pgquery.AlterTableCmd) models.Operation {
+func parseSetDefault(tableName string, cmd *pgquery.AlterTableCmd) models.Operation {
 	defaultValue := deparseDef(cmd.Def)
 	return models.SetDefault{
-		MigrationID:  migrationID,
 		TableName:    tableName,
 		ColumnName:   cmd.Name,
 		DefaultValue: defaultValue,
 	}
 }
 
-func parseAddConstraint(migrationID, tableName string, cmd *pgquery.AlterTableCmd) models.Operation {
+func parseAddConstraint(tableName string, cmd *pgquery.AlterTableCmd) models.Operation {
 	def := cmd.Def
 	if def == nil {
 		return nil
@@ -132,7 +124,6 @@ func parseAddConstraint(migrationID, tableName string, cmd *pgquery.AlterTableCm
 
 	constraintType := mapConstraintType(constraint.Contype)
 	return models.AddConstraint{
-		MigrationID:    migrationID,
 		TableName:      tableName,
 		ConstraintName: constraint.Conname,
 		ConstraintType: constraintType,

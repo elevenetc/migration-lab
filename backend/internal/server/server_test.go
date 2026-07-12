@@ -91,12 +91,18 @@ func TestResponseStructure(t *testing.T) {
 			ID:        "v1",
 			Version:   "1",
 			Timestamp: 1,
-			Operations: []models.Operation{
-				models.CreateTable{
-					MigrationID: "v1",
-					TableName:   "test",
-					Columns: []models.Column{
-						{Name: "id", Type: "serial", Constraints: []string{"PRIMARY KEY"}},
+			Statements: []models.Statement{
+				{
+					Index: 0,
+					Kind:  "CREATE_TABLE",
+					SQL:   "CREATE TABLE test (id serial PRIMARY KEY)",
+					Operations: []models.Operation{
+						models.CreateTable{
+							TableName: "test",
+							Columns: []models.Column{
+								{Name: "id", Type: "serial", Constraints: []string{"PRIMARY KEY"}},
+							},
+						},
 					},
 				},
 			},

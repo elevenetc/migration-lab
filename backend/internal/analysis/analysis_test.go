@@ -39,6 +39,14 @@ func TestAlterOnPartitionedTableProducesWarning(t *testing.T) {
 		t.Errorf("expected migrationId 'V2__add_column', got '%s'", warning.OperationID.MigrationID)
 	}
 
+	if warning.OperationID.StatementIndex != 0 {
+		t.Errorf("expected statementIndex 0, got %d", warning.OperationID.StatementIndex)
+	}
+
+	if warning.OperationID.OpIndex != models.StatementScoped {
+		t.Errorf("expected statement-scoped opIndex -1, got %d", warning.OperationID.OpIndex)
+	}
+
 	if warning.Message == "" || len(warning.Message) < 10 {
 		t.Error("expected non-empty message containing 'ACCESS EXCLUSIVE'")
 	}
@@ -92,6 +100,33 @@ func TestMultipleAltersOnSamePartitionedTableProduceMultipleWarnings(t *testing.
 		if warning.TableName != "events" {
 			t.Errorf("expected tableName 'events', got '%s'", warning.TableName)
 		}
+	}
+}
+
+// The lock is acquired per statement, so several ALTER commands in one
+// statement must produce a single statement-scoped warning.
+func TestMultipleAlterCommandsInOneStatementProduceSingleWarning(t *testing.T) {
+	createPartitioned := `
+		CREATE TABLE events (
+			id SERIAL,
+			name VARCHAR(255),
+			year INT NOT NULL
+		) PARTITION BY LIST (year);
+	`
+	multiCommandAlter := `ALTER TABLE events ADD COLUMN description TEXT, ALTER COLUMN name SET NOT NULL;`
+
+	m1, _ := parser.ParseMigration("V1__create_partitioned", createPartitioned, 1)
+	m2, _ := parser.ParseMigration("V2__multi_alter", multiCommandAlter, 2)
+
+	result := Analyse([]*models.Migration{m1, m2})
+
+	if len(result.Warnings) != 1 {
+		t.Fatalf("expected 1 warning, got %d", len(result.Warnings))
+	}
+
+	warning := result.Warnings[0].(models.AccessExclusiveLock)
+	if warning.OperationID.OpIndex != models.StatementScoped {
+		t.Errorf("expected statement-scoped opIndex -1, got %d", warning.OperationID.OpIndex)
 	}
 }
 

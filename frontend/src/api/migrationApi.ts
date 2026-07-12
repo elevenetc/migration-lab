@@ -12,7 +12,6 @@ export interface Column {
 
 export interface CreateTable {
   type: 'CREATE_TABLE'
-  migrationId: string
   tableName: string
   columns: Column[]
   isPartitioned: boolean
@@ -21,14 +20,12 @@ export interface CreateTable {
 
 export interface AddColumn {
   type: 'ADD_COLUMN'
-  migrationId: string
   tableName: string
   column: Column
 }
 
 export interface AlterColumnType {
   type: 'ALTER_COLUMN_TYPE'
-  migrationId: string
   tableName: string
   columnName: string
   newType: string
@@ -36,21 +33,18 @@ export interface AlterColumnType {
 
 export interface SetNotNull {
   type: 'SET_NOT_NULL'
-  migrationId: string
   tableName: string
   columnName: string
 }
 
 export interface DropNotNull {
   type: 'DROP_NOT_NULL'
-  migrationId: string
   tableName: string
   columnName: string
 }
 
 export interface SetDefault {
   type: 'SET_DEFAULT'
-  migrationId: string
   tableName: string
   columnName: string
   defaultValue: string
@@ -58,21 +52,18 @@ export interface SetDefault {
 
 export interface DropDefault {
   type: 'DROP_DEFAULT'
-  migrationId: string
   tableName: string
   columnName: string
 }
 
 export interface RenameTable {
   type: 'RENAME_TABLE'
-  migrationId: string
   tableName: string
   newTableName: string
 }
 
 export interface RenameColumn {
   type: 'RENAME_COLUMN'
-  migrationId: string
   tableName: string
   columnName: string
   newColumnName: string
@@ -80,7 +71,6 @@ export interface RenameColumn {
 
 export interface AddConstraint {
   type: 'ADD_CONSTRAINT'
-  migrationId: string
   tableName: string
   constraintName: string
   constraintType: string
@@ -88,42 +78,49 @@ export interface AddConstraint {
 
 export interface DropConstraint {
   type: 'DROP_CONSTRAINT'
-  migrationId: string
   tableName: string
   constraintName: string
 }
 
 export interface DropTable {
   type: 'DROP_TABLE'
-  migrationId: string
   tableName: string
 }
 
 export interface DropColumn {
   type: 'DROP_COLUMN'
-  migrationId: string
   tableName: string
   columnName: string
 }
 
 export type Operation = CreateTable | AddColumn | AlterColumnType | SetNotNull | DropNotNull | SetDefault | DropDefault | RenameTable | RenameColumn | AddConstraint | DropConstraint | DropTable | DropColumn
 
+export type StatementKind = 'CREATE_TABLE' | 'ALTER_TABLE' | 'DROP_TABLE' | 'RENAME'
+
+export interface Statement {
+  index: number
+  kind: StatementKind
+  sql: string
+  operations: Operation[]
+}
+
 export interface Migration {
   id: string
   version: string
   timestamp: number
-  operations: Operation[]
+  statements: Statement[]
 }
 
 export interface CreateTableMapEntry {
-  migrationId: string
   tableName: string
   columns: Column[]
 }
 
 export interface OperationId {
   migrationId: string
-  tableName: string
+  statementIndex: number
+  // -1 for a statement-scoped warning
+  opIndex: number
 }
 
 export interface AccessExclusiveLock {

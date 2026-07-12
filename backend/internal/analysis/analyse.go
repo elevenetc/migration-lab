@@ -10,9 +10,11 @@ func Analyse(migrations []*models.Migration) *models.AnalysisResult {
 	partitionedTables := make(map[string]bool)
 
 	for _, m := range migrations {
-		for _, op := range m.Operations {
-			if ct, ok := op.(models.CreateTable); ok && ct.IsPartitioned {
-				partitionedTables[ct.TableName] = true
+		for _, stmt := range m.Statements {
+			for _, op := range stmt.Operations {
+				if ct, ok := op.(models.CreateTable); ok && ct.IsPartitioned {
+					partitionedTables[ct.TableName] = true
+				}
 			}
 		}
 	}
@@ -21,8 +23,8 @@ func Analyse(migrations []*models.Migration) *models.AnalysisResult {
 	var warnings []models.Warning
 
 	for _, m := range migrations {
-		for _, op := range m.Operations {
-			if w := analyzeOperation(op, ctx); w != nil {
+		for _, stmt := range m.Statements {
+			if w := analyzeStatement(stmt, m.ID, ctx); w != nil {
 				warnings = append(warnings, w)
 			}
 		}
@@ -34,6 +36,6 @@ func Analyse(migrations []*models.Migration) *models.AnalysisResult {
 	}
 }
 
-func analyzeOperation(op models.Operation, ctx *analysisContext) models.Warning {
-	return detectAccessExclusiveLock(op, ctx)
+func analyzeStatement(stmt models.Statement, migrationID string, ctx *analysisContext) models.Warning {
+	return detectAccessExclusiveLock(stmt, migrationID, ctx)
 }
