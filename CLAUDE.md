@@ -49,9 +49,17 @@ statement with two operations; `DROP TABLE a, b` is one statement with an operat
 2. Store fetches `/api/migrations`
 3. Timeline reads store, groups statements' operations by table, renders to canvas
 
+#### Ordering
+
+Directory-loaded migrations (`migrationsPath`) are sorted by Flyway version, compared
+segment-wise **numerically** — not lexicographically or by file mtime. `V<date>_<seq>`
+names become `<date>.<seq>` (e.g. `V20260410_2` -> `20260410.2`), so `20260410.2` < `20260410.10`.
+After sorting, each migration gets a sequential `timestamp` (`1, 2, ...`), matching how the
+datasets and CLI assign timestamps. `timestamp` is therefore an ordinal rank, not a real date.
+
 #### Visualization
 
-- Tables as rows, operations as nodes positioned by timestamp
+- Tables as rows, operations as nodes positioned by timestamp (ordinal rank; see Ordering)
 - X-axis: migrations with same timestamp align vertically in same column
 - Ribbons connect operations on same table chronologically
 - CREATE_TABLE (blue) vs ALTER_TABLE (darker blue)

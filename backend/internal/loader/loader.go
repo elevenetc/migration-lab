@@ -12,7 +12,8 @@ import (
 )
 
 // LoadMigrationInfosFromDir reads all *.sql files from dir into MigrationInfos,
-// sorted by timestamp. It returns an error if dir doesn't exist or isn't a directory.
+// sorted by Flyway version, with a sequential Timestamp assigned per sorted
+// position. It returns an error if dir doesn't exist or isn't a directory.
 func LoadMigrationInfosFromDir(dir string) ([]models.MigrationInfo, error) {
 	info, err := os.Stat(dir)
 	if err != nil {
@@ -37,15 +38,17 @@ func LoadMigrationInfosFromDir(dir string) ([]models.MigrationInfo, error) {
 			return nil, err
 		}
 		infos = append(infos, models.MigrationInfo{
-			ID:        filepath.Base(file),
-			SQL:       string(content),
-			Timestamp: parser.ExtractTimestampFromFilename(file),
+			ID:  filepath.Base(file),
+			SQL: string(content),
 		})
 	}
 
-	sort.Slice(infos, func(i, j int) bool {
-		return infos[i].Timestamp < infos[j].Timestamp
+	sort.SliceStable(infos, func(i, j int) bool {
+		return parser.CompareVersions(infos[i].ID, infos[j].ID)
 	})
+	for i := range infos {
+		infos[i].Timestamp = int64(i + 1)
+	}
 
 	return infos, nil
 }

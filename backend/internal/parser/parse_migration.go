@@ -18,7 +18,7 @@ func ParseMigration(migrationID, sql string, timestamp int64) (*models.Migration
 		return nil, fmt.Errorf("failed to parse SQL: %w", err)
 	}
 
-	var statements []models.Statement
+	statements := []models.Statement{}
 	for _, rawStmt := range result.Stmts {
 		stmt := rawStmt.Stmt
 
@@ -92,16 +92,33 @@ func extractVersion(migrationID string) string {
 	return base
 }
 
-func ExtractTimestampFromFilename(filename string) int64 {
-	base := filepath.Base(filename)
-	base = strings.TrimSuffix(base, filepath.Ext(base))
-
-	re := regexp.MustCompile(`^V?(\d+)`)
-	matches := re.FindStringSubmatch(base)
-	if len(matches) > 1 {
-		if ts, err := strconv.ParseInt(matches[1], 10, 64); err == nil {
-			return ts
+// CompareVersions reports whether migration a's version sorts before b's, using
+// Flyway's segment-wise numeric ordering: segments are compared as numbers
+// ("20260410.1" < "20260410.10", not lexicographically), and a shorter prefix
+// sorts first ("1" < "1.1").
+func CompareVersions(a, b string) bool {
+	as := strings.Split(extractVersion(a), ".")
+	bs := strings.Split(extractVersion(b), ".")
+	for i := 0; i < len(as) && i < len(bs); i++ {
+		if c := compareSegment(as[i], bs[i]); c != 0 {
+			return c < 0
 		}
 	}
-	return 0
+	return len(as) < len(bs)
+}
+
+func compareSegment(a, b string) int {
+	ai, aErr := strconv.ParseInt(a, 10, 64)
+	bi, bErr := strconv.ParseInt(b, 10, 64)
+	if aErr != nil || bErr != nil {
+		return strings.Compare(a, b)
+	}
+	switch {
+	case ai < bi:
+		return -1
+	case ai > bi:
+		return 1
+	default:
+		return 0
+	}
 }

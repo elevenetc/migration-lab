@@ -361,9 +361,21 @@
                     ]
                 }
             ]
+        },
+        {
+            "id": "V17__backfill_status",
+            "version": "17",
+            "timestamp": 17000,
+            "statements": []
         }
     ],
     "map": {
+        "V17__backfill_status": {
+            "id": "V17__backfill_status",
+            "version": "17",
+            "timestamp": 17000,
+            "statements": []
+        },
         "migration-1": {
             "id": "migration-1",
             "version": "V1__create_users",
@@ -1149,6 +1161,12 @@
                         ]
                     }
                 ]
+            },
+            {
+                "id": "V17__backfill_status",
+                "version": "17",
+                "timestamp": 17000,
+                "statements": []
             }
         ],
         "warnings": [

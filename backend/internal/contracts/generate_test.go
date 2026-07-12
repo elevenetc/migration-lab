@@ -8,6 +8,7 @@ import (
 
 	"migration-timeline/backend/internal/analysis"
 	"migration-timeline/backend/internal/models"
+	"migration-timeline/backend/internal/parser"
 )
 
 func singleStatement(kind, sql string, ops ...models.Operation) []models.Statement {
@@ -208,6 +209,16 @@ func TestGenerateMigrationResponseFixture(t *testing.T) {
 				}),
 		},
 	}
+
+	// A data-only migration parses to zero supported statements. Routed through
+	// ParseMigration to exercise the real serialization path: Statements must
+	// marshal as [] (not null) so it stays assignable to TS `Statement[]`.
+	dataOnly, err := parser.ParseMigration("V17__backfill_status",
+		"UPDATE users SET status = 'active' WHERE status IS NULL;", 17000)
+	if err != nil {
+		t.Fatalf("Failed to parse data-only migration: %v", err)
+	}
+	migrations = append(migrations, dataOnly)
 
 	createTableMap := make(map[string]models.CreateTable)
 	for _, m := range migrations {
