@@ -4,10 +4,11 @@
 # the same so Playwright reaches them exactly like the prod build.
 services:
   backend:
-    # Bind-mount host home read-only at the same path so absolute paths passed
-    # via ?migrationsPath=<abs-dir> resolve identically inside the container.
+    # Bind-mount a single narrow root read-only at the same path so absolute
+    # paths passed via ?migrationsPath=<abs-dir> resolve identically inside the
+    # container. Defaults to ~/dev; override MIGRATIONS_ROOT (e.g. in .env)
     volumes:
-      - ${HOME}:${HOME}:ro
+      - ${MIGRATIONS_ROOT:-${HOME}/dev}:${MIGRATIONS_ROOT:-${HOME}/dev}:ro
 
   frontend:
     build:

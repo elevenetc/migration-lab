@@ -172,8 +172,9 @@ When adding new Operation types:
   (e.g. `ecommerce`, `simple-partition`). A missing/unknown id returns 404.
 - Alternatively, `?migrationsPath=<abs-dir>` loads, parses and analyzes the `*.sql` files from a
   local directory (takes precedence over `migrationId`; a bad path returns 400). With `compose-up`
-  the backend runs in a container, so `docker-compose.override.yml` bind-mounts host `$HOME` read-only
-  at the same path — pass an absolute path under your home so it resolves in-container.
+  the backend runs in a container, so `docker-compose.override.yml` bind-mounts a narrow root
+  (`MIGRATIONS_ROOT`, default `~/dev`) read-only at the same path — pass an absolute path under that
+  root so it resolves in-container. Set `MIGRATIONS_ROOT` (e.g. in `.env`) if migrations live elsewhere.
 - `just compose-up` runs the frontend as a Vite dev server with HMR (see `docker-compose.override.yml`), so
   frontend source edits reload live — no `compose-apply` needed for frontend changes
 - `just compose-apply` is only needed to pick up backend changes (rebuilds and restarts the backend)

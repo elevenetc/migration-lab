@@ -7,8 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	pgquery "github.com/pganalyze/pg_query_go/v6"
 	"migration-timeline/backend/internal/models"
+
+	pgquery "github.com/pganalyze/pg_query_go/v6"
 )
 
 func ParseMigration(migrationID, sql string, timestamp int64) (*models.Migration, error) {
