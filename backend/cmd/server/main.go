@@ -3,15 +3,11 @@ package main
 import (
 	"flag"
 	"log"
-	"os"
 	"path/filepath"
-	"sort"
-	"strings"
 
 	"migration-timeline/backend/internal/database"
 	"migration-timeline/backend/internal/datasets"
-	"migration-timeline/backend/internal/models"
-	"migration-timeline/backend/internal/parser"
+	"migration-timeline/backend/internal/loader"
 	"migration-timeline/backend/internal/runner"
 	"migration-timeline/backend/internal/server"
 )
@@ -33,7 +29,7 @@ func initConfig(port *int) server.Config {
 	sets := datasets.Datasets()
 
 	if *migrationsDir != "" {
-		infos, err := loadMigrationInfosFromDir(*migrationsDir)
+		infos, err := loader.LoadMigrationInfosFromDir(*migrationsDir)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -47,33 +43,4 @@ func initConfig(port *int) server.Config {
 		Runner: runner.MigrationRunner{Store: db},
 	}
 	return cfg
-}
-
-func loadMigrationInfosFromDir(dir string) ([]models.MigrationInfo, error) {
-	files, err := filepath.Glob(filepath.Join(dir, "*.sql"))
-	if err != nil {
-		return nil, err
-	}
-
-	var infos []models.MigrationInfo
-	for _, file := range files {
-		if strings.HasPrefix(filepath.Base(file), ".") {
-			continue
-		}
-		content, err := os.ReadFile(file)
-		if err != nil {
-			return nil, err
-		}
-		infos = append(infos, models.MigrationInfo{
-			ID:        filepath.Base(file),
-			SQL:       string(content),
-			Timestamp: parser.ExtractTimestampFromFilename(file),
-		})
-	}
-
-	sort.Slice(infos, func(i, j int) bool {
-		return infos[i].Timestamp < infos[j].Timestamp
-	})
-
-	return infos, nil
 }

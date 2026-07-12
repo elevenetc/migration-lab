@@ -3,6 +3,7 @@ import { AnalysisResult, CreateTableMapEntry, Migration, RunMigrationsResult, fe
 
 interface MigrationState {
   migrationId: string | null
+  migrationsPath: string | null
   migrations: Migration[]
   createTableMap: Record<string, CreateTableMapEntry>
   analysis: AnalysisResult | null
@@ -14,10 +15,13 @@ interface MigrationState {
   runMigrations: () => Promise<void>
 }
 
-const migrationId = new URLSearchParams(window.location.search).get('migrationId')
+const searchParams = new URLSearchParams(window.location.search)
+const migrationId = searchParams.get('migrationId')
+const migrationsPath = searchParams.get('migrationsPath')
 
 export const useMigrationStore = create<MigrationState>((set, get) => ({
   migrationId,
+  migrationsPath,
   migrations: [],
   createTableMap: {},
   analysis: null,
@@ -28,7 +32,7 @@ export const useMigrationStore = create<MigrationState>((set, get) => ({
   loadMigrations: async () => {
     set({ loading: true, error: null })
     try {
-      const response = await fetchMigrations(get().migrationId)
+      const response = await fetchMigrations(get().migrationId, get().migrationsPath)
       set({
         migrations: response.timeline,
         createTableMap: response.createTableMap,

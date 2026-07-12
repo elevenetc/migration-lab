@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"migration-timeline/backend/internal/database"
@@ -141,6 +144,55 @@ func TestUnknownMigrationIdReturns404(t *testing.T) {
 
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("expected status %d for unknown migrationId, got %d", http.StatusNotFound, rec.Code)
+	}
+}
+
+func TestMigrationsPathLoadsFromDir(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "V1__create_users.sql", "CREATE TABLE users (id INT);")
+	writeFile(t, dir, "V2__add_email.sql", "ALTER TABLE users ADD COLUMN email TEXT;")
+	writeFile(t, dir, ".ignore.sql", "CREATE TABLE ignored (id INT);")
+
+	e := New(Config{Port: 8081, Store: fakeStore{err: models.ErrNotFound}})
+
+	target := "/api/migrations?migrationsPath=" + url.QueryEscape(dir)
+	req := httptest.NewRequest(http.MethodGet, target, nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d (%s)", http.StatusOK, rec.Code, rec.Body.String())
+	}
+
+	var response rawResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+		t.Fatalf("failed to unmarshal response: %v", err)
+	}
+
+	if len(response.Timeline) != 2 {
+		t.Errorf("expected 2 migrations (dotfile skipped), got %d", len(response.Timeline))
+	}
+	if _, ok := response.CreateTableMap["users"]; !ok {
+		t.Error("expected users in createTableMap")
+	}
+}
+
+func TestMigrationsPathNonExistentReturns400(t *testing.T) {
+	e := New(Config{Port: 8081, Store: datasetsDB()})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/migrations?migrationsPath=/no/such/dir", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for bad path, got %d", http.StatusBadRequest, rec.Code)
+	}
+}
+
+func writeFile(t *testing.T, dir, name, content string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
+		t.Fatalf("failed to write %s: %v", name, err)
 	}
 }
 

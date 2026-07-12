@@ -3,6 +3,12 @@
 # local source is bind-mounted, changes reload live, published ports stay
 # the same so Playwright reaches them exactly like the prod build.
 services:
+  backend:
+    # Bind-mount host home read-only at the same path so absolute paths passed
+    # via ?migrationsPath=<abs-dir> resolve identically inside the container.
+    volumes:
+      - ${HOME}:${HOME}:ro
+
   frontend:
     build:
       dockerfile: Dockerfile.dev

@@ -146,15 +146,20 @@ export interface MigrationTimelineResponse {
   analysis: AnalysisResult
 }
 
-function withMigrationId(path: string, migrationId: string | null): string {
-  return migrationId ? `${path}?migrationId=${encodeURIComponent(migrationId)}` : path
+function withParams(path: string, params: Record<string, string | null>): string {
+  const query = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value) query.set(key, value)
+  }
+  const search = query.toString()
+  return search ? `${path}?${search}` : path
 }
 
-export async function fetchMigrations(migrationId: string | null): Promise<MigrationTimelineResponse> {
+export async function fetchMigrations(migrationId: string | null, migrationsPath: string | null): Promise<MigrationTimelineResponse> {
   if (window.__MIGRATION_DATA__) {
     return window.__MIGRATION_DATA__
   }
-  const response = await fetch(withMigrationId('/api/migrations', migrationId))
+  const response = await fetch(withParams('/api/migrations', { migrationId, migrationsPath }))
   if (!response.ok) {
     throw new Error('Failed to fetch migrations')
   }
@@ -168,7 +173,7 @@ export interface RunMigrationsResult {
 }
 
 export async function runMigrations(migrationId: string | null): Promise<RunMigrationsResult> {
-  const response = await fetch(withMigrationId('/api/migrations/run', migrationId), { method: 'POST' })
+  const response = await fetch(withParams('/api/migrations/run', { migrationId }), { method: 'POST' })
   if (!response.ok) {
     throw new Error('Failed to run migrations')
   }

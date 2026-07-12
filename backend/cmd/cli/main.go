@@ -5,11 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
-	"sort"
 	"strings"
 
 	"migration-timeline/backend/internal/analysis"
+	"migration-timeline/backend/internal/loader"
 	"migration-timeline/backend/internal/models"
 	"migration-timeline/backend/internal/parser"
 	"migration-timeline/backend/internal/report"
@@ -57,31 +56,10 @@ func init() {
 }
 
 func processDirectory(dir string) error {
-	files, err := filepath.Glob(filepath.Join(dir, "*.sql"))
+	infos, err := loader.LoadMigrationInfosFromDir(dir)
 	if err != nil {
-		return fmt.Errorf("failed to read directory: %w", err)
+		return err
 	}
-
-	var infos []models.MigrationInfo
-	for _, file := range files {
-		if strings.HasPrefix(filepath.Base(file), ".") {
-			continue
-		}
-		content, err := os.ReadFile(file)
-		if err != nil {
-			return fmt.Errorf("failed to read %s: %w", file, err)
-		}
-		infos = append(infos, models.MigrationInfo{
-			ID:        filepath.Base(file),
-			SQL:       string(content),
-			Timestamp: parser.ExtractTimestampFromFilename(file),
-		})
-	}
-
-	sort.Slice(infos, func(i, j int) bool {
-		return infos[i].Timestamp < infos[j].Timestamp
-	})
-
 	return processMigrationInfos(infos)
 }
 
