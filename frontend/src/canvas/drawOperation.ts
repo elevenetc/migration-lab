@@ -18,7 +18,7 @@ export function drawOperation(
     } else {
         if (drawGradient) drawBackground(prevOp, nextOp, op, ctx);
     }
-    drawFlag(getOperationTitle(op.operation), true, op, ctx);
+    drawFlag(getOperationTitle(op.operation), true, op.x, op, ctx);
 }
 
 const BACKGROUND_CORNER_RADIUS = 4
