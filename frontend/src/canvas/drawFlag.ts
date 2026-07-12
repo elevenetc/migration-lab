@@ -1,8 +1,6 @@
-import {OperationLayoutInfo} from './layoutInfo.ts'
-import {getOperationColor} from "./getOperationColor.ts";
 import {getStringWidth} from "./getStringWidth.ts";
 import {getStringHeight} from "./getStringHeight.ts";
-import {getTableColor} from "./getTableColor.ts";
+import {FlagColor} from "./flagColor.ts";
 
 const FLAG_TITLE_CORNER_RADIUS = 4
 const FLAG_TITLE_FLAG_NOTCH = 4
@@ -13,18 +11,18 @@ export function drawFlag(
     title: string,
     first: boolean,
     x: number,
-    op: OperationLayoutInfo,
+    y: number,
+    color: FlagColor,
     ctx: CanvasRenderingContext2D
 ): number {
     const w = getStringWidth(title, ctx) + 15
     const h = getStringHeight('A', ctx) + 6
-    const y = op.y
     const r = FLAG_TITLE_CORNER_RADIUS
     const notch = FLAG_TITLE_FLAG_NOTCH
 
     const gradient = ctx.createLinearGradient(x, y, x + w, y)
-    gradient.addColorStop(0, getTableColor(op.operation))
-    gradient.addColorStop(1, getOperationColor(op.operation))
+    gradient.addColorStop(0, color.from)
+    gradient.addColorStop(1, color.to)
     ctx.fillStyle = gradient
 
     ctx.beginPath()
@@ -45,7 +43,7 @@ export function drawFlag(
     ctx.closePath()
     ctx.fill()
 
-    ctx.fillStyle = '#ffffff'
+    ctx.fillStyle = color.text
     ctx.font = '13px sans-serif'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'

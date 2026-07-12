@@ -4,15 +4,15 @@ import { renderTimeline } from '../canvas/renderTimeline'
 import { computeLayout } from '../canvas/layoutInfo'
 
 export function Timeline() {
-  const { migrations, loading, error } = useMigrationStore()
+  const { migrations, analysis, loading, error } = useMigrationStore()
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const scrollRef = useRef({ x: 0, y: 0 })
   const paintRef = useRef<() => void>(() => {})
 
   const layout = useMemo(
-    () => (migrations.length > 0 ? computeLayout(migrations) : null),
-    [migrations],
+    () => (migrations.length > 0 ? computeLayout(migrations, analysis?.warnings ?? []) : null),
+    [migrations, analysis],
   )
 
   useEffect(() => {

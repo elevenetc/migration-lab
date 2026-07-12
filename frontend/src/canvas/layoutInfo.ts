@@ -1,4 +1,4 @@
-import type {Migration, Operation} from '../api/migrationApi'
+import type {Migration, Operation, Warning} from '../api/migrationApi'
 
 export interface OperationEntry {
     migration: Migration
@@ -41,6 +41,7 @@ export interface OperationLayoutInfo {
     title: string
     migration: Migration,
     operation: Operation
+    warnings: Warning[]
 }
 
 export interface TableLayoutInfo {
@@ -89,7 +90,7 @@ function rectWidth(title: string): number {
 
 // Places one rectangle per (migration, table): rows align tables vertically,
 // columns align migrations left-to-right by timestamp.
-export function computeLayout(migrations: Migration[]): LayoutInfo {
+export function computeLayout(migrations: Migration[], warnings: Warning[] = []): LayoutInfo {
 
     const {tableOperations, tableOrder} = buildTableOperationsMap(migrations)
 
@@ -103,6 +104,7 @@ export function computeLayout(migrations: Migration[]): LayoutInfo {
         title: string
         migration: Migration,
         operation: Operation
+        warnings: Warning[]
     }
 
     // Placed entries grouped per table, in row order
@@ -117,7 +119,9 @@ export function computeLayout(migrations: Migration[]): LayoutInfo {
                 timestampRank: timestampRank.get(migration.timestamp) ?? 0,
                 title: migration.operations.map(op => op.type).join(', '),
                 migration: migration,
-                operation: operation
+                operation: operation,
+                warnings: warnings.filter(w =>
+                    w.operationId.migrationId === migration.id && w.operationId.tableName === tableName)
             })
         })
         return {tableName, placed}
@@ -147,14 +151,15 @@ export function computeLayout(migrations: Migration[]): LayoutInfo {
             y: rowY(rowIndex),
             h: TABLE_ROW_HEIGHT,
         }
-        tableMigrations.set(table, placed.map(({timestampRank, title, migration, operation}) => ({
+        tableMigrations.set(table, placed.map(({timestampRank, title, migration, operation, warnings}) => ({
             x: columnX.get(timestampRank)!,
             y: table.y,
             w: rectWidth(title),
             h: TABLE_ROW_HEIGHT,
             title,
             migration,
-            operation
+            operation,
+            warnings
         })))
     })
 

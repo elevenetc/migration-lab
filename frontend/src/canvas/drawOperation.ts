@@ -1,8 +1,10 @@
 import {OperationLayoutInfo, TRANSITION_TAG_SHIFT} from './layoutInfo.ts'
 import {getOperationTitle} from "./getOperationTitle.ts";
+import {getWarningTitle} from "./getWarningTitle.ts";
 import {debugRect} from "./debugRect.ts";
 import {getTableColor} from "./getTableColor.ts";
 import {drawFlag} from "./drawFlag.ts";
+import {operationFlagColor, warningFlagColor} from "./flagColor.ts";
 
 export const debugRender = false
 
@@ -18,7 +20,10 @@ export function drawOperation(
     } else {
         if (drawGradient) drawBackground(prevOp, nextOp, op, ctx);
     }
-    drawFlag(getOperationTitle(op.operation), true, op.x, op, ctx);
+    let x = drawFlag(getOperationTitle(op.operation), true, op.x, op.y, operationFlagColor(op.operation), ctx)
+    op.warnings.forEach(w => {
+        x = drawFlag(getWarningTitle(w), false, x, op.y, warningFlagColor, ctx)
+    })
 }
 
 const BACKGROUND_CORNER_RADIUS = 4
