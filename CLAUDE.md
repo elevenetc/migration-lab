@@ -27,26 +27,27 @@ Two-module monorepo:
 
 - React with TypeScript
 - Zustand for state management
-- @xyflow/react for graph visualization
+- HTML5 Canvas for timeline rendering
 
 #### Structure
 
 - `src/api/` - API types and fetch functions (mirrors backend models)
 - `src/store/` - Zustand store with async actions
 - `src/components/` - React components
+- `src/canvas/` - Canvas rendering helpers (layout, drawing, colors)
 - `src/contracts/` - API contract validation
 
 #### Data Flow
 
 1. App mounts -> calls `loadMigrations()`
 2. Store fetches `/api/migrations`
-3. Timeline reads store, groups by table, renders graph
+3. Timeline reads store, groups by table, renders to canvas
 
 #### Visualization
 
 - Tables as rows, operations as nodes positioned by timestamp
 - X-axis: migrations with same timestamp align vertically in same column
-- Edges connect operations on same table chronologically
+- Ribbons connect operations on same table chronologically
 - CREATE_TABLE (blue) vs ALTER_TABLE (darker blue)
 
 ## CLI
@@ -101,19 +102,34 @@ After making changes, run tests:
 just test
 ```
 
+`just test` runs, in order: `generate-contracts` (backend fixtures), `test-backend` (Go),
+`typecheck-frontend` (`tsc --noEmit`, compile-time type-drift guard), and `test-frontend`
+(Vitest unit tests). Frontend-only: `just test-frontend` (or `cd frontend && npm test`).
+
+## Frontend tests
+
+Vitest (`*.test.ts` under `frontend/src`, run via `just test-frontend`) covers:
+
+- `src/contracts/validate-api-contracts.test.ts` - validates generated fixtures against TS types at runtime
+- `src/canvas/*.test.ts` - pure layout/color/title logic (`computeLayout`, `getOperationColor`, etc.)
+
+Canvas *drawing* (pixel output) has no automated coverage - verify it in the browser (see Debugging).
+
 ## API Contract Testing
 
-Backend and frontend types are kept in sync via compile-time contract validation:
+Backend and frontend types are kept in sync two ways: `tsc` fails to compile if types drift,
+and the Vitest contract test fails if the generated fixtures violate the TS types at runtime.
 
 1. `generate_test.go` generates JSON fixtures from backend models to `api-contracts/fixtures/`
-2. `validate-api-contracts.ts` imports fixtures and validates against TypeScript types
+2. `validate-api-contracts.test.ts` imports fixtures, asserts type-assignability (compile-time)
+   and runs the validators (runtime)
 3. Exhaustive switch ensures all Operation variants are handled
 
 When adding new Operation types:
 
 1. Add to `internal/models/operation.go`
 2. Add to `migrationApi.ts` and update `Operation` union
-3. Add case to `validate-api-contracts.ts` switch
+3. Add case to `validate-api-contracts.test.ts` switch
 4. Update `internal/contracts/generate_test.go` to include example
 
 `just test` fails if types drift.
@@ -144,12 +160,12 @@ When adding new Operation types:
 
 ## Debugging
 
-- Use `playwright mcp` and `localhost:3000` (frontend) or `localhost:3001` (frontend2) to verify frontend implementation
+- Use `playwright mcp` and `localhost:3000` to verify frontend implementation
 - `localhost:3000` makes single request which returns content of `/api/migrations?migrationId=<id>`;
   the id comes from the page URL (`?migrationId=`). Dataset ids are the keys of `dummy.Datasets()`
   (e.g. `ecommerce`, `simple-partition`). A missing/unknown id returns 404.
-- `just compose-up` runs the frontends as Vite dev servers with HMR (see `docker-compose.override.yml`), so
-  frontend/frontend2 source edits reload live — no `compose-apply` needed for frontend changes
+- `just compose-up` runs the frontend as a Vite dev server with HMR (see `docker-compose.override.yml`), so
+  frontend source edits reload live — no `compose-apply` needed for frontend changes
 - `just compose-apply` is only needed to pick up backend changes (rebuilds and restarts the backend)
 - After editing `internal/dummy/`, run `just compose-apply` to see the updated data at `localhost:3000`
 - Pass `/.playwright-mcp` to `playwright`, so it stores logs and screenshots there instead of root

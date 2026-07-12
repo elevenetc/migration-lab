@@ -17,10 +17,8 @@ func GenerateReport(response *models.MigrationTimelineResponse, outputPath strin
 		return fmt.Errorf("failed to marshal response: %w", err)
 	}
 
-	cssContent, err := loadAsset(".css")
-	if err != nil {
-		return fmt.Errorf("failed to load CSS: %w", err)
-	}
+	// CSS is optional: the canvas frontend inlines its styles and emits no .css asset.
+	cssContent := loadOptionalAsset(".css")
 
 	jsContent, err := loadAsset(".js")
 	if err != nil {
@@ -68,6 +66,15 @@ func loadAsset(ext string) (string, error) {
 	return content, nil
 }
 
+// loadOptionalAsset returns the first embedded asset with ext, or "" if none exists.
+func loadOptionalAsset(ext string) string {
+	content, err := loadAsset(ext)
+	if err != nil {
+		return ""
+	}
+	return content
+}
+
 func buildHTML(jsonData, css, js string) string {
 	var sb strings.Builder
 
@@ -77,12 +84,13 @@ func buildHTML(jsonData, css, js string) string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Migration Timeline Report</title>
-  <style>
 `)
-	sb.WriteString(css)
-	sb.WriteString(`
-  </style>
-</head>
+	if css != "" {
+		sb.WriteString("  <style>\n")
+		sb.WriteString(css)
+		sb.WriteString("\n  </style>\n")
+	}
+	sb.WriteString(`</head>
 <body>
   <div id="root"></div>
   <script>

@@ -3,15 +3,19 @@ default:
     @just --list
 
 # Run all tests
-test: generate-contracts test-backend test-contracts
+test: generate-contracts test-backend typecheck-frontend test-frontend
 
 # Generate API contract fixtures from backend models
 generate-contracts:
     cd backend && go test ./internal/contracts/...
 
-# Validate frontend types against API contracts
-test-contracts:
+# Typecheck frontend against API contracts (compile-time type-drift guard)
+typecheck-frontend:
     cd frontend && npx tsc --noEmit
+
+# Run frontend unit tests (Vitest: contract + canvas layout tests)
+test-frontend:
+    cd frontend && npm test
 
 # Run all backend tests
 test-backend:
@@ -38,18 +42,6 @@ build-backend:
 build-frontend:
     cd frontend && npm run build
 
-# Install frontend2 (canvas) dependencies
-install-frontend2:
-    cd frontend2 && npm install
-
-# Run frontend2 (canvas) dev server
-run-frontend2:
-    cd frontend2 && npm run dev
-
-# Build frontend2 (canvas)
-build-frontend2:
-    cd frontend2 && npm run build
-
 # Clean all
 clean:
     rm -rf build
@@ -57,10 +49,12 @@ clean:
     cd frontend && rm -rf node_modules dist
 
 # Build and run all services with Docker Compose (detached).
-# Frontends run as Vite dev servers with HMR (docker-compose.override.yml), so
-# frontend/frontend2 edits reload live without compose-apply.
+# --wait blocks until every service is healthy and fails if one exits or never
+# gets healthy (e.g. the frontend crashing on a stale node_modules volume).
+# The frontend runs as a Vite dev server with HMR (docker-compose.override.yml), so
+# frontend edits reload live without compose-apply.
 compose-up:
-    docker compose up --build -d
+    docker compose up --build --wait --wait-timeout 120
 
 # Stop and remove Docker Compose services (use 'clear' to also remove volumes)
 compose-down *args:

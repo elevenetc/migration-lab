@@ -53,7 +53,7 @@ function App() {
           )}
         </div>
       </header>
-      <main style={{ flex: 1 }}>
+      <main style={{ flex: 1, minHeight: 0 }}>
         <Timeline />
       </main>
     </div>

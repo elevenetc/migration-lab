@@ -1,9 +1,12 @@
+import { describe, it, expect } from 'vitest'
 import type { MigrationTimelineResponse, RunMigrationsResult, Warning } from '../api/migrationApi'
 import migrationFixture from '../../../api-contracts/fixtures/migration-response.json' with { type: 'json' }
 import runMigrationsFixture from '../../../api-contracts/fixtures/run-migrations-result.json' with { type: 'json' }
 
-const _validateMigrationResponse: MigrationTimelineResponse = migrationFixture as MigrationTimelineResponse
-const _validateRunMigrationsResult: RunMigrationsResult = runMigrationsFixture as RunMigrationsResult
+// Compile-time guard: fixtures generated from the Go models must be assignable
+// to the TypeScript types. `tsc` fails here if backend and frontend types drift.
+const migrationResponse: MigrationTimelineResponse = migrationFixture as MigrationTimelineResponse
+const runMigrationsResult: RunMigrationsResult = runMigrationsFixture as RunMigrationsResult
 
 function assertExhaustive(val: never): never {
   throw new Error(`Unhandled type: ${JSON.stringify(val)}`)
@@ -73,12 +76,6 @@ function validateCreateTableMap(response: MigrationTimelineResponse): void {
   }
 }
 
-function validateWarningTypes(response: MigrationTimelineResponse): void {
-  for (const warning of response.analysis.warnings) {
-    validateWarning(warning)
-  }
-}
-
 function validateWarning(warning: Warning): void {
   if (warning.type === 'ACCESS_EXCLUSIVE_LOCK') {
     if (!warning.operationId.migrationId || !warning.operationId.tableName) {
@@ -107,9 +104,36 @@ function validateRunMigrationsResult(result: RunMigrationsResult): void {
   }
 }
 
-validateOperationTypes(_validateMigrationResponse)
-validateMap(_validateMigrationResponse)
-validateCreateTableMap(_validateMigrationResponse)
-validateTimestamps(_validateMigrationResponse)
-validateWarningTypes(_validateMigrationResponse)
-validateRunMigrationsResult(_validateRunMigrationsResult)
+describe('API contract: migration response fixture', () => {
+  it('is non-empty', () => {
+    expect(migrationResponse.timeline.length).toBeGreaterThan(0)
+  })
+
+  it('only contains known operation types', () => {
+    expect(() => validateOperationTypes(migrationResponse)).not.toThrow()
+  })
+
+  it('keys map entries by migration id', () => {
+    expect(() => validateMap(migrationResponse)).not.toThrow()
+  })
+
+  it('keys createTableMap entries by table name', () => {
+    expect(() => validateCreateTableMap(migrationResponse)).not.toThrow()
+  })
+
+  it('has numeric timestamps', () => {
+    expect(() => validateTimestamps(migrationResponse)).not.toThrow()
+  })
+
+  it('has well-formed analysis warnings', () => {
+    for (const warning of migrationResponse.analysis.warnings) {
+      expect(() => validateWarning(warning)).not.toThrow()
+    }
+  })
+})
+
+describe('API contract: run-migrations result fixture', () => {
+  it('has the expected field types', () => {
+    expect(() => validateRunMigrationsResult(runMigrationsResult)).not.toThrow()
+  })
+})
