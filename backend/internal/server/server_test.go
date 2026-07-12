@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"migration-timeline/backend/internal/database"
-	"migration-timeline/backend/internal/dummy"
+	"migration-timeline/backend/internal/datasets"
 	"migration-timeline/backend/internal/models"
 )
 
@@ -38,12 +38,12 @@ func (f fakeRunner) Run(context.Context, string) (models.RunMigrationsResult, er
 	return f.result, f.err
 }
 
-func dummyDB() *database.Database {
-	return database.New(dummy.Datasets())
+func datasetsDB() *database.Database {
+	return database.New(datasets.Datasets())
 }
 
 func TestMigrationsEndpoint(t *testing.T) {
-	e := New(Config{Port: 8081, Store: dummyDB()})
+	e := New(Config{Port: 8081, Store: datasetsDB()})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/migrations?migrationId=ecommerce", nil)
 	rec := httptest.NewRecorder()
@@ -59,7 +59,7 @@ func TestMigrationsEndpoint(t *testing.T) {
 		t.Fatalf("failed to unmarshal response: %v", err)
 	}
 
-	want := len(dummy.Datasets()["ecommerce"])
+	want := len(datasets.Datasets()["ecommerce"])
 
 	if len(response.Timeline) != want {
 		t.Errorf("expected %d migrations in timeline, got %d", want, len(response.Timeline))
@@ -121,7 +121,7 @@ func TestResponseStructure(t *testing.T) {
 }
 
 func TestMissingMigrationIdReturns404(t *testing.T) {
-	e := New(Config{Port: 8081, Store: dummyDB()})
+	e := New(Config{Port: 8081, Store: datasetsDB()})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/migrations", nil)
 	rec := httptest.NewRecorder()
@@ -133,7 +133,7 @@ func TestMissingMigrationIdReturns404(t *testing.T) {
 }
 
 func TestUnknownMigrationIdReturns404(t *testing.T) {
-	e := New(Config{Port: 8081, Store: dummyDB()})
+	e := New(Config{Port: 8081, Store: datasetsDB()})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/migrations?migrationId=bogus", nil)
 	rec := httptest.NewRecorder()

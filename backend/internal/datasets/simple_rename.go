@@ -1,4 +1,4 @@
-package dummy
+package datasets
 
 var simpleRenameMigrations = []migration{
 	{"v1", createUsersSimple},

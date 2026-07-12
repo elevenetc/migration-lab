@@ -1,4 +1,4 @@
-package dummy
+package datasets
 
 var renameWithNewTableInBetweenMigrations = []migration{
 	{"v1", createUsersRWNT},

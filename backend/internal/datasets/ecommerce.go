@@ -1,4 +1,4 @@
-package dummy
+package datasets
 
 // complexEcommerceMigrations models a realistic, long-lived ecommerce schema.
 // CREATE and ALTER statements are interleaved across tables (not batched per table),

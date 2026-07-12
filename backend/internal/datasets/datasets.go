@@ -1,4 +1,4 @@
-package dummy
+package datasets
 
 import "migration-timeline/backend/internal/models"
 
@@ -17,6 +17,7 @@ func Datasets() map[string][]models.MigrationInfo {
 		"rename-with-new-table-in-between": toInfos(renameWithNewTableInBetweenMigrations),
 		"simple-table":                     toInfos(simpleTableMigrations),
 		"create-add-column-rename":         toInfos(createAddColumnRenameMigrations),
+		"warning-partition-parent-alter":   toInfos(warningPartitionParentAlterMigrations),
 	}
 }
 

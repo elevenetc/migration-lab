@@ -1,4 +1,4 @@
-package dummy
+package datasets
 
 var simplePartitionMigrations = []migration{
 	{"v1", createEventsPartitioned},

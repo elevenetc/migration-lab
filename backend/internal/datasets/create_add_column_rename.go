@@ -1,4 +1,4 @@
-package dummy
+package datasets
 
 var createAddColumnRenameMigrations = []migration{
 	{"v1", createUsersCACR},

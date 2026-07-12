@@ -1,4 +1,4 @@
-package dummy
+package datasets
 
 var simpleTableMigrations = []migration{
 	{"v1", createUsersTable},

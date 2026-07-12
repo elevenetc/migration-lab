@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"migration-timeline/backend/internal/database"
-	"migration-timeline/backend/internal/dummy"
+	"migration-timeline/backend/internal/datasets"
 	"migration-timeline/backend/internal/models"
 	"migration-timeline/backend/internal/parser"
 	"migration-timeline/backend/internal/runner"
@@ -30,17 +30,17 @@ func initConfig(port *int) server.Config {
 	migrationsDir := flag.String("migrations", "", "Optional directory of .sql migrations, served under its base-name id")
 	flag.Parse()
 
-	datasets := dummy.Datasets()
+	sets := datasets.Datasets()
 
 	if *migrationsDir != "" {
 		infos, err := loadMigrationInfosFromDir(*migrationsDir)
 		if err != nil {
 			log.Fatal(err)
 		}
-		datasets[filepath.Base(*migrationsDir)] = infos
+		sets[filepath.Base(*migrationsDir)] = infos
 	}
 
-	db := database.New(datasets)
+	db := database.New(sets)
 	cfg := server.Config{
 		Port:   *port,
 		Store:  db,
