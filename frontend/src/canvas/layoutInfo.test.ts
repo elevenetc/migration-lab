@@ -95,7 +95,39 @@ describe('computeLayout', () => {
     const flagged = rects.filter(r => r.warnings.length > 0)
     expect(flagged).toHaveLength(1)
     expect(flagged[0].migration.id).toBe('m2')
-    expect(flagged[0].operation.tableName).toBe('users')
+    expect(flagged[0].operations[0].tableName).toBe('users')
+  })
+
+  it('keeps every operation of a migration on the same table in one rectangle', () => {
+    const migrations = [
+      migration('m1', 1, [createTable('users')]),
+      migration('m2', 2, [addColumn('users'), addColumn('users'), addColumn('orgs')]),
+    ]
+
+    const rects = [...computeLayout(migrations).tableMigrations.values()].flat()
+
+    const usersM2 = rects.filter(r => r.migration.id === 'm2' && r.operations[0].tableName === 'users')
+    expect(usersM2).toHaveLength(1)
+    expect(usersM2[0].operations.map(o => o.type)).toEqual(['ADD_COLUMN', 'ADD_COLUMN'])
+  })
+
+  it('bounds a migration around its operation rectangles across tables', () => {
+    const migrations = [
+      migration('m1', 1, [createTable('users'), createTable('orders')]),
+      migration('m2', 2, [addColumn('users')]),
+    ]
+
+    const layout = computeLayout(migrations)
+    const rects = [...layout.tableMigrations.values()].flat()
+    const m1Rects = rects.filter(r => r.migration.id === 'm1')
+
+    expect(layout.migrationBounds).toHaveLength(2)
+    const m1 = layout.migrationBounds.find(b => b.migration.id === 'm1')!
+    expect(m1.x).toBe(Math.min(...m1Rects.map(r => r.x)))
+    expect(m1.y).toBe(Math.min(...m1Rects.map(r => r.y)))
+    expect(m1.x + m1.w).toBe(Math.max(...m1Rects.map(r => r.x + r.w)))
+    expect(m1.y + m1.h).toBe(Math.max(...m1Rects.map(r => r.y + r.h)))
+    expect(m1.h).toBeGreaterThan(TABLE_ROW_HEIGHT) // spans two rows
   })
 
   it('resolves the migrations of the row directly below a table', () => {
@@ -107,7 +139,7 @@ describe('computeLayout', () => {
     const layout = computeLayout(migrations)
 
     const below = layout.getNextTableMigrationsOrNull('users')
-    expect(below?.[0].operation.tableName).toBe('orders')
+    expect(below?.[0].operations[0].tableName).toBe('orders')
     expect(layout.getNextTableMigrationsOrNull('orders')).toBeNull()
   })
 })

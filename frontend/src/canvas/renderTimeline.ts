@@ -1,8 +1,9 @@
-import {RenameTable} from '../api/migrationApi'
+import {CreateTable, RenameTable} from '../api/migrationApi'
 import {LayoutInfo, OperationLayoutInfo, TRANSITION_TAG_SHIFT} from './layoutInfo.ts'
 import {drawOperation} from './drawOperation.ts'
 import {drawTransitionRibbon, RibbonInfo} from "./drawTransitionRibbon.ts";
 import {getColorFromString} from "./getColorFromString.ts";
+import {drawMigrationRect} from "./drawMigrationRect.ts";
 
 // On-screen pixel thresholds below which texts and flags are hidden.
 const FONT_SIZE = 13
@@ -44,8 +45,9 @@ export function renderTimeline(
     const showText = FONT_SIZE * scale >= MIN_TEXT_PX
     const showFlags = FLAG_HEIGHT * scale >= MIN_FLAG_PX
 
-    let renamedTables = new Map<string, OperationLayoutInfo>()
-    let partitionedTables = new Map<string, OperationLayoutInfo[]>()
+    // Rename cells keyed by the old table name; partition children keyed by parent table name.
+    let renamedTables = new Map<string, { info: OperationLayoutInfo, rename: RenameTable }>()
+    let partitionedTables = new Map<string, { info: OperationLayoutInfo, tableName: string }[]>()
     let transitionRibbons: RibbonInfo[] = []
     const migrationsToDraw: {
         op: OperationLayoutInfo;
@@ -73,28 +75,32 @@ export function renderTimeline(
             const nextOp = tableOperations[m + 1] ?? null
             const prevOp = tableOperations[m - 1] ?? null
             const currentOp = tableOperations[m];
-            const op = currentOp.operation
+            const ops = currentOp.operations
+            const renameOp = ops.find((o): o is RenameTable => o.type === 'RENAME_TABLE')
+            const partitionChildOp = ops.find((o): o is CreateTable =>
+                o.type === 'CREATE_TABLE' && o.partitionOf != null)
             let renderGradient = true
-            if (op.type === 'RENAME_TABLE') {
-                renamedTables.set(op.tableName, currentOp)
-            } else if (op.type === 'CREATE_TABLE' && op.partitionOf) {
-                const children = partitionedTables.get(op.partitionOf) ?? []
-                children.push(currentOp)
-                partitionedTables.set(op.partitionOf, children)
+            if (renameOp) {
+                renamedTables.set(renameOp.tableName, {info: currentOp, rename: renameOp})
+            } else if (partitionChildOp) {
+                const children = partitionedTables.get(partitionChildOp.partitionOf!) ?? []
+                children.push({info: currentOp, tableName: partitionChildOp.tableName})
+                partitionedTables.set(partitionChildOp.partitionOf!, children)
             } else {
-                if (renamedTables.has(op.tableName)) {
+                const tableName = ops[0].tableName
+                if (renamedTables.has(tableName)) {
                     renderGradient = false
-                    const renamedOpLayoutInfo = renamedTables.get(op.tableName)!!
-                    renamedTables.delete(op.tableName)
+                    const renamed = renamedTables.get(tableName)!!
+                    renamedTables.delete(tableName)
 
                     const r: RibbonInfo = {
-                        leftX: renamedOpLayoutInfo.x,
-                        leftY: renamedOpLayoutInfo.y + TRANSITION_TAG_SHIFT,
+                        leftX: renamed.info.x,
+                        leftY: renamed.info.y + TRANSITION_TAG_SHIFT,
                         rightX: currentOp.x,
                         rightY: currentOp.y + TRANSITION_TAG_SHIFT,
                         height: currentOp.h - TRANSITION_TAG_SHIFT,
-                        leftColor: getColorFromString((renamedOpLayoutInfo.operation as RenameTable).newTableName),
-                        rightColor: getColorFromString(currentOp.operation.tableName),
+                        leftColor: getColorFromString(renamed.rename.newTableName),
+                        rightColor: getColorFromString(tableName),
                         init: prevOp === null
                     }
                     transitionRibbons.push(r)
@@ -102,20 +108,22 @@ export function renderTimeline(
             }
 
             // Partitioned parent: connect it to each stored child partition.
-            if (op.type === 'CREATE_TABLE' && op.isPartitioned && partitionedTables.has(op.tableName)) {
+            const partitionParentOp = ops.find((o): o is CreateTable =>
+                o.type === 'CREATE_TABLE' && o.isPartitioned)
+            if (partitionParentOp && partitionedTables.has(partitionParentOp.tableName)) {
                 renderGradient = false
-                const children = partitionedTables.get(op.tableName)!!
-                partitionedTables.delete(op.tableName)
+                const children = partitionedTables.get(partitionParentOp.tableName)!!
+                partitionedTables.delete(partitionParentOp.tableName)
 
                 children.forEach(child => {
                     transitionRibbons.push({
-                        leftX: child.x,
-                        leftY: child.y + TRANSITION_TAG_SHIFT,
+                        leftX: child.info.x,
+                        leftY: child.info.y + TRANSITION_TAG_SHIFT,
                         rightX: currentOp.x,
                         rightY: currentOp.y + TRANSITION_TAG_SHIFT,
                         height: currentOp.h - TRANSITION_TAG_SHIFT,
-                        leftColor: getColorFromString(child.operation.tableName),
-                        rightColor: getColorFromString(currentOp.operation.tableName),
+                        leftColor: getColorFromString(child.tableName),
+                        rightColor: getColorFromString(partitionParentOp.tableName),
                         init: prevOp === null
                     })
                 })
@@ -124,7 +132,9 @@ export function renderTimeline(
         }
     }
 
-    // Ribbons first, migrations on top, so boxes are never overlapped by ribbons.
+    // Migration outlines behind everything, then ribbons, then operations on
+    // top, so boxes are never overlapped by ribbons.
+    layout.migrationBounds.forEach(b => drawMigrationRect(ctx, b, scale))
     transitionRibbons.forEach(r => drawTransitionRibbon(ctx, r))
     migrationsToDraw.forEach(m => drawOperation(ctx, m.op, m.prevMig, m.nextMig, m.renderGradient, showFlags, showText))
 }

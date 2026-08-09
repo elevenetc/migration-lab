@@ -23,7 +23,10 @@ export function drawOperation(
         if (drawGradient) drawBackground(prevOp, nextOp, op, ctx);
     }
     if (!showFlags) return
-    let x = drawFlag(getOperationTitle(op.operation), true, op.x, op.y, operationFlagColor(op.operation), showText, ctx)
+    let x = op.x
+    op.operations.forEach((operation, i) => {
+        x = drawFlag(getOperationTitle(operation), i === 0, x, op.y, operationFlagColor(operation), showText, ctx)
+    })
     op.warnings.forEach(w => {
         x = drawFlag(getWarningTitle(w), false, x, op.y, warningFlagColor, showText, ctx)
     })
@@ -39,7 +42,7 @@ function drawBackground(
 ) {
     const w = nextOp == null ? currentOp.w : nextOp.x - currentOp.x;
 
-    let operationColor = getTableColor(currentOp.operation)
+    let operationColor = getTableColor(currentOp.operations[0])
 
     // First operation for the table gets rounded corners on the left side.
     const r = isFirstOperation(prevOp, currentOp) ? BACKGROUND_CORNER_RADIUS : 0
@@ -65,8 +68,9 @@ function drawBackground(
 }
 
 function isFirstOperation(prevOp: OperationLayoutInfo | null, currentOp: OperationLayoutInfo) {
-    if (currentOp.operation.type == 'CREATE_TABLE') {
-        if (currentOp.operation.partitionOf) return false
+    const first = currentOp.operations[0]
+    if (first.type == 'CREATE_TABLE') {
+        if (first.partitionOf) return false
     }
-    return prevOp == null && currentOp.operation.type != 'RENAME_TABLE';
+    return prevOp == null && first.type != 'RENAME_TABLE';
 }

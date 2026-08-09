@@ -1,4 +1,5 @@
 import type {Migration, Operation, Warning} from '../api/migrationApi'
+import {getOperationTitle} from './getOperationTitle.ts'
 
 export interface OperationEntry {
     migration: Migration
@@ -40,13 +41,23 @@ export interface OperationLayoutInfo {
     h: number
     title: string
     migration: Migration,
-    operation: Operation
+    // All operations of the migration on this table row, in statement order.
+    operations: Operation[]
     warnings: Warning[]
 }
 
 export interface TableLayoutInfo {
     tableName: string
     y: number
+    h: number
+}
+
+// Bounding box enclosing every operation rectangle of one migration.
+export interface MigrationLayoutInfo {
+    migration: Migration
+    x: number
+    y: number
+    w: number
     h: number
 }
 
@@ -60,6 +71,7 @@ export class LayoutInfo {
         readonly tables: string[],
         readonly width: number,
         readonly height: number,
+        readonly migrationBounds: MigrationLayoutInfo[],
     ) {}
 
     // Migrations of the table rendered directly below `tableName`,
@@ -98,31 +110,39 @@ export function computeLayout(migrations: Migration[], warnings: Warning[] = [])
     const timestampRank = new Map(uniqueTimestamps.map((ts, idx) => [ts, idx]))
 
     // One entry per (migration, table); the same migration may hold several
-    // operations on a table, but they collapse into a single rectangle.
+    // operations on a table — they share a single rectangle, stacking a flag each.
     interface Placed {
         timestampRank: number
         title: string
         migration: Migration,
-        operation: Operation
+        operations: Operation[]
         warnings: Warning[]
     }
 
     // Placed entries grouped per table, in row order
     const placedByTable = tableOrder.map(tableName => {
         const ops = tableOperations.get(tableName) ?? []
-        const seenMigrations = new Set<string>()
+        const placedByMigration = new Map<string, Placed>()
         const placed: Placed[] = []
         ops.forEach(({operation, migration}) => {
-            if (seenMigrations.has(migration.id)) return
-            seenMigrations.add(migration.id)
-            placed.push({
+            const existing = placedByMigration.get(migration.id)
+            if (existing) {
+                existing.operations.push(operation)
+                return
+            }
+            const entry: Placed = {
                 timestampRank: timestampRank.get(migration.timestamp) ?? 0,
-                title: migration.statements.flatMap(s => s.operations).map(op => op.type).join(', '),
+                title: '',
                 migration: migration,
-                operation: operation,
+                operations: [operation],
                 warnings: warnings.filter(w =>
                     w.operationId.migrationId === migration.id && w.tableName === tableName)
-            })
+            }
+            placedByMigration.set(migration.id, entry)
+            placed.push(entry)
+        })
+        placed.forEach(entry => {
+            entry.title = entry.operations.map(getOperationTitle).join(', ')
         })
         return {tableName, placed}
     })
@@ -151,14 +171,14 @@ export function computeLayout(migrations: Migration[], warnings: Warning[] = [])
             y: rowY(rowIndex),
             h: TABLE_ROW_HEIGHT,
         }
-        tableMigrations.set(table, placed.map(({timestampRank, title, migration, operation, warnings}) => ({
+        tableMigrations.set(table, placed.map(({timestampRank, title, migration, operations, warnings}) => ({
             x: columnX.get(timestampRank)!,
             y: table.y,
             w: rectWidth(title),
             h: TABLE_ROW_HEIGHT,
             title,
             migration,
-            operation,
+            operations,
             warnings
         })))
     })
@@ -167,5 +187,26 @@ export function computeLayout(migrations: Migration[], warnings: Warning[] = [])
     const height = tableOrder.length * (TABLE_ROW_HEIGHT + Y_GAP)
     const tables = [...tableMigrations.keys()].map(table => table.tableName)
 
-    return new LayoutInfo(tableMigrations, tables, width, height)
+    return new LayoutInfo(tableMigrations, tables, width, height, computeMigrationBounds(tableMigrations))
+}
+
+// One bounding box per migration, enclosing its operation rectangles across all table rows.
+function computeMigrationBounds(tableMigrations: Map<TableLayoutInfo, OperationLayoutInfo[]>): MigrationLayoutInfo[] {
+    const byMigration = new Map<string, MigrationLayoutInfo>()
+    for (const operations of tableMigrations.values()) {
+        operations.forEach(({x, y, w, h, migration}) => {
+            const bounds = byMigration.get(migration.id)
+            if (!bounds) {
+                byMigration.set(migration.id, {migration, x, y, w, h})
+                return
+            }
+            const right = Math.max(bounds.x + bounds.w, x + w)
+            const bottom = Math.max(bounds.y + bounds.h, y + h)
+            bounds.x = Math.min(bounds.x, x)
+            bounds.y = Math.min(bounds.y, y)
+            bounds.w = right - bounds.x
+            bounds.h = bottom - bounds.y
+        })
+    }
+    return [...byMigration.values()]
 }
