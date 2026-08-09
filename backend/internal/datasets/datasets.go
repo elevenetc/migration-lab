@@ -17,6 +17,7 @@ func Datasets() map[string][]models.MigrationInfo {
 		"rename-with-new-table-in-between": toInfos(renameWithNewTableInBetweenMigrations),
 		"simple-table":                     toInfos(simpleTableMigrations),
 		"create-add-column-rename":         toInfos(createAddColumnRenameMigrations),
+		"multiple-operation-per-migration": toInfos(multipleOperationPerMigrationMigrations),
 		"warning-partition-parent-alter":   toInfos(warningPartitionParentAlterMigrations),
 		"tall":                             toInfos(tallMigrations),
 		"wide":                             toInfos(wideMigrations),
