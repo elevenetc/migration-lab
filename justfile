@@ -13,7 +13,7 @@ generate-contracts:
 typecheck-frontend:
     cd frontend && npx tsc --noEmit
 
-# Run frontend unit tests (Vitest: contract + canvas layout tests)
+# Run frontend unit tests (Vitest: contract + grid mapping tests)
 test-frontend:
     cd frontend && npm test
 

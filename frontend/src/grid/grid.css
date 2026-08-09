@@ -1,0 +1,63 @@
+.ag-focus-overlay {
+  border: 1px solid #2c4152;
+  border-radius: 6px;
+  background: #101c26;
+  color: #e0fbfc;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.55);
+}
+
+.ag-focus-overlay::-webkit-scrollbar {
+  width: 10px;
+}
+
+.ag-focus-overlay::-webkit-scrollbar-thumb {
+  border-radius: 5px;
+  background: #2c4152;
+}
+
+.migration-focus {
+  /* Overridden per cell by migrationFocus.ts with the migration kind's color. */
+  --kind-color: #98c1d9;
+  padding: 18px 22px 24px;
+  border-left: 4px solid var(--kind-color);
+}
+
+.migration-focus h2 {
+  margin: 0;
+  font: 16px ui-monospace, monospace;
+  color: var(--kind-color);
+}
+
+.migration-focus-table {
+  margin: 4px 0 14px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  opacity: 0.6;
+}
+
+.migration-focus-lock {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid #e8a33d;
+  border-radius: 4px;
+  background: rgba(232, 163, 61, 0.1);
+}
+
+.migration-focus-lock strong {
+  color: #e8a33d;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.migration-focus-lock p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.migration-focus pre {
+  margin: 0;
+  font: 13px/1.5 ui-monospace, monospace;
+  white-space: pre-wrap;
+}

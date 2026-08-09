@@ -1,46 +1,27 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useMigrationStore } from '../store/migrationStore'
-import { renderTimeline } from '../canvas/renderTimeline'
-import { computeLayout } from '../canvas/layoutInfo'
-import { computeFitScale } from '../canvas/fitScale'
+import { buildMigrationCells } from '../grid/migrationCells'
+import { buildMigrationGrid } from '../grid/buildMigrationGrid'
+import '../grid/grid.css'
 
 export function Timeline() {
   const { migrations, analysis, loading, error } = useMigrationStore()
-  const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const paintRef = useRef<() => void>(() => {})
 
-  const layout = useMemo(
-    () => (migrations.length > 0 ? computeLayout(migrations, analysis?.warnings ?? []) : null),
+  const model = useMemo(
+    () => buildMigrationCells(migrations, analysis?.warnings ?? []),
     [migrations, analysis],
   )
+  const grid = useMemo(() => (model.cells.length > 0 ? buildMigrationGrid(model) : null), [model])
 
+  // The grid owns its own resize observer and animation loop, so attaching is all there is to it.
   useEffect(() => {
-    const container = containerRef.current
     const canvas = canvasRef.current
-    if (!container || !canvas || !layout) return
+    if (!canvas || !grid) return
 
-    const paint = () => {
-      const { width, height } = container.getBoundingClientRect()
-      const scale = computeFitScale({ width, height }, layout)
-      renderTimeline(canvas, layout, { width, height }, scale)
-    }
-    paintRef.current = paint
-
-    const ro = new ResizeObserver(paint)
-    ro.observe(container)
-    paint()
-
-    return () => {
-      ro.disconnect()
-    }
-  }, [layout])
-
-  // No dependency array: repaint on every render so Vite HMR edits (which
-  // re-render without changing `layout`) redraw the canvas.
-  useEffect(() => {
-    paintRef.current()
-  })
+    grid.attach(canvas)
+    return () => grid.detach()
+  }, [grid])
 
   if (loading) {
     return <div style={{ padding: 20 }}>Loading migrations...</div>
@@ -55,8 +36,8 @@ export function Timeline() {
   }
 
   return (
-    <div ref={containerRef} style={{ width: '100%', height: '100%', overflow: 'hidden', background: '#111' }}>
-      <canvas ref={canvasRef} style={{ display: 'block' }} />
+    <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', background: '#111' }}>
+      <canvas ref={canvasRef} style={{ display: 'block', width: '100%', height: '100%' }} />
     </div>
   )
 }
