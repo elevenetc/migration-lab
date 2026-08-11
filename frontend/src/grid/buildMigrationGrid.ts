@@ -4,6 +4,7 @@ import {FOCUS_BUTTON_DECOR_HEIGHT, focusButtonDrawer} from './drawers/focusButto
 import {MIGRATION_KIND_COLOR, migrationDrawer} from './drawers/migration';
 import {migrationHeaderDrawer} from './drawers/migrationHeader';
 import {tableHeaderDrawer} from './drawers/tableHeader';
+import {WARNING_DECOR_HEIGHT, warningIconDrawer} from './drawers/warningIcon';
 import {migrationFocus} from './focus/migrationFocus';
 import {migrationsKeyboard} from './keyboard/migrationsKeyboard';
 import {HEADER_COL, HEADER_ROW, type MigrationGridModel} from './migrationCells';
@@ -33,6 +34,10 @@ export function buildMigrationGrid(model: MigrationGridModel): ActiveGrid {
             {data: {base: BASE_MIGRATION, hoverT: 0}, drawer: backgroundDrawer},
             {data: cell, drawer: migrationDrawer});
         grid.setFooter(cell.row, cell.col, FOCUS_BUTTON_DECOR_HEIGHT, {data: null, drawer: focusButtonDrawer});
+        if (cell.warnings.length > 0) {
+            grid.setHeader(cell.row, cell.col, WARNING_DECOR_HEIGHT,
+                {data: {warnings: cell.warnings}, drawer: warningIconDrawer});
+        }
     });
 
     grid.setBackground(
