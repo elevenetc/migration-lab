@@ -1,6 +1,8 @@
 package database
 
 import (
+	"sort"
+
 	"migration-timeline/backend/internal/models"
 	"migration-timeline/backend/internal/parser"
 )
@@ -13,6 +15,16 @@ type Database struct {
 
 func New(datasets map[string][]models.MigrationInfo) *Database {
 	return &Database{datasets: datasets}
+}
+
+// DatasetIds returns the known dataset ids in alphabetical order.
+func (d *Database) DatasetIds() []string {
+	ids := make([]string, 0, len(d.datasets))
+	for id := range d.datasets {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	return ids
 }
 
 // Migrations returns the parsed migrations for the given dataset id,

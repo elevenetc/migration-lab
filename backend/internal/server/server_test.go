@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
+	"sort"
 	"testing"
 
 	"migration-timeline/backend/internal/database"
@@ -30,6 +32,10 @@ type fakeStore struct {
 
 func (f fakeStore) Migrations(string) ([]models.Migration, error) {
 	return f.migrations, f.err
+}
+
+func (f fakeStore) DatasetIds() []string {
+	return nil
 }
 
 type fakeRunner struct {
@@ -126,6 +132,37 @@ func TestResponseStructure(t *testing.T) {
 		if _, ok := raw[field]; !ok {
 			t.Errorf("expected field %q in response", field)
 		}
+	}
+}
+
+func TestDatasetsEndpoint(t *testing.T) {
+	e := New(Config{Port: 8081, Store: datasetsDB()})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/datasets", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, rec.Code)
+	}
+
+	var response struct {
+		Datasets []string `json:"datasets"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+		t.Fatalf("failed to unmarshal response: %v", err)
+	}
+
+	if len(response.Datasets) != len(datasets.Datasets()) {
+		t.Errorf("expected %d datasets, got %d", len(datasets.Datasets()), len(response.Datasets))
+	}
+
+	if !sort.StringsAreSorted(response.Datasets) {
+		t.Errorf("expected datasets sorted, got %v", response.Datasets)
+	}
+
+	if !slices.Contains(response.Datasets, "ecommerce") {
+		t.Errorf("expected datasets to contain ecommerce, got %v", response.Datasets)
 	}
 }
 

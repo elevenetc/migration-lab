@@ -11,6 +11,12 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+func datasetsHandler(store MigrationStore) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		return c.JSON(http.StatusOK, map[string][]string{"datasets": store.DatasetIds()})
+	}
+}
+
 func migrationsHandler(store MigrationStore) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		if path := c.QueryParam("migrationsPath"); path != "" {

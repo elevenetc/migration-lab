@@ -163,6 +163,19 @@ export async function fetchMigrations(migrationId: string | null, migrationsPath
   return response.json()
 }
 
+export interface DatasetsResponse {
+  datasets: string[]
+}
+
+export async function fetchDatasets(): Promise<string[]> {
+  const response = await fetch('/api/datasets')
+  if (!response.ok) {
+    throw new Error('Failed to fetch datasets')
+  }
+  const body: DatasetsResponse = await response.json()
+  return body.datasets
+}
+
 export interface RunMigrationsResult {
   success: boolean
   message: string

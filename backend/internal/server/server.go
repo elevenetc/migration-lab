@@ -19,6 +19,7 @@ type Config struct {
 // MigrationStore queries parsed migrations by dataset id (satisfied by *database.Database).
 type MigrationStore interface {
 	Migrations(migrationId string) ([]models.Migration, error)
+	DatasetIds() []string
 }
 
 // MigrationRunner runs a dataset's migrations by id (satisfied by runner.MigrationRunner).
@@ -36,6 +37,7 @@ func New(cfg Config) *echo.Echo {
 	}))
 
 	e.GET("/health", healthHandler)
+	e.GET("/api/datasets", datasetsHandler(cfg.Store))
 	e.GET("/api/migrations", migrationsHandler(cfg.Store))
 	e.POST("/api/migrations/run", runMigrationsHandler(cfg.Runner))
 
