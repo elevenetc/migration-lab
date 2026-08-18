@@ -19,6 +19,7 @@ func Datasets() map[string][]models.MigrationInfo {
 		"create-add-column-rename":         toInfos(createAddColumnRenameMigrations),
 		"multiple-operation-per-migration": toInfos(multipleOperationPerMigrationMigrations),
 		"warning-partition-parent-alter":   toInfos(warningPartitionParentAlterMigrations),
+		"performance-class":                toInfos(performanceClassMigrations),
 		"tall":                             toInfos(tallMigrations),
 		"wide":                             toInfos(wideMigrations),
 	}

@@ -26,6 +26,7 @@ func parseCreateStmt(createStmt *pgquery.CreateStmt) models.Operation {
 			Name:        colName,
 			Type:        colType,
 			Constraints: constraints,
+			DefaultExpr: extractDefaultExpr(colDef.Constraints),
 		})
 	}
 

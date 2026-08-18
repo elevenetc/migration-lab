@@ -29,17 +29,20 @@
                                 },
                                 {
                                     "constraints": [
-                                        "DEFAULT NOW()"
+                                        "DEFAULT"
                                     ],
+                                    "defaultExpr": "now()",
                                     "name": "created_at",
                                     "type": "TIMESTAMP"
                                 }
                             ],
                             "isPartitioned": false,
+                            "performanceClass": "METADATA_ONLY",
                             "tableName": "users",
                             "type": "CREATE_TABLE"
                         }
-                    ]
+                    ],
+                    "performanceClass": "METADATA_ONLY"
                 }
             ]
         },
@@ -56,15 +59,18 @@
                         {
                             "column": {
                                 "constraints": [
-                                    "DEFAULT 'active'"
+                                    "DEFAULT"
                                 ],
+                                "defaultExpr": "'active'",
                                 "name": "status",
                                 "type": "VARCHAR(50)"
                             },
+                            "performanceClass": "METADATA_ONLY",
                             "tableName": "users",
                             "type": "ADD_COLUMN"
                         }
-                    ]
+                    ],
+                    "performanceClass": "METADATA_ONLY"
                 }
             ]
         },
@@ -81,10 +87,12 @@
                         {
                             "columnName": "email",
                             "newType": "TEXT",
+                            "performanceClass": "TABLE_REWRITE",
                             "tableName": "users",
                             "type": "ALTER_COLUMN_TYPE"
                         }
-                    ]
+                    ],
+                    "performanceClass": "TABLE_REWRITE"
                 }
             ]
         },
@@ -100,10 +108,12 @@
                     "operations": [
                         {
                             "columnName": "email",
+                            "performanceClass": "DATA_SCANNING",
                             "tableName": "users",
                             "type": "SET_NOT_NULL"
                         }
-                    ]
+                    ],
+                    "performanceClass": "DATA_SCANNING"
                 }
             ]
         },
@@ -119,10 +129,12 @@
                     "operations": [
                         {
                             "columnName": "status",
+                            "performanceClass": "METADATA_ONLY",
                             "tableName": "users",
                             "type": "DROP_NOT_NULL"
                         }
-                    ]
+                    ],
+                    "performanceClass": "METADATA_ONLY"
                 }
             ]
         },
@@ -139,10 +151,12 @@
                         {
                             "columnName": "status",
                             "defaultValue": "'active'",
+                            "performanceClass": "METADATA_ONLY",
                             "tableName": "users",
                             "type": "SET_DEFAULT"
                         }
-                    ]
+                    ],
+                    "performanceClass": "METADATA_ONLY"
                 }
             ]
         },
@@ -158,10 +172,12 @@
                     "operations": [
                         {
                             "columnName": "status",
+                            "performanceClass": "METADATA_ONLY",
                             "tableName": "users",
                             "type": "DROP_DEFAULT"
                         }
-                    ]
+                    ],
+                    "performanceClass": "METADATA_ONLY"
                 }
             ]
         },
@@ -177,10 +193,12 @@
                     "operations": [
                         {
                             "newTableName": "accounts",
+                            "performanceClass": "METADATA_ONLY",
                             "tableName": "users",
                             "type": "RENAME_TABLE"
                         }
-                    ]
+                    ],
+                    "performanceClass": "METADATA_ONLY"
                 }
             ]
         },
@@ -197,10 +215,12 @@
                         {
                             "columnName": "email",
                             "newColumnName": "email_address",
+                            "performanceClass": "METADATA_ONLY",
                             "tableName": "accounts",
                             "type": "RENAME_COLUMN"
                         }
-                    ]
+                    ],
+                    "performanceClass": "METADATA_ONLY"
                 }
             ]
         },
@@ -217,10 +237,13 @@
                         {
                             "constraintName": "uk_accounts_email",
                             "constraintType": "UNIQUE",
+                            "notValid": false,
+                            "performanceClass": "DATA_SCANNING",
                             "tableName": "accounts",
                             "type": "ADD_CONSTRAINT"
                         }
-                    ]
+                    ],
+                    "performanceClass": "DATA_SCANNING"
                 }
             ]
         },
@@ -236,10 +259,12 @@
                     "operations": [
                         {
                             "constraintName": "uk_accounts_email",
+                            "performanceClass": "METADATA_ONLY",
                             "tableName": "accounts",
                             "type": "DROP_CONSTRAINT"
                         }
-                    ]
+                    ],
+                    "performanceClass": "METADATA_ONLY"
                 }
             ]
         },
@@ -254,10 +279,12 @@
                     "sql": "DROP TABLE accounts",
                     "operations": [
                         {
+                            "performanceClass": "METADATA_ONLY",
                             "tableName": "accounts",
                             "type": "DROP_TABLE"
                         }
-                    ]
+                    ],
+                    "performanceClass": "METADATA_ONLY"
                 }
             ]
         },
@@ -273,10 +300,12 @@
                     "operations": [
                         {
                             "columnName": "legacy_field",
+                            "performanceClass": "METADATA_ONLY",
                             "tableName": "users",
                             "type": "DROP_COLUMN"
                         }
-                    ]
+                    ],
+                    "performanceClass": "METADATA_ONLY"
                 }
             ]
         },
@@ -311,10 +340,12 @@
                                 }
                             ],
                             "isPartitioned": true,
+                            "performanceClass": "METADATA_ONLY",
                             "tableName": "measurements",
                             "type": "CREATE_TABLE"
                         }
-                    ]
+                    ],
+                    "performanceClass": "METADATA_ONLY"
                 }
             ]
         },
@@ -332,17 +363,70 @@
                             "columns": [],
                             "isPartitioned": false,
                             "partitionOf": "measurements",
+                            "performanceClass": "METADATA_ONLY",
                             "tableName": "measurements_2024",
                             "type": "CREATE_TABLE"
                         }
-                    ]
+                    ],
+                    "performanceClass": "METADATA_ONLY"
                 }
             ]
         },
         {
             "id": "migration-16",
-            "version": "V16__alter_partitioned",
+            "version": "V16__add_not_valid_constraint",
             "timestamp": 16000,
+            "statements": [
+                {
+                    "index": 0,
+                    "kind": "ALTER_TABLE",
+                    "sql": "ALTER TABLE users ADD CONSTRAINT users_age_positive CHECK (age \u003e 0) NOT VALID",
+                    "operations": [
+                        {
+                            "constraintName": "users_age_positive",
+                            "constraintType": "CHECK",
+                            "notValid": true,
+                            "performanceClass": "METADATA_ONLY",
+                            "tableName": "users",
+                            "type": "ADD_CONSTRAINT"
+                        }
+                    ],
+                    "performanceClass": "METADATA_ONLY"
+                }
+            ]
+        },
+        {
+            "id": "migration-17",
+            "version": "V17__add_column_volatile_default",
+            "timestamp": 17000,
+            "statements": [
+                {
+                    "index": 0,
+                    "kind": "ALTER_TABLE",
+                    "sql": "ALTER TABLE users ADD COLUMN created_at TIMESTAMP DEFAULT now()",
+                    "operations": [
+                        {
+                            "column": {
+                                "constraints": [
+                                    "DEFAULT"
+                                ],
+                                "defaultExpr": "now()",
+                                "name": "created_at",
+                                "type": "TIMESTAMP"
+                            },
+                            "performanceClass": "TABLE_REWRITE",
+                            "tableName": "users",
+                            "type": "ADD_COLUMN"
+                        }
+                    ],
+                    "performanceClass": "TABLE_REWRITE"
+                }
+            ]
+        },
+        {
+            "id": "migration-18",
+            "version": "V18__alter_partitioned",
+            "timestamp": 18000,
             "statements": [
                 {
                     "index": 0,
@@ -355,25 +439,27 @@
                                 "name": "description",
                                 "type": "TEXT"
                             },
+                            "performanceClass": "METADATA_ONLY",
                             "tableName": "measurements",
                             "type": "ADD_COLUMN"
                         }
-                    ]
+                    ],
+                    "performanceClass": "METADATA_ONLY"
                 }
             ]
         },
         {
-            "id": "V17__backfill_status",
-            "version": "17",
-            "timestamp": 17000,
+            "id": "V19__backfill_status",
+            "version": "19",
+            "timestamp": 19000,
             "statements": []
         }
     ],
     "map": {
-        "V17__backfill_status": {
-            "id": "V17__backfill_status",
-            "version": "17",
-            "timestamp": 17000,
+        "V19__backfill_status": {
+            "id": "V19__backfill_status",
+            "version": "19",
+            "timestamp": 19000,
             "statements": []
         },
         "migration-1": {
@@ -405,17 +491,20 @@
                                 },
                                 {
                                     "constraints": [
-                                        "DEFAULT NOW()"
+                                        "DEFAULT"
                                     ],
+                                    "defaultExpr": "now()",
                                     "name": "created_at",
                                     "type": "TIMESTAMP"
                                 }
                             ],
                             "isPartitioned": false,
+                            "performanceClass": "METADATA_ONLY",
                             "tableName": "users",
                             "type": "CREATE_TABLE"
                         }
-                    ]
+                    ],
+                    "performanceClass": "METADATA_ONLY"
                 }
             ]
         },
@@ -432,10 +521,13 @@
                         {
                             "constraintName": "uk_accounts_email",
                             "constraintType": "UNIQUE",
+                            "notValid": false,
+                            "performanceClass": "DATA_SCANNING",
                             "tableName": "accounts",
                             "type": "ADD_CONSTRAINT"
                         }
-                    ]
+                    ],
+                    "performanceClass": "DATA_SCANNING"
                 }
             ]
         },
@@ -451,10 +543,12 @@
                     "operations": [
                         {
                             "constraintName": "uk_accounts_email",
+                            "performanceClass": "METADATA_ONLY",
                             "tableName": "accounts",
                             "type": "DROP_CONSTRAINT"
                         }
-                    ]
+                    ],
+                    "performanceClass": "METADATA_ONLY"
                 }
             ]
         },
@@ -469,10 +563,12 @@
                     "sql": "DROP TABLE accounts",
                     "operations": [
                         {
+                            "performanceClass": "METADATA_ONLY",
                             "tableName": "accounts",
                             "type": "DROP_TABLE"
                         }
-                    ]
+                    ],
+                    "performanceClass": "METADATA_ONLY"
                 }
             ]
         },
@@ -488,10 +584,12 @@
                     "operations": [
                         {
                             "columnName": "legacy_field",
+                            "performanceClass": "METADATA_ONLY",
                             "tableName": "users",
                             "type": "DROP_COLUMN"
                         }
-                    ]
+                    ],
+                    "performanceClass": "METADATA_ONLY"
                 }
             ]
         },
@@ -526,10 +624,12 @@
                                 }
                             ],
                             "isPartitioned": true,
+                            "performanceClass": "METADATA_ONLY",
                             "tableName": "measurements",
                             "type": "CREATE_TABLE"
                         }
-                    ]
+                    ],
+                    "performanceClass": "METADATA_ONLY"
                 }
             ]
         },
@@ -547,17 +647,70 @@
                             "columns": [],
                             "isPartitioned": false,
                             "partitionOf": "measurements",
+                            "performanceClass": "METADATA_ONLY",
                             "tableName": "measurements_2024",
                             "type": "CREATE_TABLE"
                         }
-                    ]
+                    ],
+                    "performanceClass": "METADATA_ONLY"
                 }
             ]
         },
         "migration-16": {
             "id": "migration-16",
-            "version": "V16__alter_partitioned",
+            "version": "V16__add_not_valid_constraint",
             "timestamp": 16000,
+            "statements": [
+                {
+                    "index": 0,
+                    "kind": "ALTER_TABLE",
+                    "sql": "ALTER TABLE users ADD CONSTRAINT users_age_positive CHECK (age \u003e 0) NOT VALID",
+                    "operations": [
+                        {
+                            "constraintName": "users_age_positive",
+                            "constraintType": "CHECK",
+                            "notValid": true,
+                            "performanceClass": "METADATA_ONLY",
+                            "tableName": "users",
+                            "type": "ADD_CONSTRAINT"
+                        }
+                    ],
+                    "performanceClass": "METADATA_ONLY"
+                }
+            ]
+        },
+        "migration-17": {
+            "id": "migration-17",
+            "version": "V17__add_column_volatile_default",
+            "timestamp": 17000,
+            "statements": [
+                {
+                    "index": 0,
+                    "kind": "ALTER_TABLE",
+                    "sql": "ALTER TABLE users ADD COLUMN created_at TIMESTAMP DEFAULT now()",
+                    "operations": [
+                        {
+                            "column": {
+                                "constraints": [
+                                    "DEFAULT"
+                                ],
+                                "defaultExpr": "now()",
+                                "name": "created_at",
+                                "type": "TIMESTAMP"
+                            },
+                            "performanceClass": "TABLE_REWRITE",
+                            "tableName": "users",
+                            "type": "ADD_COLUMN"
+                        }
+                    ],
+                    "performanceClass": "TABLE_REWRITE"
+                }
+            ]
+        },
+        "migration-18": {
+            "id": "migration-18",
+            "version": "V18__alter_partitioned",
+            "timestamp": 18000,
             "statements": [
                 {
                     "index": 0,
@@ -570,10 +723,12 @@
                                 "name": "description",
                                 "type": "TEXT"
                             },
+                            "performanceClass": "METADATA_ONLY",
                             "tableName": "measurements",
                             "type": "ADD_COLUMN"
                         }
-                    ]
+                    ],
+                    "performanceClass": "METADATA_ONLY"
                 }
             ]
         },
@@ -590,15 +745,18 @@
                         {
                             "column": {
                                 "constraints": [
-                                    "DEFAULT 'active'"
+                                    "DEFAULT"
                                 ],
+                                "defaultExpr": "'active'",
                                 "name": "status",
                                 "type": "VARCHAR(50)"
                             },
+                            "performanceClass": "METADATA_ONLY",
                             "tableName": "users",
                             "type": "ADD_COLUMN"
                         }
-                    ]
+                    ],
+                    "performanceClass": "METADATA_ONLY"
                 }
             ]
         },
@@ -615,10 +773,12 @@
                         {
                             "columnName": "email",
                             "newType": "TEXT",
+                            "performanceClass": "TABLE_REWRITE",
                             "tableName": "users",
                             "type": "ALTER_COLUMN_TYPE"
                         }
-                    ]
+                    ],
+                    "performanceClass": "TABLE_REWRITE"
                 }
             ]
         },
@@ -634,10 +794,12 @@
                     "operations": [
                         {
                             "columnName": "email",
+                            "performanceClass": "DATA_SCANNING",
                             "tableName": "users",
                             "type": "SET_NOT_NULL"
                         }
-                    ]
+                    ],
+                    "performanceClass": "DATA_SCANNING"
                 }
             ]
         },
@@ -653,10 +815,12 @@
                     "operations": [
                         {
                             "columnName": "status",
+                            "performanceClass": "METADATA_ONLY",
                             "tableName": "users",
                             "type": "DROP_NOT_NULL"
                         }
-                    ]
+                    ],
+                    "performanceClass": "METADATA_ONLY"
                 }
             ]
         },
@@ -673,10 +837,12 @@
                         {
                             "columnName": "status",
                             "defaultValue": "'active'",
+                            "performanceClass": "METADATA_ONLY",
                             "tableName": "users",
                             "type": "SET_DEFAULT"
                         }
-                    ]
+                    ],
+                    "performanceClass": "METADATA_ONLY"
                 }
             ]
         },
@@ -692,10 +858,12 @@
                     "operations": [
                         {
                             "columnName": "status",
+                            "performanceClass": "METADATA_ONLY",
                             "tableName": "users",
                             "type": "DROP_DEFAULT"
                         }
-                    ]
+                    ],
+                    "performanceClass": "METADATA_ONLY"
                 }
             ]
         },
@@ -711,10 +879,12 @@
                     "operations": [
                         {
                             "newTableName": "accounts",
+                            "performanceClass": "METADATA_ONLY",
                             "tableName": "users",
                             "type": "RENAME_TABLE"
                         }
-                    ]
+                    ],
+                    "performanceClass": "METADATA_ONLY"
                 }
             ]
         },
@@ -731,10 +901,12 @@
                         {
                             "columnName": "email",
                             "newColumnName": "email_address",
+                            "performanceClass": "METADATA_ONLY",
                             "tableName": "accounts",
                             "type": "RENAME_COLUMN"
                         }
-                    ]
+                    ],
+                    "performanceClass": "METADATA_ONLY"
                 }
             ]
         }
@@ -791,8 +963,9 @@
                     "name": "created_at",
                     "type": "TIMESTAMP",
                     "constraints": [
-                        "DEFAULT NOW()"
-                    ]
+                        "DEFAULT"
+                    ],
+                    "defaultExpr": "now()"
                 }
             ],
             "isPartitioned": false
@@ -829,17 +1002,20 @@
                                     },
                                     {
                                         "constraints": [
-                                            "DEFAULT NOW()"
+                                            "DEFAULT"
                                         ],
+                                        "defaultExpr": "now()",
                                         "name": "created_at",
                                         "type": "TIMESTAMP"
                                     }
                                 ],
                                 "isPartitioned": false,
+                                "performanceClass": "METADATA_ONLY",
                                 "tableName": "users",
                                 "type": "CREATE_TABLE"
                             }
-                        ]
+                        ],
+                        "performanceClass": "METADATA_ONLY"
                     }
                 ]
             },
@@ -856,15 +1032,18 @@
                             {
                                 "column": {
                                     "constraints": [
-                                        "DEFAULT 'active'"
+                                        "DEFAULT"
                                     ],
+                                    "defaultExpr": "'active'",
                                     "name": "status",
                                     "type": "VARCHAR(50)"
                                 },
+                                "performanceClass": "METADATA_ONLY",
                                 "tableName": "users",
                                 "type": "ADD_COLUMN"
                             }
-                        ]
+                        ],
+                        "performanceClass": "METADATA_ONLY"
                     }
                 ]
             },
@@ -881,10 +1060,12 @@
                             {
                                 "columnName": "email",
                                 "newType": "TEXT",
+                                "performanceClass": "TABLE_REWRITE",
                                 "tableName": "users",
                                 "type": "ALTER_COLUMN_TYPE"
                             }
-                        ]
+                        ],
+                        "performanceClass": "TABLE_REWRITE"
                     }
                 ]
             },
@@ -900,10 +1081,12 @@
                         "operations": [
                             {
                                 "columnName": "email",
+                                "performanceClass": "DATA_SCANNING",
                                 "tableName": "users",
                                 "type": "SET_NOT_NULL"
                             }
-                        ]
+                        ],
+                        "performanceClass": "DATA_SCANNING"
                     }
                 ]
             },
@@ -919,10 +1102,12 @@
                         "operations": [
                             {
                                 "columnName": "status",
+                                "performanceClass": "METADATA_ONLY",
                                 "tableName": "users",
                                 "type": "DROP_NOT_NULL"
                             }
-                        ]
+                        ],
+                        "performanceClass": "METADATA_ONLY"
                     }
                 ]
             },
@@ -939,10 +1124,12 @@
                             {
                                 "columnName": "status",
                                 "defaultValue": "'active'",
+                                "performanceClass": "METADATA_ONLY",
                                 "tableName": "users",
                                 "type": "SET_DEFAULT"
                             }
-                        ]
+                        ],
+                        "performanceClass": "METADATA_ONLY"
                     }
                 ]
             },
@@ -958,10 +1145,12 @@
                         "operations": [
                             {
                                 "columnName": "status",
+                                "performanceClass": "METADATA_ONLY",
                                 "tableName": "users",
                                 "type": "DROP_DEFAULT"
                             }
-                        ]
+                        ],
+                        "performanceClass": "METADATA_ONLY"
                     }
                 ]
             },
@@ -977,10 +1166,12 @@
                         "operations": [
                             {
                                 "newTableName": "accounts",
+                                "performanceClass": "METADATA_ONLY",
                                 "tableName": "users",
                                 "type": "RENAME_TABLE"
                             }
-                        ]
+                        ],
+                        "performanceClass": "METADATA_ONLY"
                     }
                 ]
             },
@@ -997,10 +1188,12 @@
                             {
                                 "columnName": "email",
                                 "newColumnName": "email_address",
+                                "performanceClass": "METADATA_ONLY",
                                 "tableName": "accounts",
                                 "type": "RENAME_COLUMN"
                             }
-                        ]
+                        ],
+                        "performanceClass": "METADATA_ONLY"
                     }
                 ]
             },
@@ -1017,10 +1210,13 @@
                             {
                                 "constraintName": "uk_accounts_email",
                                 "constraintType": "UNIQUE",
+                                "notValid": false,
+                                "performanceClass": "DATA_SCANNING",
                                 "tableName": "accounts",
                                 "type": "ADD_CONSTRAINT"
                             }
-                        ]
+                        ],
+                        "performanceClass": "DATA_SCANNING"
                     }
                 ]
             },
@@ -1036,10 +1232,12 @@
                         "operations": [
                             {
                                 "constraintName": "uk_accounts_email",
+                                "performanceClass": "METADATA_ONLY",
                                 "tableName": "accounts",
                                 "type": "DROP_CONSTRAINT"
                             }
-                        ]
+                        ],
+                        "performanceClass": "METADATA_ONLY"
                     }
                 ]
             },
@@ -1054,10 +1252,12 @@
                         "sql": "DROP TABLE accounts",
                         "operations": [
                             {
+                                "performanceClass": "METADATA_ONLY",
                                 "tableName": "accounts",
                                 "type": "DROP_TABLE"
                             }
-                        ]
+                        ],
+                        "performanceClass": "METADATA_ONLY"
                     }
                 ]
             },
@@ -1073,10 +1273,12 @@
                         "operations": [
                             {
                                 "columnName": "legacy_field",
+                                "performanceClass": "METADATA_ONLY",
                                 "tableName": "users",
                                 "type": "DROP_COLUMN"
                             }
-                        ]
+                        ],
+                        "performanceClass": "METADATA_ONLY"
                     }
                 ]
             },
@@ -1111,10 +1313,12 @@
                                     }
                                 ],
                                 "isPartitioned": true,
+                                "performanceClass": "METADATA_ONLY",
                                 "tableName": "measurements",
                                 "type": "CREATE_TABLE"
                             }
-                        ]
+                        ],
+                        "performanceClass": "METADATA_ONLY"
                     }
                 ]
             },
@@ -1132,17 +1336,70 @@
                                 "columns": [],
                                 "isPartitioned": false,
                                 "partitionOf": "measurements",
+                                "performanceClass": "METADATA_ONLY",
                                 "tableName": "measurements_2024",
                                 "type": "CREATE_TABLE"
                             }
-                        ]
+                        ],
+                        "performanceClass": "METADATA_ONLY"
                     }
                 ]
             },
             {
                 "id": "migration-16",
-                "version": "V16__alter_partitioned",
+                "version": "V16__add_not_valid_constraint",
                 "timestamp": 16000,
+                "statements": [
+                    {
+                        "index": 0,
+                        "kind": "ALTER_TABLE",
+                        "sql": "ALTER TABLE users ADD CONSTRAINT users_age_positive CHECK (age \u003e 0) NOT VALID",
+                        "operations": [
+                            {
+                                "constraintName": "users_age_positive",
+                                "constraintType": "CHECK",
+                                "notValid": true,
+                                "performanceClass": "METADATA_ONLY",
+                                "tableName": "users",
+                                "type": "ADD_CONSTRAINT"
+                            }
+                        ],
+                        "performanceClass": "METADATA_ONLY"
+                    }
+                ]
+            },
+            {
+                "id": "migration-17",
+                "version": "V17__add_column_volatile_default",
+                "timestamp": 17000,
+                "statements": [
+                    {
+                        "index": 0,
+                        "kind": "ALTER_TABLE",
+                        "sql": "ALTER TABLE users ADD COLUMN created_at TIMESTAMP DEFAULT now()",
+                        "operations": [
+                            {
+                                "column": {
+                                    "constraints": [
+                                        "DEFAULT"
+                                    ],
+                                    "defaultExpr": "now()",
+                                    "name": "created_at",
+                                    "type": "TIMESTAMP"
+                                },
+                                "performanceClass": "TABLE_REWRITE",
+                                "tableName": "users",
+                                "type": "ADD_COLUMN"
+                            }
+                        ],
+                        "performanceClass": "TABLE_REWRITE"
+                    }
+                ]
+            },
+            {
+                "id": "migration-18",
+                "version": "V18__alter_partitioned",
+                "timestamp": 18000,
                 "statements": [
                     {
                         "index": 0,
@@ -1155,17 +1412,19 @@
                                     "name": "description",
                                     "type": "TEXT"
                                 },
+                                "performanceClass": "METADATA_ONLY",
                                 "tableName": "measurements",
                                 "type": "ADD_COLUMN"
                             }
-                        ]
+                        ],
+                        "performanceClass": "METADATA_ONLY"
                     }
                 ]
             },
             {
-                "id": "V17__backfill_status",
-                "version": "17",
-                "timestamp": 17000,
+                "id": "V19__backfill_status",
+                "version": "19",
+                "timestamp": 19000,
                 "statements": []
             }
         ],
@@ -1173,7 +1432,7 @@
             {
                 "message": "ALTER on partitioned table 'measurements' acquires ACCESS EXCLUSIVE lock on parent and all partitions",
                 "operationId": {
-                    "migrationId": "migration-16",
+                    "migrationId": "migration-18",
                     "opIndex": -1,
                     "statementIndex": 0
                 },

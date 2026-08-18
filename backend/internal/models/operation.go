@@ -6,6 +6,10 @@ type Column struct {
 	Name        string   `json:"name"`
 	Type        string   `json:"type"`
 	Constraints []string `json:"constraints"`
+	// Deparsed DEFAULT expression, empty when the column has no default or the
+	// expression could not be deparsed. Constraints carries the "DEFAULT" token
+	// either way, so the two cases stay distinguishable.
+	DefaultExpr string `json:"defaultExpr,omitempty"`
 }
 
 type Migration struct {
@@ -39,16 +43,19 @@ func (s Statement) MarshalJSON() ([]byte, error) {
 	}
 	return json.Marshal(&struct {
 		Alias
-		Operations []json.RawMessage `json:"operations"`
+		Operations       []json.RawMessage `json:"operations"`
+		PerformanceClass PerformanceClass  `json:"performanceClass"`
 	}{
-		Alias:      (Alias)(s),
-		Operations: ops,
+		Alias:            (Alias)(s),
+		Operations:       ops,
+		PerformanceClass: WorstPerformanceClass(s.Operations),
 	})
 }
 
 func MarshalOperation(op Operation) ([]byte, error) {
 	wrapper := map[string]interface{}{
-		"type": op.operationType(),
+		"type":             op.operationType(),
+		"performanceClass": ClassifyPerformance(op),
 	}
 
 	data, err := json.Marshal(op)
@@ -153,6 +160,9 @@ type AddConstraint struct {
 	TableName      string `json:"tableName"`
 	ConstraintName string `json:"constraintName"`
 	ConstraintType string `json:"constraintType"`
+	// NOT VALID: existing rows are not checked, so the constraint is added
+	// without scanning the table.
+	NotValid bool `json:"notValid"`
 }
 
 func (a AddConstraint) operationType() string { return "ADD_CONSTRAINT" }

@@ -3,15 +3,15 @@ import type { Migration, Operation, Statement, Warning } from '../api/migrationA
 import { buildMigrationCells } from './migrationCells'
 
 function createTable(tableName: string, partitionOf: string | null = null): Operation {
-  return { type: 'CREATE_TABLE', tableName, columns: [], isPartitioned: false, partitionOf }
+  return { type: 'CREATE_TABLE', tableName, columns: [], isPartitioned: false, partitionOf, performanceClass: 'METADATA_ONLY' }
 }
 
 function addColumn(tableName: string, name = 'c'): Operation {
-  return { type: 'ADD_COLUMN', tableName, column: { name, type: 'int', constraints: [] } }
+  return { type: 'ADD_COLUMN', tableName, column: { name, type: 'int', constraints: [] }, performanceClass: 'METADATA_ONLY' }
 }
 
 function statement(index: number, sql: string, operations: Operation[]): Statement {
-  return { index, kind: 'ALTER_TABLE', sql, operations }
+  return { index, kind: 'ALTER_TABLE', sql, operations, performanceClass: 'METADATA_ONLY' }
 }
 
 function migration(id: string, statements: Statement[]): Migration {
@@ -39,7 +39,7 @@ describe('buildMigrationCells', () => {
   })
 
   it('keys a renamed table row by its new name', () => {
-    const rename: Operation = { type: 'RENAME_TABLE', tableName: 'old', newTableName: 'new' }
+    const rename: Operation = { type: 'RENAME_TABLE', tableName: 'old', newTableName: 'new', performanceClass: 'METADATA_ONLY' }
 
     const model = buildMigrationCells([single('m1', [rename])])
 
@@ -78,7 +78,7 @@ describe('buildMigrationCells', () => {
   })
 
   it('derives the kind of each cell from its operations', () => {
-    const drop: Operation = { type: 'DROP_TABLE', tableName: 'orders' }
+    const drop: Operation = { type: 'DROP_TABLE', tableName: 'orders', performanceClass: 'METADATA_ONLY' }
     const model = buildMigrationCells([
       single('m1', [createTable('users')]),
       single('m2', [addColumn('users')]),
@@ -103,7 +103,7 @@ describe('buildMigrationCells', () => {
   })
 
   it('connects a renamed table to the old table row', () => {
-    const rename: Operation = { type: 'RENAME_TABLE', tableName: 'old', newTableName: 'new' }
+    const rename: Operation = { type: 'RENAME_TABLE', tableName: 'old', newTableName: 'new', performanceClass: 'METADATA_ONLY' }
     const model = buildMigrationCells([single('m1', [createTable('old')]), single('m2', [rename])])
 
     expect(model.connectors).toEqual([
@@ -133,6 +133,28 @@ describe('buildMigrationCells', () => {
     expect(flagged).toHaveLength(1)
     expect(flagged[0]).toMatchObject({ version: 'm2', table: 'users' })
     expect(flagged[0].warnings).toEqual([{ title: 'exclusive lock', message: 'locks the table' }])
+  })
+
+  it('warns on data-scanning and table-rewrite operations, after the backend warnings', () => {
+    const warning: Warning = {
+      type: 'ACCESS_EXCLUSIVE_LOCK',
+      operationId: { migrationId: 'm1', statementIndex: 0, opIndex: -1 },
+      tableName: 'users',
+      message: 'locks the table',
+    }
+    const setNotNull: Operation = { type: 'SET_NOT_NULL', tableName: 'users', columnName: 'email', performanceClass: 'DATA_SCANNING' }
+    const alterType: Operation = { type: 'ALTER_COLUMN_TYPE', tableName: 'users', columnName: 'email', newType: 'text', performanceClass: 'TABLE_REWRITE' }
+
+    const model = buildMigrationCells([single('m1', [addColumn('users'), setNotNull, alterType])], [warning])
+
+    expect(model.cells[0].warnings.map(({ title }) => title))
+      .toEqual(['exclusive lock', 'data scan', 'table rewrite'])
+  })
+
+  it('raises no warning for metadata-only operations', () => {
+    const model = buildMigrationCells([single('m1', [createTable('users'), addColumn('users')])])
+
+    expect(model.cells[0].warnings).toEqual([])
   })
 
   it('collects the sql of every statement touching the table, once per statement', () => {

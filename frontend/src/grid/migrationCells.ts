@@ -4,6 +4,7 @@ import type {CellWarning, MigrationData, MigrationKind} from './drawers/migratio
 import {getMigrationKind} from './getMigrationKind';
 import {getOperationTarget} from './getOperationTarget';
 import {getOperationTitle} from './getOperationTitle';
+import {getPerformanceWarning} from './getPerformanceWarning';
 import {getWarningTitle} from './getWarningTitle';
 
 // Row 0 names the migrations and column 0 names the tables, so both axes are offset by one.
@@ -85,6 +86,14 @@ function warningsOf(warnings: Warning[], migrationId: string, table: string): Ce
         .map(warning => ({title: getWarningTitle(warning), message: warning.message}));
 }
 
+/** Backend warnings of the cell, then the performance class of each of its operations. */
+function cellWarnings(warnings: Warning[], migrationId: string, table: string, operations: Operation[]): CellWarning[] {
+    return [
+        ...warningsOf(warnings, migrationId, table),
+        ...operations.map(getPerformanceWarning).filter((warning): warning is CellWarning => warning !== null),
+    ];
+}
+
 /** Column of the row's latest cell left of `col`, where a connector into `col` starts. */
 function latestBefore(colsByRow: Map<number, number[]>, row: number, col: number): number | null {
     const before = (colsByRow.get(row) ?? []).filter(candidate => candidate < col);
@@ -114,7 +123,7 @@ export function buildMigrationCells(migrations: Migration[], warnings: Warning[]
             target: getOperationTarget(operation),
         })),
         sql: group.sql,
-        warnings: warningsOf(warnings, migration.id, table),
+        warnings: cellWarnings(warnings, migration.id, table, group.operations),
     }));
 
     // Columns hold cells in ascending order, so each row's columns come out sorted.

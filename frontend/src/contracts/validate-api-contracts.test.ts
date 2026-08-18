@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { MigrationTimelineResponse, RunMigrationsResult, Warning } from '../api/migrationApi'
+import type { MigrationTimelineResponse, PerformanceClass, RunMigrationsResult, Warning } from '../api/migrationApi'
 import migrationFixture from '../../../api-contracts/fixtures/migration-response.json' with { type: 'json' }
 import runMigrationsFixture from '../../../api-contracts/fixtures/run-migrations-result.json' with { type: 'json' }
 
@@ -44,6 +44,23 @@ function validateOperationTypes(response: MigrationTimelineResponse): void {
           break
         default:
           assertExhaustive(op)
+      }
+    }
+  }
+}
+
+const PERFORMANCE_CLASSES: PerformanceClass[] = ['METADATA_ONLY', 'DATA_SCANNING', 'TABLE_REWRITE']
+
+function validatePerformanceClasses(response: MigrationTimelineResponse): void {
+  for (const migration of response.timeline) {
+    for (const statement of migration.statements) {
+      if (!PERFORMANCE_CLASSES.includes(statement.performanceClass)) {
+        throw new Error(`Statement ${migration.id}#${statement.index} has unknown performanceClass: ${statement.performanceClass}`)
+      }
+      for (const op of statement.operations) {
+        if (!PERFORMANCE_CLASSES.includes(op.performanceClass)) {
+          throw new Error(`Operation ${op.type} has unknown performanceClass: ${op.performanceClass}`)
+        }
       }
     }
   }
@@ -110,6 +127,17 @@ describe('API contract: migration response fixture', () => {
 
   it('only contains known operation types', () => {
     expect(() => validateOperationTypes(migrationResponse)).not.toThrow()
+  })
+
+  it('classifies every statement and operation', () => {
+    expect(() => validatePerformanceClasses(migrationResponse)).not.toThrow()
+  })
+
+  it('covers all three performance classes', () => {
+    const classes = new Set(migrationResponse.timeline
+      .flatMap(migration => migration.statements)
+      .map(statement => statement.performanceClass))
+    expect([...classes].sort()).toEqual(['DATA_SCANNING', 'METADATA_ONLY', 'TABLE_REWRITE'])
   })
 
   it('keys map entries by migration id', () => {

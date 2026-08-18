@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"strconv"
+
 	pgquery "github.com/pganalyze/pg_query_go/v6"
 	"migration-timeline/backend/internal/models"
 )
@@ -80,6 +82,7 @@ func parseAddColumn(tableName string, cmd *pgquery.AlterTableCmd) models.Operati
 			Name:        colDef.Colname,
 			Type:        extractTypeName(colDef.TypeName),
 			Constraints: extractConstraints(colDef.Constraints),
+			DefaultExpr: extractDefaultExpr(colDef.Constraints),
 		},
 	}
 }
@@ -127,6 +130,7 @@ func parseAddConstraint(tableName string, cmd *pgquery.AlterTableCmd) models.Ope
 		TableName:      tableName,
 		ConstraintName: constraint.Conname,
 		ConstraintType: constraintType,
+		NotValid:       constraint.SkipValidation,
 	}
 }
 
@@ -157,7 +161,7 @@ func deparseDef(node *pgquery.Node) string {
 			return "'" + sval.Sval + "'"
 		}
 		if ival := aConst.GetIval(); ival != nil {
-			return string(rune(ival.Ival))
+			return strconv.Itoa(int(ival.Ival))
 		}
 		if boolval := aConst.GetBoolval(); boolval != nil {
 			if boolval.Boolval {

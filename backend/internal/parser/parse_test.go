@@ -189,6 +189,54 @@ func TestParseMigration_AddConstraint(t *testing.T) {
 	if op.ConstraintType != "UNIQUE" {
 		t.Errorf("expected constraint type 'UNIQUE', got '%s'", op.ConstraintType)
 	}
+	if op.NotValid {
+		t.Error("expected NotValid false for a validating constraint")
+	}
+}
+
+func TestParseMigration_AddConstraintNotValid(t *testing.T) {
+	op := parseSingleOp(t, `ALTER TABLE users ADD CONSTRAINT users_age_check CHECK (age > 0) NOT VALID;`).(models.AddConstraint)
+	if op.ConstraintType != "CHECK" {
+		t.Errorf("expected constraint type 'CHECK', got '%s'", op.ConstraintType)
+	}
+	if !op.NotValid {
+		t.Error("expected NotValid true for a NOT VALID constraint")
+	}
+}
+
+func TestParseMigration_AddColumnDefaultExpr(t *testing.T) {
+	tests := []struct {
+		name     string
+		sql      string
+		expected string
+	}{
+		{"no default", `ALTER TABLE users ADD COLUMN note TEXT;`, ""},
+		{"string constant", `ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'active';`, "'active'"},
+		{"integer constant", `ALTER TABLE users ADD COLUMN retries INT DEFAULT 3;`, "3"},
+		{"function call", `ALTER TABLE users ADD COLUMN created_at TIMESTAMP DEFAULT now();`, "now()"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			op := parseSingleOp(t, test.sql).(models.AddColumn)
+			if op.Column.DefaultExpr != test.expected {
+				t.Errorf("expected default expression '%s', got '%s'", test.expected, op.Column.DefaultExpr)
+			}
+		})
+	}
+}
+
+func TestParseCreateTable_ColumnDefaultExpr(t *testing.T) {
+	result, err := ParseCreateTable(`CREATE TABLE users (id INT, created_at TIMESTAMP DEFAULT now());`)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Columns[0].DefaultExpr != "" {
+		t.Errorf("expected no default expression on id, got '%s'", result.Columns[0].DefaultExpr)
+	}
+	if result.Columns[1].DefaultExpr != "now()" {
+		t.Errorf("expected default expression 'now()', got '%s'", result.Columns[1].DefaultExpr)
+	}
 }
 
 func TestParseMigration_DropConstraint(t *testing.T) {

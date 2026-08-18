@@ -18,5 +18,13 @@ SQL statements that can be parsed (backend) and rendered (frontend).
 - `SET DEFAULT`
 - `RENAME TABLE`
 - `RENAME COLUMN`
-- `ADD CONSTRAINT` (PRIMARY KEY, UNIQUE, FOREIGN KEY, CHECK, EXCLUDE)
+- `ADD CONSTRAINT` (PRIMARY KEY, UNIQUE, FOREIGN KEY, CHECK, EXCLUDE), including `NOT VALID`
+
+## Captured modifiers
+
+- `ADD CONSTRAINT ... NOT VALID` sets `AddConstraint.notValid`
+- A column's `DEFAULT` expression is deparsed into `Column.defaultExpr`; `constraints` carries the
+  `DEFAULT` token whether or not the expression could be deparsed
+
+Both feed [performance classification](supported-performance-classes.md).
 

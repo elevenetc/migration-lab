@@ -44,6 +44,10 @@ Two-module monorepo:
 sql), and each statement yields one or more operations (e.g. `ALTER TABLE t ADD a, DROP b` is one
 statement with two operations; `DROP TABLE a, b` is one statement with an operation per table).
 
+Every operation and statement carries a `performanceClass` (`METADATA_ONLY` / `DATA_SCANNING` /
+`TABLE_REWRITE`), injected at marshal time from the AST; a statement's class is the worst among its
+operations. See [docs/supported-performance-classes.md](docs/supported-performance-classes.md).
+
 #### Data Flow
 
 1. App mounts -> calls `loadMigrations()`

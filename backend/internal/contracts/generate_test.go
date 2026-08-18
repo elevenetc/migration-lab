@@ -28,7 +28,7 @@ func TestGenerateMigrationResponseFixture(t *testing.T) {
 					Columns: []models.Column{
 						{Name: "id", Type: "SERIAL", Constraints: []string{"PRIMARY KEY"}},
 						{Name: "email", Type: "VARCHAR(255)", Constraints: []string{"NOT NULL", "UNIQUE"}},
-						{Name: "created_at", Type: "TIMESTAMP", Constraints: []string{"DEFAULT NOW()"}},
+						{Name: "created_at", Type: "TIMESTAMP", Constraints: []string{"DEFAULT"}, DefaultExpr: "now()"},
 					},
 					IsPartitioned: false,
 				}),
@@ -41,7 +41,9 @@ func TestGenerateMigrationResponseFixture(t *testing.T) {
 				"ALTER TABLE users ADD COLUMN status VARCHAR(50) DEFAULT 'active'",
 				models.AddColumn{
 					TableName: "users",
-					Column:    models.Column{Name: "status", Type: "VARCHAR(50)", Constraints: []string{"DEFAULT 'active'"}},
+					Column: models.Column{
+						Name: "status", Type: "VARCHAR(50)", Constraints: []string{"DEFAULT"}, DefaultExpr: "'active'",
+					},
 				}),
 		},
 		{
@@ -199,8 +201,37 @@ func TestGenerateMigrationResponseFixture(t *testing.T) {
 		},
 		{
 			ID:        "migration-16",
-			Version:   "V16__alter_partitioned",
+			Version:   "V16__add_not_valid_constraint",
 			Timestamp: 16000,
+			Statements: singleStatement("ALTER_TABLE",
+				"ALTER TABLE users ADD CONSTRAINT users_age_positive CHECK (age > 0) NOT VALID",
+				models.AddConstraint{
+					TableName:      "users",
+					ConstraintName: "users_age_positive",
+					ConstraintType: "CHECK",
+					NotValid:       true,
+				}),
+		},
+		{
+			ID:        "migration-17",
+			Version:   "V17__add_column_volatile_default",
+			Timestamp: 17000,
+			Statements: singleStatement("ALTER_TABLE",
+				"ALTER TABLE users ADD COLUMN created_at TIMESTAMP DEFAULT now()",
+				models.AddColumn{
+					TableName: "users",
+					Column: models.Column{
+						Name:        "created_at",
+						Type:        "TIMESTAMP",
+						Constraints: []string{"DEFAULT"},
+						DefaultExpr: "now()",
+					},
+				}),
+		},
+		{
+			ID:        "migration-18",
+			Version:   "V18__alter_partitioned",
+			Timestamp: 18000,
 			Statements: singleStatement("ALTER_TABLE",
 				"ALTER TABLE measurements ADD COLUMN description TEXT",
 				models.AddColumn{
@@ -213,8 +244,8 @@ func TestGenerateMigrationResponseFixture(t *testing.T) {
 	// A data-only migration parses to zero supported statements. Routed through
 	// ParseMigration to exercise the real serialization path: Statements must
 	// marshal as [] (not null) so it stays assignable to TS `Statement[]`.
-	dataOnly, err := parser.ParseMigration("V17__backfill_status",
-		"UPDATE users SET status = 'active' WHERE status IS NULL;", 17000)
+	dataOnly, err := parser.ParseMigration("V19__backfill_status",
+		"UPDATE users SET status = 'active' WHERE status IS NULL;", 19000)
 	if err != nil {
 		t.Fatalf("Failed to parse data-only migration: %v", err)
 	}

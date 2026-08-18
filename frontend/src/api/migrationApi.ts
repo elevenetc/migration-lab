@@ -8,9 +8,20 @@ export interface Column {
   name: string
   type: string
   constraints: string[]
+  // Deparsed DEFAULT expression; absent when the column has no default or the
+  // backend could not deparse it. `constraints` carries 'DEFAULT' either way.
+  defaultExpr?: string
 }
 
-export interface CreateTable {
+/** How expensive an operation is relative to table size; ordinal, cheapest first. */
+export type PerformanceClass = 'METADATA_ONLY' | 'DATA_SCANNING' | 'TABLE_REWRITE'
+
+/** Carried by every operation: the backend derives it from the parsed statement. */
+export interface OperationBase {
+  performanceClass: PerformanceClass
+}
+
+export interface CreateTable extends OperationBase {
   type: 'CREATE_TABLE'
   tableName: string
   columns: Column[]
@@ -18,76 +29,78 @@ export interface CreateTable {
   partitionOf: string | null
 }
 
-export interface AddColumn {
+export interface AddColumn extends OperationBase {
   type: 'ADD_COLUMN'
   tableName: string
   column: Column
 }
 
-export interface AlterColumnType {
+export interface AlterColumnType extends OperationBase {
   type: 'ALTER_COLUMN_TYPE'
   tableName: string
   columnName: string
   newType: string
 }
 
-export interface SetNotNull {
+export interface SetNotNull extends OperationBase {
   type: 'SET_NOT_NULL'
   tableName: string
   columnName: string
 }
 
-export interface DropNotNull {
+export interface DropNotNull extends OperationBase {
   type: 'DROP_NOT_NULL'
   tableName: string
   columnName: string
 }
 
-export interface SetDefault {
+export interface SetDefault extends OperationBase {
   type: 'SET_DEFAULT'
   tableName: string
   columnName: string
   defaultValue: string
 }
 
-export interface DropDefault {
+export interface DropDefault extends OperationBase {
   type: 'DROP_DEFAULT'
   tableName: string
   columnName: string
 }
 
-export interface RenameTable {
+export interface RenameTable extends OperationBase {
   type: 'RENAME_TABLE'
   tableName: string
   newTableName: string
 }
 
-export interface RenameColumn {
+export interface RenameColumn extends OperationBase {
   type: 'RENAME_COLUMN'
   tableName: string
   columnName: string
   newColumnName: string
 }
 
-export interface AddConstraint {
+export interface AddConstraint extends OperationBase {
   type: 'ADD_CONSTRAINT'
   tableName: string
   constraintName: string
   constraintType: string
+  // NOT VALID: existing rows are not checked, so no scan of the table.
+  notValid: boolean
 }
 
-export interface DropConstraint {
+export interface DropConstraint extends OperationBase {
   type: 'DROP_CONSTRAINT'
   tableName: string
   constraintName: string
 }
 
-export interface DropTable {
+export interface DropTable extends OperationBase {
   type: 'DROP_TABLE'
   tableName: string
 }
 
-export interface DropColumn {
+export interface DropColumn extends OperationBase {
   type: 'DROP_COLUMN'
   tableName: string
   columnName: string
@@ -102,6 +115,8 @@ export interface Statement {
   kind: StatementKind
   sql: string
   operations: Operation[]
+  /** Worst performance class among the statement's operations. */
+  performanceClass: PerformanceClass
 }
 
 export interface Migration {
