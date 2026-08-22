@@ -144,6 +144,67 @@ func TestCLI_RunWithAnalysis(t *testing.T) {
 	}
 }
 
+func TestCLI_RuntimeFlag(t *testing.T) {
+	dir := testdataPath(t, "migrations")
+	out := runCLI(t, "--runtime", "--rows", "1000", dir)
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(out, &result); err != nil {
+		t.Fatalf("invalid JSON output: %v", err)
+	}
+
+	runtimeResult := result["runtimeResult"].(map[string]interface{})
+	if runtimeResult["verdict"] != "COMPLETED" {
+		t.Errorf("expected verdict COMPLETED, got %v: %s", runtimeResult["verdict"], runtimeResult["message"])
+	}
+
+	seeded := runtimeResult["seeded"].([]interface{})
+	if len(seeded) != 1 {
+		t.Fatalf("expected the touched table to be seeded, got %v", seeded)
+	}
+	users := seeded[0].(map[string]interface{})
+	if users["table"] != "users" || users["rows"].(float64) != 1000 {
+		t.Errorf("expected users seeded to 1000 rows, got %v", users)
+	}
+}
+
+func TestCLI_RuntimeFlag_ReportsATableItCannotSeed(t *testing.T) {
+	// The partitioned parent has no partitions yet, so no row can be routed into it.
+	dir := testdataPath(t, "partitioned")
+	out := runCLI(t, "--runtime", "--rows", "1000", dir)
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(out, &result); err != nil {
+		t.Fatalf("invalid JSON output: %v", err)
+	}
+
+	runtimeResult := result["runtimeResult"].(map[string]interface{})
+	if !hasFindingOfType(runtimeResult, "SEED_FAILED") {
+		t.Errorf("expected a SEED_FAILED finding, got %v", runtimeResult["findings"])
+	}
+	if runtimeResult["verdict"] != "COMPLETED" {
+		t.Errorf("expected the run to continue past a failed seed, got %v", runtimeResult["verdict"])
+	}
+}
+
+func TestCLI_RuntimeFlag_FailsTheBuildWhenTheDeadlineIsMissed(t *testing.T) {
+	dir := testdataPath(t, "rewrite")
+	stderr := runCLIExpectingFailure(t, "--runtime", "--rows", "200000", "--deadline-ms", "1", dir)
+
+	if !strings.Contains(stderr, "EXCEEDS_DEADLINE") {
+		t.Errorf("expected the exit message to name the verdict, got: %s", stderr)
+	}
+}
+
+func hasFindingOfType(runtimeResult map[string]interface{}, findingType string) bool {
+	for _, finding := range runtimeResult["findings"].([]interface{}) {
+		if finding.(map[string]interface{})["type"] == findingType {
+			return true
+		}
+	}
+	return false
+}
+
 func runCLI(t *testing.T, args ...string) []byte {
 	t.Helper()
 	cmdArgs := append([]string{"run", "."}, args...)
@@ -157,6 +218,22 @@ func runCLI(t *testing.T, args ...string) []byte {
 		t.Fatalf("CLI failed: %v", err)
 	}
 	return output
+}
+
+// runCLIExpectingFailure returns stderr of a run that must exit non-zero, which
+// is how the runtime pass fails the CI job it runs in.
+func runCLIExpectingFailure(t *testing.T, args ...string) string {
+	t.Helper()
+	cmdArgs := append([]string{"run", "."}, args...)
+	cmd := exec.Command("go", cmdArgs...)
+	cmd.Dir = cliDir(t)
+
+	output, err := cmd.Output()
+	exitErr, ok := err.(*exec.ExitError)
+	if !ok {
+		t.Fatalf("expected a non-zero exit, got err %v and output: %s", err, output)
+	}
+	return string(exitErr.Stderr)
 }
 
 func cliDir(t *testing.T) string {

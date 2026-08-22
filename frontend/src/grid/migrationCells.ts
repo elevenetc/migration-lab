@@ -116,6 +116,7 @@ export function buildMigrationCells(migrations: Migration[], warnings: Warning[]
         row,
         col,
         table,
+        migrationId: migration.id,
         version: migration.version,
         kind: getMigrationKind(group.operations),
         operations: group.operations.map(operation => ({

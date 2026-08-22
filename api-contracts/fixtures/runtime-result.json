@@ -1,0 +1,80 @@
+{
+    "migrationId": "V3__widen_note",
+    "version": "3",
+    "deadlineMs": 5000,
+    "seeded": [
+        {
+            "table": "events_2026",
+            "rows": 1000000
+        },
+        {
+            "table": "events_2027",
+            "rows": 0,
+            "error": "no column of the table can be filled generically"
+        }
+    ],
+    "statements": [
+        {
+            "statementIndex": 0,
+            "sql": "ALTER TABLE events ALTER COLUMN note TYPE VARCHAR(200)",
+            "durationMs": 5001,
+            "strongestLock": "AccessExclusiveLock",
+            "locks": [
+                {
+                    "mode": "AccessExclusiveLock",
+                    "relation": "events"
+                },
+                {
+                    "mode": "AccessExclusiveLock",
+                    "relation": "events_2026"
+                }
+            ],
+            "verdict": "EXCEEDS_DEADLINE",
+            "error": "ERROR: canceling statement due to statement timeout (SQLSTATE 57014)"
+        }
+    ],
+    "probes": [
+        {
+            "table": "events_2026",
+            "samples": 84,
+            "errors": 0,
+            "maxLatencyMs": 4903,
+            "blockedMs": 4903
+        }
+    ],
+    "verdict": "EXCEEDS_DEADLINE",
+    "retry": "FAILURE_LOOP",
+    "findings": [
+        {
+            "type": "EXCEEDS_DEADLINE",
+            "operationId": {
+                "migrationId": "V3__widen_note",
+                "statementIndex": 0,
+                "opIndex": -1
+            },
+            "tableName": "events",
+            "message": "statement 0 was still running after the 5000 ms deadline and was cancelled"
+        },
+        {
+            "type": "EXCLUSIVE_LOCK_HELD",
+            "operationId": {
+                "migrationId": "V3__widen_note",
+                "statementIndex": 0,
+                "opIndex": -1
+            },
+            "tableName": "events",
+            "message": "statement 0 held AccessExclusiveLock on events, events_2026 for 5001 ms"
+        },
+        {
+            "type": "BLOCKS_READERS",
+            "operationId": {
+                "migrationId": "V3__widen_note",
+                "statementIndex": 0,
+                "opIndex": -1
+            },
+            "tableName": "events_2026",
+            "message": "a concurrent reader of events_2026 waited 4903 ms across the run"
+        }
+    ],
+    "message": "statement 0 was cancelled after the 5000 ms deadline"
+}

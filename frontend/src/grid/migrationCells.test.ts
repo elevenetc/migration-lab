@@ -46,6 +46,15 @@ describe('buildMigrationCells', () => {
     expect(model.tables).toEqual(['new'])
   })
 
+  it('carries the id of the migration each cell belongs to', () => {
+    const model = buildMigrationCells([
+      single('m1', [createTable('users')]),
+      single('m2', [addColumn('users'), createTable('orders')]),
+    ])
+
+    expect(model.cells.map(({ migrationId }) => migrationId)).toEqual(['m1', 'm2', 'm2'])
+  })
+
   it('places one column per migration in timeline order', () => {
     const model = buildMigrationCells([
       single('m1', [createTable('users')]),

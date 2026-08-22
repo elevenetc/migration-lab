@@ -1,12 +1,14 @@
 import { describe, it, expect } from 'vitest'
-import type { MigrationTimelineResponse, PerformanceClass, RunMigrationsResult, Warning } from '../api/migrationApi'
+import type { MigrationTimelineResponse, PerformanceClass, RetryVerdict, RunMigrationsResult, RuntimeResult, RuntimeVerdict, Warning } from '../api/migrationApi'
 import migrationFixture from '../../../api-contracts/fixtures/migration-response.json' with { type: 'json' }
 import runMigrationsFixture from '../../../api-contracts/fixtures/run-migrations-result.json' with { type: 'json' }
+import runtimeFixture from '../../../api-contracts/fixtures/runtime-result.json' with { type: 'json' }
 
 // Compile-time guard: fixtures generated from the Go models must be assignable
 // to the TypeScript types. `tsc` fails here if backend and frontend types drift.
 const migrationResponse: MigrationTimelineResponse = migrationFixture as MigrationTimelineResponse
 const runMigrationsResult: RunMigrationsResult = runMigrationsFixture as RunMigrationsResult
+const runtimeResult: RuntimeResult = runtimeFixture as RuntimeResult
 
 function assertExhaustive(val: never): never {
   throw new Error(`Unhandled type: ${JSON.stringify(val)}`)
@@ -162,5 +164,42 @@ describe('API contract: migration response fixture', () => {
 describe('API contract: run-migrations result fixture', () => {
   it('has the expected field types', () => {
     expect(() => validateRunMigrationsResult(runMigrationsResult)).not.toThrow()
+  })
+})
+
+const RUNTIME_VERDICTS: RuntimeVerdict[] = ['COMPLETED', 'EXCEEDS_DEADLINE', 'FAILED']
+const RETRY_VERDICTS: RetryVerdict[] = ['SAFE_TO_RETRY', 'NEEDS_MANUAL_CLEANUP', 'FAILURE_LOOP', 'NOT_APPLICABLE']
+
+function validateRuntimeResult(result: RuntimeResult): void {
+  if (!RUNTIME_VERDICTS.includes(result.verdict)) {
+    throw new Error(`RuntimeResult has unknown verdict: ${result.verdict}`)
+  }
+  if (!RETRY_VERDICTS.includes(result.retry)) {
+    throw new Error(`RuntimeResult has unknown retry verdict: ${result.retry}`)
+  }
+  for (const statement of result.statements) {
+    if (!RUNTIME_VERDICTS.includes(statement.verdict)) {
+      throw new Error(`Statement ${statement.statementIndex} has unknown verdict: ${statement.verdict}`)
+    }
+  }
+  for (const finding of result.findings) {
+    if (!finding.type || !finding.message || !finding.operationId.migrationId) {
+      throw new Error(`RuntimeFinding is missing fields: ${JSON.stringify(finding)}`)
+    }
+  }
+}
+
+describe('API contract: runtime result fixture', () => {
+  it('has known verdicts and well-formed findings', () => {
+    expect(() => validateRuntimeResult(runtimeResult)).not.toThrow()
+  })
+
+  // Go marshals a nil slice as null, which every consumer here would have to guard.
+  it('carries arrays rather than nulls for its collections', () => {
+    expect(Array.isArray(runtimeResult.seeded)).toBe(true)
+    expect(Array.isArray(runtimeResult.statements)).toBe(true)
+    expect(Array.isArray(runtimeResult.probes)).toBe(true)
+    expect(Array.isArray(runtimeResult.findings)).toBe(true)
+    expect(runtimeResult.statements.every(statement => Array.isArray(statement.locks))).toBe(true)
   })
 })

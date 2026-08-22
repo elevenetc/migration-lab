@@ -9,6 +9,7 @@ import (
 	"migration-timeline/backend/internal/datasets"
 	"migration-timeline/backend/internal/loader"
 	"migration-timeline/backend/internal/runner"
+	"migration-timeline/backend/internal/runtime"
 	"migration-timeline/backend/internal/server"
 )
 
@@ -38,9 +39,10 @@ func initConfig(port *int) server.Config {
 
 	db := database.New(sets)
 	cfg := server.Config{
-		Port:   *port,
-		Store:  db,
-		Runner: runner.MigrationRunner{Store: db},
+		Port:    *port,
+		Store:   db,
+		Runner:  runner.MigrationRunner{Store: db},
+		Analyse: runtime.Analyse,
 	}
 	return cfg
 }

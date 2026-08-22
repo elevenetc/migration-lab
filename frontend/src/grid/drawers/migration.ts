@@ -32,6 +32,8 @@ export interface CellWarning {
 }
 
 export interface MigrationData {
+    /** Id of the migration this cell stands for; the runtime button measures it. */
+    migrationId: string;
     /** Flyway version of the migration this cell stands for; the header row spells it out. */
     version: string;
     /** Table the operations apply to. */

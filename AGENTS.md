@@ -12,8 +12,15 @@ builds AST representations, and renders interactive timelines.
 
 Two-module monorepo:
 
-- **backend/**: Go service for migration parsing, AST generation, and static analysis
+- **backend/**: Go service for migration parsing, AST generation, static analysis, and runtime analysis
 - **frontend/**: React + TypeScript + Zustand web client for visualization
+
+Analysis comes in two groups, and the docs and packages are named after them:
+
+- **static analysis** (`internal/analysis`) reads the AST and raises warnings
+- **runtime analysis** (`internal/runtime`) executes one migration against a seeded PostgreSQL
+  container and raises findings from what it measured. See
+  [docs/supported-runtime-analysis.md](docs/supported-runtime-analysis.md)
 
 ## Tech Stack
 
@@ -48,6 +55,10 @@ Every operation and statement carries a `performanceClass` (`METADATA_ONLY` / `D
 `TABLE_REWRITE`), injected at marshal time from the AST; a statement's class is the worst among its
 operations. See [docs/supported-performance-classes.md](docs/supported-performance-classes.md).
 
+A `RuntimeFinding` carries the same fields as a static `Warning` (`type`, `operationId`, `tableName`,
+`message`), so both analysis groups stay renderable through one path. Runtime measurements
+(`StatementMeasurement`, `ProbeResult`, `SeededTable`) ride alongside in `RuntimeResult`.
+
 #### Data Flow
 
 1. App mounts -> calls `loadMigrations()`
@@ -77,6 +88,9 @@ datasets and CLI assign timestamps. `timestamp` is therefore an ordinal rank, no
   from the old table row into a `RENAME_TABLE` cell
 - Focusing a cell (footer button, or `Enter` on the selection) opens an HTML panel with the
   migration version, table, its analysis warnings and the parsed `Statement.sql`
+- A hovered cell shows two stacked footer buttons: `focus-in`, then `runtime` below it, which measures
+  the cell's migration and shows the result in `RuntimePopup`. Both are drawn by `cellButton.ts`,
+  which owns the geometry and hands each drawer a slot
 
 #### Rendering
 
@@ -95,7 +109,9 @@ datasets and CLI assign timestamps. `timestamp` is therefore an ordinal rank, no
 The CLI (`backend/cmd/cli`) outputs static analysis JSON by default:
 
 - Default - Parse migrations and output static analysis as JSON
-- `--run` - Also run migrations against a PostgreSQL container (requires Docker)
+- `--run` - Also run migrations against a PostgreSQL container
+- `--runtime` - Also measure the last migration against a seeded container;
+  tuned by `--rows` / `--deadline-ms`, exits non-zero unless the verdict is `COMPLETED`
 - `--report` - Generate self-contained HTML report instead of JSON
 
 ### Building CLI with Report Support
@@ -115,9 +131,21 @@ This builds the frontend, embeds assets into `backend/internal/report/dist/`, an
 # From inline SQL
 ./build/migration-timeline "CREATE TABLE users (id INT);"
 
-# With migration runner (requires Docker)
+# With migration runner
 ./build/migration-timeline --run /path/to/migrations
 ```
+
+### Runtime Analysis
+
+```bash
+# Measure the last migration against tables seeded to 1M rows
+./build/migration-timeline --runtime /path/to/migrations
+
+# Smaller and quicker, with a 30 s pod grace period
+./build/migration-timeline --runtime --rows 50000 --deadline-ms 30000 /path/to/migrations
+```
+
+See [docs/supported-runtime-analysis.md](docs/supported-runtime-analysis.md) for what the verdicts mean.
 
 ### Generating Reports
 
@@ -155,6 +183,7 @@ Vitest (`*.test.ts` under `frontend/src`, run via `just test-frontend`) covers:
   connectors, warnings, SQL collection)
 - `src/grid/operationText.test.ts` - `getOperationTitle` / `getOperationTarget` over every
   `Operation` variant
+- `src/grid/cellButton.test.ts` - footer button geometry (slots stack, stay inside the decor they size)
 
 Canvas *drawing* (pixel output) has no automated coverage - verify it in the browser (see Debugging).
 
@@ -201,6 +230,24 @@ When adding new Operation types:
 4. Add test in `internal/analysis/analysis_test.go`
 5. Update [docs/supported-static-analysis.md](docs/supported-static-analysis.md)
 
+## Runtime analysis implementation process
+
+1. Decide what has to be *observed* rather than derived — a duration, a lock, a blocked reader, a
+   leftover. Anything derivable from the AST belongs in static analysis instead
+2. Keep the new logic pure where it can be — parsing, planning and classification should take plain
+   values and be unit-testable without Docker
+3. Put anything that talks to the database in a file of its own, and wire it into `Analyse`
+   (`analyse.go`), which is the package's only entry point
+4. Add a finding type to `internal/models/runtime.go` and raise it in `findings.go`
+5. Add unit tests to `internal/runtime/runtime_test.go`; add a container-backed test to
+   `internal/runtime/analyse_test.go` only for behaviour a real PostgreSQL has to confirm
+6. Keep every collection in `RuntimeResult` an empty slice rather than nil — the frontend types are
+   arrays, and Go marshals nil as `null`
+7. Extend the fixture in `internal/contracts/generate_test.go` and the validator in
+   `validate-api-contracts.test.ts`
+8. Update [docs/supported-runtime-analysis.md](docs/supported-runtime-analysis.md), moving what you
+   built out of its **Planned** section
+
 ## Debugging
 
 - Use `playwright mcp` and `localhost:3000` to verify frontend implementation
@@ -217,6 +264,11 @@ When adding new Operation types:
 - `just compose-apply` is only needed to pick up backend changes (rebuilds and restarts the backend)
 - After editing `internal/datasets/`, run `just compose-apply` to see the updated data at `localhost:3000`
 - Pass `/.playwright-mcp` to `playwright`, so it stores logs and screenshots there instead of root
+- The `runtime` button of a cell starts a PostgreSQL container from inside the backend container;
+  `docker-compose.yml` already mounts the Docker socket and sets `TESTCONTAINERS_HOST_OVERRIDE`, so it
+  works under `compose-up`. Seeding 1M rows takes a few seconds — the popup shows progress
+- Footer buttons only draw while the cell is hovered, so drive the pointer with `page.mouse.move`
+  before clicking one
 
 ## Backward compatibility
 
@@ -226,5 +278,9 @@ The project is in MVP stage, so breaking changes are expected, backward compatib
 
 - Prefer functional style over OOP
 - Prefer having single file - single function
+- Name the file after what is inside it: the entry function in snake_case when there is one
+  (`measure_statement.go` holds `measureStatement`), the concept when the file holds a family of
+  peer functions over one thing (`locks.go`, `partition_bound.go`). Private helpers live beside the
+  function they serve
 - Prioritize making functions as pure as possible. For example, instead of passing a mutable list to a function, prefer
   returning a new immutable list with result.

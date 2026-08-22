@@ -311,6 +311,84 @@ func TestGenerateRunMigrationsResultFixture(t *testing.T) {
 	}
 }
 
+func TestGenerateRuntimeResultFixture(t *testing.T) {
+	statementID := models.OperationID{
+		MigrationID:    "V3__widen_note",
+		StatementIndex: 0,
+		OpIndex:        models.StatementScoped,
+	}
+
+	result := models.RuntimeResult{
+		MigrationID: "V3__widen_note",
+		Version:     "3",
+		DeadlineMs:  5000,
+		Seeded: []models.SeededTable{
+			{Table: "events_2026", Rows: 1000000},
+			{Table: "events_2027", Error: "no column of the table can be filled generically"},
+		},
+		Statements: []models.StatementMeasurement{
+			{
+				StatementIndex: 0,
+				SQL:            "ALTER TABLE events ALTER COLUMN note TYPE VARCHAR(200)",
+				DurationMs:     5001,
+				StrongestLock:  "AccessExclusiveLock",
+				Locks: []models.LockObservation{
+					{Mode: "AccessExclusiveLock", Relation: "events"},
+					{Mode: "AccessExclusiveLock", Relation: "events_2026"},
+				},
+				Verdict: models.RuntimeExceedsDeadline,
+				Error:   "ERROR: canceling statement due to statement timeout (SQLSTATE 57014)",
+			},
+		},
+		Probes: []models.ProbeResult{
+			{Table: "events_2026", Samples: 84, Errors: 0, MaxLatencyMs: 4903, BlockedMs: 4903},
+		},
+		Verdict: models.RuntimeExceedsDeadline,
+		Retry:   models.RetryFailureLoop,
+		Findings: []models.RuntimeFinding{
+			{
+				Type:        models.FindingExceedsDeadline,
+				OperationID: statementID,
+				TableName:   "events",
+				Message:     "statement 0 was still running after the 5000 ms deadline and was cancelled",
+			},
+			{
+				Type:        models.FindingExclusiveLock,
+				OperationID: statementID,
+				TableName:   "events",
+				Message:     "statement 0 held AccessExclusiveLock on events, events_2026 for 5001 ms",
+			},
+			{
+				Type:        models.FindingBlocksReaders,
+				OperationID: statementID,
+				TableName:   "events_2026",
+				Message:     "a concurrent reader of events_2026 waited 4903 ms across the run",
+			},
+		},
+		Message: "statement 0 was cancelled after the 5000 ms deadline",
+	}
+
+	writeFixture(t, "runtime-result.json", result)
+}
+
+// writeFixture marshals a model to the fixtures the frontend contract test reads.
+func writeFixture(t *testing.T, name string, value any) {
+	t.Helper()
+
+	data, err := json.MarshalIndent(value, "", "    ")
+	if err != nil {
+		t.Fatalf("Failed to marshal %s: %v", name, err)
+	}
+
+	outputPath := filepath.Join("..", "..", "..", "api-contracts", "fixtures", name)
+	if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
+		t.Fatalf("Failed to create output directory: %v", err)
+	}
+	if err := os.WriteFile(outputPath, data, 0644); err != nil {
+		t.Fatalf("Failed to write fixture %s: %v", name, err)
+	}
+}
+
 func strPtr(s string) *string {
 	return &s
 }

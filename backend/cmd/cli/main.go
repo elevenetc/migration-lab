@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"migration-timeline/backend/internal/analysis"
 	"migration-timeline/backend/internal/loader"
@@ -13,12 +14,16 @@ import (
 	"migration-timeline/backend/internal/parser"
 	"migration-timeline/backend/internal/report"
 	"migration-timeline/backend/internal/runner"
+	"migration-timeline/backend/internal/runtime"
 
 	"github.com/spf13/cobra"
 )
 
 var runFlag bool
 var reportFlag string
+var runtimeFlag bool
+var rowsFlag int64
+var deadlineFlag int64
 
 var rootCmd = &cobra.Command{
 	Use:   "migration-timeline <sql-or-dir>",
@@ -33,6 +38,8 @@ Examples:
   migration-timeline /path/to/migrations
   migration-timeline "CREATE TABLE users (id INT);"
   migration-timeline --run /path/to/migrations
+  migration-timeline --runtime /path/to/migrations
+  migration-timeline --runtime --rows 1000000 --deadline-ms 30000 /path/to/migrations
   migration-timeline --report /path/to/migrations
   migration-timeline --report=output.html /path/to/migrations`,
 	Args:          cobra.ExactArgs(1),
@@ -53,6 +60,9 @@ Examples:
 func init() {
 	rootCmd.Flags().BoolVar(&runFlag, "run", false, "Run migrations against a PostgreSQL container (requires Docker)")
 	rootCmd.Flags().StringVar(&reportFlag, "report", "", "Generate self-contained HTML report (default: report.html)")
+	rootCmd.Flags().BoolVar(&runtimeFlag, "runtime", false, "Measure the last migration against a seeded PostgreSQL container (requires Docker); exits non-zero unless it completes")
+	rootCmd.Flags().Int64Var(&rowsFlag, "rows", 0, "Rows to seed every touched table to (default 1000000)")
+	rootCmd.Flags().Int64Var(&deadlineFlag, "deadline-ms", 0, "Deadline standing for the pod grace period (default 5000)")
 }
 
 func processDirectory(dir string) error {
@@ -99,13 +109,49 @@ func processMigrationInfos(infos []models.MigrationInfo) error {
 		result.RunResult = &runResult
 	}
 
+	if runtimeFlag {
+		runtimeResult, err := analyseRuntime(infos)
+		if err != nil {
+			return err
+		}
+		result.RuntimeResult = runtimeResult
+	}
+
 	migrations, err := parseMigrations(infos)
 	if err != nil {
 		return err
 	}
 	result.AnalysisResult = analysis.Analyse(migrations)
 
-	return printJSON(result)
+	if err := printJSON(result); err != nil {
+		return err
+	}
+
+	// A migration that does not complete inside the deadline fails the CI job it
+	// runs in, which is the point of the runtime pass.
+	if result.RuntimeResult != nil && result.RuntimeResult.Verdict != models.RuntimeCompleted {
+		return fmt.Errorf("runtime analysis of %s: %s (%s)",
+			result.RuntimeResult.MigrationID, result.RuntimeResult.Verdict, result.RuntimeResult.Message)
+	}
+	return nil
+}
+
+// analyseRuntime measures the last migration of the timeline, the one that just
+// arrived on the branch under review. Naming no target is what asks for it.
+func analyseRuntime(infos []models.MigrationInfo) (*models.RuntimeResult, error) {
+	if len(infos) == 0 {
+		return nil, fmt.Errorf("no migrations to analyze")
+	}
+
+	result, err := runtime.Analyse(context.Background(), runtime.Request{
+		Migrations: infos,
+		Rows:       rowsFlag,
+		Deadline:   time.Duration(deadlineFlag) * time.Millisecond,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
 }
 
 func parseMigrations(infos []models.MigrationInfo) ([]*models.Migration, error) {
@@ -169,6 +215,7 @@ func toTimelineResponse(migrations []*models.Migration) *models.MigrationTimelin
 type cliResult struct {
 	AnalysisResult *models.AnalysisResult      `json:"analysisResult,omitempty"`
 	RunResult      *models.RunMigrationsResult `json:"runResult,omitempty"`
+	RuntimeResult  *models.RuntimeResult       `json:"runtimeResult,omitempty"`
 }
 
 func printJSON(v interface{}) error {

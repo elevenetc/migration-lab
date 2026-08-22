@@ -4,50 +4,24 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	"github.com/testcontainers/testcontainers-go/wait"
 	"migration-timeline/backend/internal/models"
+	"migration-timeline/backend/internal/pg"
 )
 
 func RunMigrations(ctx context.Context, migrations []models.MigrationInfo) models.RunMigrationsResult {
 	log.Printf("Starting migrations: %d total", len(migrations))
 
-	container, err := postgres.Run(ctx,
-		"postgres:16-alpine",
-		postgres.WithDatabase("testdb"),
-		postgres.WithUsername("test"),
-		postgres.WithPassword("test"),
-		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).
-				WithStartupTimeout(60*time.Second),
-		),
-	)
+	connStr, terminate, err := pg.Start(ctx)
 	if err != nil {
 		return models.RunMigrationsResult{
 			Success:           false,
-			Message:           fmt.Sprintf("Failed to start PostgreSQL container: %v", err),
+			Message:           err.Error(),
 			MigrationsApplied: 0,
 		}
 	}
-	defer func() {
-		if err := container.Terminate(ctx); err != nil {
-			log.Printf("Failed to terminate container: %v", err)
-		}
-	}()
-
-	connStr, err := container.ConnectionString(ctx, "sslmode=disable")
-	if err != nil {
-		return models.RunMigrationsResult{
-			Success:           false,
-			Message:           fmt.Sprintf("Failed to get connection string: %v", err),
-			MigrationsApplied: 0,
-		}
-	}
+	defer terminate()
 
 	log.Printf("PostgreSQL container started: %s", connStr)
 

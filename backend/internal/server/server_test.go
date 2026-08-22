@@ -11,10 +11,12 @@ import (
 	"slices"
 	"sort"
 	"testing"
+	"time"
 
 	"migration-timeline/backend/internal/database"
 	"migration-timeline/backend/internal/datasets"
 	"migration-timeline/backend/internal/models"
+	"migration-timeline/backend/internal/runtime"
 )
 
 // rawResponse is used for testing JSON structure without full deserialization
@@ -45,6 +47,15 @@ type fakeRunner struct {
 
 func (f fakeRunner) Run(context.Context, string) (models.RunMigrationsResult, error) {
 	return f.result, f.err
+}
+
+// captureAnalyse stands in for runtime.Analyse, recording the request the handler
+// built so the query-parameter mapping is testable without Docker.
+func captureAnalyse(result models.RuntimeResult, err error, seen *runtime.Request) RuntimeAnalyse {
+	return func(_ context.Context, request runtime.Request) (models.RuntimeResult, error) {
+		*seen = request
+		return result, err
+	}
 }
 
 func datasetsDB() *database.Database {
@@ -251,6 +262,127 @@ func TestCORSHeaders(t *testing.T) {
 
 	if rec.Header().Get("Access-Control-Allow-Origin") != "http://localhost:3000" {
 		t.Error("expected CORS header for localhost:3000")
+	}
+}
+
+// An unknown dataset is refused while resolving the timeline, so no container is
+// ever started for it.
+func TestRuntimeUnknownIdReturns404(t *testing.T) {
+	var seen runtime.Request
+	e := New(Config{
+		Port:    8081,
+		Store:   fakeStore{err: models.ErrNotFound},
+		Analyse: captureAnalyse(models.RuntimeResult{}, nil, &seen),
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/migrations/runtime-analysis?migrationId=bogus", nil)
+	rec := httptest.NewRecorder()
+
+	e.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("expected status %d for unknown migrationId, got %d", http.StatusNotFound, rec.Code)
+	}
+	if seen.Migrations != nil {
+		t.Error("expected the analysis never to be reached for an unknown dataset")
+	}
+}
+
+func TestRuntimePassesTheQueryThroughAndReturnsTheResult(t *testing.T) {
+	var seen runtime.Request
+	store := fakeStore{migrations: []models.Migration{
+		{ID: "v1", SQL: "CREATE TABLE t (id int);", Timestamp: 1},
+		{ID: "v3", SQL: "ALTER TABLE t ADD COLUMN a int;", Timestamp: 3},
+	}}
+	e := New(Config{
+		Port:  8081,
+		Store: store,
+		Analyse: captureAnalyse(models.RuntimeResult{
+			MigrationID: "v3",
+			Verdict:     models.RuntimeExceedsDeadline,
+			Retry:       models.RetryFailureLoop,
+		}, nil, &seen),
+	})
+
+	target := "/api/migrations/runtime-analysis?migrationId=events&migration=v3&rows=5000&deadlineMs=1500"
+	req := httptest.NewRequest(http.MethodPost, target, nil)
+	rec := httptest.NewRecorder()
+
+	e.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d (%s)", http.StatusOK, rec.Code, rec.Body.String())
+	}
+
+	if seen.Target != "v3" || seen.Rows != 5000 || seen.Deadline != 1500*time.Millisecond {
+		t.Errorf("analysis received target %q, rows %d, deadline %s", seen.Target, seen.Rows, seen.Deadline)
+	}
+	if len(seen.Migrations) != 2 || seen.Migrations[1].SQL != "ALTER TABLE t ADD COLUMN a int;" {
+		t.Errorf("expected the dataset's raw migrations to be handed over, got %+v", seen.Migrations)
+	}
+
+	var result models.RuntimeResult
+	if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil {
+		t.Fatalf("failed to unmarshal result: %v", err)
+	}
+	if result.Verdict != models.RuntimeExceedsDeadline || result.Retry != models.RetryFailureLoop {
+		t.Errorf("expected the measured verdicts to be returned, got %+v", result)
+	}
+}
+
+// A mistyped measurement parameter must be refused, not silently replaced by the
+// default — the caller would otherwise get a different measurement than the one
+// it asked for, with nothing saying so.
+func TestRuntimeRejectsANonNumericParameter(t *testing.T) {
+	for _, query := range []string{"rows=abc", "deadlineMs=5oo"} {
+		var seen runtime.Request
+		e := New(Config{
+			Port:    8081,
+			Store:   fakeStore{migrations: []models.Migration{{ID: "v1", SQL: "CREATE TABLE t (id int);"}}},
+			Analyse: captureAnalyse(models.RuntimeResult{}, nil, &seen),
+		})
+
+		req := httptest.NewRequest(http.MethodPost, "/api/migrations/runtime-analysis?migrationId=x&"+query, nil)
+		rec := httptest.NewRecorder()
+
+		e.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("%s: expected status %d, got %d", query, http.StatusBadRequest, rec.Code)
+		}
+		if seen.Migrations != nil {
+			t.Errorf("%s: expected no container to be started", query)
+		}
+	}
+}
+
+func TestRuntimeFromAPathResolvesTheDirectory(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "V1__create_users.sql", "CREATE TABLE users (id INT);")
+	writeFile(t, dir, "V2__add_email.sql", "ALTER TABLE users ADD COLUMN email TEXT;")
+
+	var seen runtime.Request
+	e := New(Config{
+		Port:    8081,
+		Store:   fakeStore{err: models.ErrNotFound},
+		Analyse: captureAnalyse(models.RuntimeResult{}, nil, &seen),
+	})
+
+	target := "/api/migrations/runtime-analysis?migrationsPath=" + url.QueryEscape(dir)
+	req := httptest.NewRequest(http.MethodPost, target, nil)
+	rec := httptest.NewRecorder()
+
+	e.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d (%s)", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if len(seen.Migrations) != 2 {
+		t.Errorf("expected the directory's migrations to be handed over, got %+v", seen.Migrations)
+	}
+	// No `migration` parameter: the analysis defaults to the newest.
+	if seen.Target != "" {
+		t.Errorf("expected no explicit target, got %q", seen.Target)
 	}
 }
 

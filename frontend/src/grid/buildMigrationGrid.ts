@@ -1,6 +1,8 @@
 import {ActiveGrid, cellHover, cellPath} from 'active-grid';
 import {BASE_MIGRATION, backgroundDrawer} from './drawers/background';
-import {FOCUS_BUTTON_DECOR_HEIGHT, focusButtonDrawer} from './drawers/focusButton';
+import {buttonsDecorHeight} from './drawers/cellButton';
+import {focusButtonDrawer} from './drawers/focusButton';
+import {runtimeButtonDrawer} from './drawers/runtimeButton';
 import {MIGRATION_KIND_COLOR, migrationDrawer} from './drawers/migration';
 import {migrationHeaderDrawer} from './drawers/migrationHeader';
 import {tableHeaderDrawer} from './drawers/tableHeader';
@@ -18,8 +20,14 @@ function columnKind(model: MigrationGridModel, col: number) {
     return model.cells.find(cell => cell.col === col)?.kind ?? 'alter';
 }
 
-/** Rows are tables, columns are migrations, and both axes are named by a header line of cells. */
-export function buildMigrationGrid(model: MigrationGridModel): ActiveGrid {
+/** Footer buttons of every migration cell: focus-in, then runtime below it. */
+const FOOTER_HEIGHT = buttonsDecorHeight(2);
+
+/**
+ * Rows are tables, columns are migrations, and both axes are named by a header line of cells.
+ * `runRuntime` is handed the id of the migration whose runtime button was pressed.
+ */
+export function buildMigrationGrid(model: MigrationGridModel, runRuntime: (migrationId: string) => void): ActiveGrid {
     const grid = new ActiveGrid({rows: model.tables.length + 1, cols: model.versions.length + 1, gap: 0});
 
     model.tables.forEach((table, index) =>
@@ -33,7 +41,9 @@ export function buildMigrationGrid(model: MigrationGridModel): ActiveGrid {
         grid.setCell(cell.row, cell.col,
             {data: {base: BASE_MIGRATION, hoverT: 0}, drawer: backgroundDrawer},
             {data: cell, drawer: migrationDrawer});
-        grid.setFooter(cell.row, cell.col, FOCUS_BUTTON_DECOR_HEIGHT, {data: null, drawer: focusButtonDrawer});
+        grid.setFooter(cell.row, cell.col, FOOTER_HEIGHT,
+            {data: null, drawer: focusButtonDrawer},
+            {data: {migrationId: cell.migrationId, run: runRuntime}, drawer: runtimeButtonDrawer});
         if (cell.warnings.length > 0) {
             grid.setHeader(cell.row, cell.col, WARNING_DECOR_HEIGHT,
                 {data: {warnings: cell.warnings}, drawer: warningIconDrawer});

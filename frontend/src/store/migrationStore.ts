@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { AnalysisResult, CreateTableMapEntry, Migration, RunMigrationsResult, fetchDatasets, fetchMigrations, runMigrations } from '../api/migrationApi'
+import { AnalysisResult, CreateTableMapEntry, Migration, RunMigrationsResult, RuntimeResult, fetchDatasets, fetchMigrations, runMigrations, runRuntimeAnalysis } from '../api/migrationApi'
 
 interface MigrationState {
   migrationId: string | null
@@ -12,9 +12,15 @@ interface MigrationState {
   error: string | null
   running: boolean
   runResult: RunMigrationsResult | null
+  /** Migration currently being measured, null when no run is in flight. */
+  runtimeTarget: string | null
+  runtimeResult: RuntimeResult | null
+  runtimeError: string | null
   loadDatasets: () => Promise<void>
   loadMigrations: () => Promise<void>
   runMigrations: () => Promise<void>
+  runRuntime: (migrationId: string) => Promise<void>
+  closeRuntime: () => void
   selectDataset: (migrationId: string) => Promise<void>
   syncFromUrl: () => Promise<void>
 }
@@ -40,6 +46,9 @@ export const useMigrationStore = create<MigrationState>((set, get) => ({
   error: null,
   running: false,
   runResult: null,
+  runtimeTarget: null,
+  runtimeResult: null,
+  runtimeError: null,
   loadDatasets: async () => {
     if (isStaticReport()) return
     try {
@@ -50,13 +59,13 @@ export const useMigrationStore = create<MigrationState>((set, get) => ({
   },
   selectDataset: async (migrationId: string) => {
     window.history.pushState(null, '', `?migrationId=${encodeURIComponent(migrationId)}`)
-    set({ migrationId, migrationsPath: null, runResult: null })
+    set({ migrationId, migrationsPath: null, runResult: null, runtimeResult: null, runtimeError: null })
     await get().loadMigrations()
   },
   syncFromUrl: async () => {
     const params = paramsFromUrl()
     if (params.migrationId === get().migrationId && params.migrationsPath === get().migrationsPath) return
-    set({ ...params, runResult: null })
+    set({ ...params, runResult: null, runtimeResult: null, runtimeError: null })
     await get().loadMigrations()
   },
   loadMigrations: async () => {
@@ -79,6 +88,17 @@ export const useMigrationStore = create<MigrationState>((set, get) => ({
       })
     }
   },
+  runRuntime: async (migrationId: string) => {
+    if (get().runtimeTarget) return
+    set({ runtimeTarget: migrationId, runtimeResult: null, runtimeError: null })
+    try {
+      const result = await runRuntimeAnalysis(get().migrationId, get().migrationsPath, migrationId)
+      set({ runtimeTarget: null, runtimeResult: result })
+    } catch (error) {
+      set({ runtimeTarget: null, runtimeError: (error as Error).message })
+    }
+  },
+  closeRuntime: () => set({ runtimeResult: null, runtimeError: null }),
   runMigrations: async () => {
     set({ running: true, runResult: null })
     try {

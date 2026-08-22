@@ -204,3 +204,75 @@ export async function runMigrations(migrationId: string | null): Promise<RunMigr
   }
   return response.json()
 }
+
+/** How the migration itself behaved when it was executed against a seeded container. */
+export type RuntimeVerdict = 'COMPLETED' | 'EXCEEDS_DEADLINE' | 'FAILED'
+
+/** What a migration cancelled at the deadline leaves behind for the next attempt. */
+export type RetryVerdict = 'SAFE_TO_RETRY' | 'NEEDS_MANUAL_CLEANUP' | 'FAILURE_LOOP' | 'NOT_APPLICABLE'
+
+export interface SeededTable {
+  table: string
+  rows: number
+  // Set when the table could not be filled, so its measurements are of an empty table.
+  error?: string
+}
+
+export interface LockObservation {
+  mode: string
+  relation: string
+}
+
+/** What a concurrent reader session saw while the migration ran. */
+export interface ProbeResult {
+  table: string
+  samples: number
+  errors: number
+  maxLatencyMs: number
+  blockedMs: number
+}
+
+export interface StatementMeasurement {
+  statementIndex: number
+  sql: string
+  durationMs: number
+  strongestLock: string
+  locks: LockObservation[]
+  verdict: RuntimeVerdict
+  error?: string
+}
+
+/** Carries the same fields as a static analysis warning, raised from a measurement. */
+export interface RuntimeFinding {
+  type: string
+  operationId: OperationId
+  tableName: string
+  message: string
+}
+
+export interface RuntimeResult {
+  migrationId: string
+  version: string
+  deadlineMs: number
+  seeded: SeededTable[]
+  statements: StatementMeasurement[]
+  probes: ProbeResult[]
+  verdict: RuntimeVerdict
+  retry: RetryVerdict
+  findings: RuntimeFinding[]
+  message: string
+}
+
+/** Runs one migration of the loaded timeline against a seeded container. */
+export async function runRuntimeAnalysis(
+  migrationId: string | null,
+  migrationsPath: string | null,
+  migration: string,
+): Promise<RuntimeResult> {
+  const target = withParams('/api/migrations/runtime-analysis', { migrationId, migrationsPath, migration })
+  const response = await fetch(target, { method: 'POST' })
+  if (!response.ok) {
+    throw new Error(`Runtime analysis failed: ${response.status}`)
+  }
+  return response.json()
+}

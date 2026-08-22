@@ -80,6 +80,10 @@ cli-analyze sql:
 cli-run sql:
     @cd backend && go run ./cmd/cli --run "{{ sql }}"
 
+# Measure the last migration of a directory against a seeded container (requires Docker)
+cli-runtime path rows="1000000" deadline="5000":
+    @cd backend && go run ./cmd/cli --runtime --rows {{ rows }} --deadline-ms {{ deadline }} "{{ path }}"
+
 # Generate HTML report from migrations (requires build-cli first)
 cli-report path output="report.html":
     @./build/migration-timeline --report="{{ output }}" "{{ path }}"

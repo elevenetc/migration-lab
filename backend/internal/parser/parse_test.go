@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 
 	"migration-timeline/backend/internal/models"
@@ -346,6 +348,25 @@ func containsConstraint(constraints []string, target string) bool {
 		}
 	}
 	return false
+}
+
+// A data-only migration parses to zero supported statements. It must still
+// marshal as [] rather than null, or the response stops being assignable to the
+// frontend's Statement[] — which only fails much later, in tsc.
+func TestParseMigrationMarshalsNoStatementsAsAnEmptyArray(t *testing.T) {
+	migration := parseMigrationTest(t, "V1__backfill", "UPDATE users SET status = 'active';", 1)
+
+	if migration.Statements == nil {
+		t.Fatal("expected an empty slice of statements, got nil")
+	}
+
+	data, err := json.Marshal(migration)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(string(data), `"statements":[]`) {
+		t.Errorf("expected statements to marshal as [], got %s", data)
+	}
 }
 
 func parseSingleOp(t *testing.T, sql string) models.Operation {
