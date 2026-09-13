@@ -1,8 +1,9 @@
 package parser
 
 import (
-	pgquery "github.com/pganalyze/pg_query_go/v6"
 	"migration-lab/backend/internal/models"
+
+	pgquery "github.com/pganalyze/pg_query_go/v6"
 )
 
 func parseDropStmt(dropStmt *pgquery.DropStmt) []models.Operation {

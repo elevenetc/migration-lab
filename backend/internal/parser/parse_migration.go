@@ -21,7 +21,7 @@ func ParseMigration(migrationID, sql string, timestamp int64) (*models.Migration
 	// Empty rather than nil: a migration with no supported statement must marshal
 	// as [] so it stays assignable to the frontend's Statement[]. Do not replace
 	// this with `var statements []models.Statement`.
-	statements := []models.Statement{}
+	statements := make([]models.Statement, 0)
 	for _, rawStmt := range result.Stmts {
 		stmt := rawStmt.Stmt
 

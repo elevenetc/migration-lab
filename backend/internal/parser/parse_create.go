@@ -3,8 +3,9 @@ package parser
 import (
 	"fmt"
 
-	pgquery "github.com/pganalyze/pg_query_go/v6"
 	"migration-lab/backend/internal/models"
+
+	pgquery "github.com/pganalyze/pg_query_go/v6"
 )
 
 func parseCreateStmt(createStmt *pgquery.CreateStmt) models.Operation {

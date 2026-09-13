@@ -86,7 +86,11 @@ func Analyse(ctx context.Context, request Request) (models.RuntimeAnalysisResult
 	if err != nil {
 		return failed(result, fmt.Sprintf("failed to connect to the database: %v", err)), nil
 	}
-	defer conn.Close(context.WithoutCancel(ctx))
+	defer func() {
+		if err := conn.Close(context.WithoutCancel(ctx)); err != nil {
+			log.Printf("Failed to close runtime connection: %v", err)
+		}
+	}()
 
 	if err := applyPrior(ctx, conn, request.Migrations[:index]); err != nil {
 		return failed(result, err.Error()), nil
@@ -102,7 +106,11 @@ func Analyse(ctx context.Context, request Request) (models.RuntimeAnalysisResult
 	if err != nil {
 		return failed(result, fmt.Sprintf("failed to open a sampling connection: %v", err)), nil
 	}
-	defer sampler.Close(context.WithoutCancel(ctx))
+	defer func() {
+		if err := sampler.Close(context.WithoutCancel(ctx)); err != nil {
+			log.Printf("Failed to close lock sampler connection: %v", err)
+		}
+	}()
 
 	log.Printf("Measuring %s: %d statements, %d ms deadline", info.ID, len(statements), deadline.Milliseconds())
 	stopProbes := startProbes(ctx, connString, probedTables(result.Seeded))

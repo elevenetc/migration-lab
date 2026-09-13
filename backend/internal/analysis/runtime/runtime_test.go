@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 
@@ -409,10 +410,10 @@ func TestTargetIndexDefaultsToTheMigrationThatJustArrived(t *testing.T) {
 }
 
 func TestTargetIndexRejectsAnEmptyOrMismatchedTimeline(t *testing.T) {
-	if _, err := targetIndex(nil, ""); err != models.ErrNotFound {
+	if _, err := targetIndex(nil, ""); !errors.Is(err, models.ErrNotFound) {
 		t.Errorf("expected ErrNotFound for an empty timeline, got %v", err)
 	}
-	if _, err := targetIndex([]models.MigrationInfo{{ID: "v1"}}, "v9"); err != models.ErrNotFound {
+	if _, err := targetIndex([]models.MigrationInfo{{ID: "v1"}}, "v9"); !errors.Is(err, models.ErrNotFound) {
 		t.Errorf("expected ErrNotFound for a migration outside the timeline, got %v", err)
 	}
 }

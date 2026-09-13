@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -24,6 +25,26 @@ func TestCLI_DefaultAnalyze(t *testing.T) {
 	migrations := analysisResult["migrations"].([]interface{})
 	if len(migrations) != 1 {
 		t.Errorf("expected 1 migration, got %d", len(migrations))
+	}
+}
+
+func TestPrintJSONReportsWriteFailure(t *testing.T) {
+	// A read-only file makes stdout writes fail without relying on platform-
+	// specific devices or broken-pipe signal handling.
+	output, err := os.Open(os.DevNull)
+	if err != nil {
+		t.Fatal(err)
+	}
+	previous := os.Stdout
+	os.Stdout = output
+	t.Cleanup(func() {
+		os.Stdout = previous
+		if err := output.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	if err := printJSON(map[string]bool{"ok": true}); err == nil {
+		t.Fatal("expected JSON output failure to be returned")
 	}
 }
 
@@ -267,7 +288,8 @@ func runCLI(t *testing.T, args ...string) []byte {
 	cmd.Dir = cliDir(t)
 	output, err := cmd.Output()
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
 			t.Fatalf("CLI failed: %v\nstderr: %s", err, exitErr.Stderr)
 		}
 		t.Fatalf("CLI failed: %v", err)
@@ -284,8 +306,8 @@ func runCLIExpectingFailure(t *testing.T, args ...string) string {
 	cmd.Dir = cliDir(t)
 
 	output, err := cmd.Output()
-	exitErr, ok := err.(*exec.ExitError)
-	if !ok {
+	var exitErr *exec.ExitError
+	if !errors.As(err, &exitErr) {
 		t.Fatalf("expected a non-zero exit, got err %v and output: %s", err, output)
 	}
 	return string(exitErr.Stderr)

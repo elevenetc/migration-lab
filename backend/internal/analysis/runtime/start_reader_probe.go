@@ -2,10 +2,12 @@ package runtime
 
 import (
 	"context"
+	"log"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"migration-lab/backend/internal/models"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // probeInterval leaves the migration a window to take its own locks between reads.
@@ -41,7 +43,9 @@ func startReaderProbe(ctx context.Context, connString, table string) (readerProb
 		for {
 			select {
 			case <-stopped:
-				conn.Close(context.WithoutCancel(ctx))
+				if err := conn.Close(context.WithoutCancel(ctx)); err != nil {
+					log.Printf("Failed to close reader probe for %s: %v", table, err)
+				}
 				done <- result
 				return
 			default:

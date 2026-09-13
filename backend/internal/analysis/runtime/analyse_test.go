@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"testing"
 	"time"
@@ -171,7 +172,7 @@ func TestAnalyseObservesThePerformanceClassOfEveryStatement(t *testing.T) {
 func TestAnalyseRejectsAnUnknownTarget(t *testing.T) {
 	_, err := Analyse(context.Background(), Request{Migrations: partitionedTimeline(), Target: "V9__ghost"})
 
-	if err != models.ErrNotFound {
+	if !errors.Is(err, models.ErrNotFound) {
 		t.Errorf("expected ErrNotFound for a migration outside the timeline, got %v", err)
 	}
 }

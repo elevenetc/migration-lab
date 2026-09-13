@@ -39,7 +39,7 @@ func (t SQLType) String() string {
 	return t.Base + "(" + strings.Join(mods, ",") + ")"
 }
 
-// The API carries the declared type as the text a migration would write.
+// MarshalJSON encodes the declared type as the text a migration would write.
 func (t SQLType) MarshalJSON() ([]byte, error) {
 	return json.Marshal(t.String())
 }

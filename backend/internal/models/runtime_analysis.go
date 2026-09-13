@@ -31,12 +31,12 @@ const (
 	FindingInvalidIndexLeft = "INVALID_INDEX_LEFT"
 	FindingSeedFailed       = "SEED_FAILED"
 	FindingStatementFailed  = "STATEMENT_FAILED"
-	// The observed class was worse than the predicted one: a statement static
-	// analysis called cheap turned out not to be, which is the direction that
-	// reaches production.
+	// FindingClassUnderstated means the observed class was worse than predicted:
+	// a statement static analysis called cheap turned out not to be, which is
+	// the direction that reaches production.
 	FindingClassUnderstated = "CLASS_UNDERSTATED"
-	// The observed class was cheaper than the predicted one: noise in the
-	// prediction rather than a risk in the migration.
+	// FindingClassOverstated means the observed class was cheaper than predicted:
+	// noise in the prediction rather than a risk in the migration.
 	FindingClassOverstated = "CLASS_OVERSTATED"
 )
 

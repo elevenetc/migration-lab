@@ -3,8 +3,9 @@ package parser
 import (
 	"strconv"
 
-	pgquery "github.com/pganalyze/pg_query_go/v6"
 	"migration-lab/backend/internal/models"
+
+	pgquery "github.com/pganalyze/pg_query_go/v6"
 )
 
 func parseAlterTableStmt(alterStmt *pgquery.AlterTableStmt) []models.Operation {

@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -38,7 +39,7 @@ type RuntimeAnalyse func(ctx context.Context, request runtime.Request) (models.R
 func New(cfg Config) *echo.Echo {
 	e := echo.New()
 
-	e.Use(middleware.Logger())
+	e.Use(middleware.RequestLogger())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: []string{"http://localhost:3000"},
 		AllowMethods: []string{echo.GET, echo.POST},
@@ -59,5 +60,6 @@ func healthHandler(c echo.Context) error {
 
 func Start(cfg Config) error {
 	e := New(cfg)
-	return e.Start(fmt.Sprintf(":%d", cfg.Port))
+	err := e.Start(fmt.Sprintf(":%d", cfg.Port))
+	return errors.Join(err, e.Close())
 }

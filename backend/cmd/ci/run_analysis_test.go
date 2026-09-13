@@ -17,9 +17,13 @@ import (
 func TestMain(m *testing.M) {
 	if os.Getenv("MIGRATION_LAB_TEST_CLI") == "1" {
 		args := os.Args[1:]
-		fmt.Fprintln(os.Stderr, "CLI diagnostic")
+		if _, err := fmt.Fprintln(os.Stderr, "CLI diagnostic"); err != nil {
+			os.Exit(3)
+		}
 		if slices.Contains(args, "wait") {
-			fmt.Print("partial output")
+			if _, err := fmt.Print("partial output"); err != nil {
+				os.Exit(3)
+			}
 			time.Sleep(time.Minute)
 		}
 		if os.Getenv("MIGRATION_LAB_TEST_STATIC_FAILURE") == "1" {
@@ -27,12 +31,16 @@ func TestMain(m *testing.M) {
 		}
 		if index := slices.Index(args, "--migration"); index >= 0 {
 			target := args[index+1]
-			_ = json.NewEncoder(os.Stdout).Encode(map[string]any{"runtimeResult": map[string]string{"migrationId": target}})
+			if err := json.NewEncoder(os.Stdout).Encode(map[string]any{"runtimeResult": map[string]string{"migrationId": target}}); err != nil {
+				os.Exit(3)
+			}
 			if strings.HasPrefix(target, "V2__") {
 				os.Exit(1)
 			}
 		} else {
-			fmt.Println(`{"analysisResult":{"migrations":[]}}`)
+			if _, err := fmt.Println(`{"analysisResult":{"migrations":[]}}`); err != nil {
+				os.Exit(3)
+			}
 		}
 		os.Exit(0)
 	}

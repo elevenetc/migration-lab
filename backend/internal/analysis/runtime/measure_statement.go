@@ -7,9 +7,10 @@ import (
 	"log"
 	"time"
 
+	"migration-lab/backend/internal/models"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"migration-lab/backend/internal/models"
 )
 
 // queryCanceled is the SQLSTATE statement_timeout raises, which is how a pod

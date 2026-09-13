@@ -28,7 +28,9 @@ func runAnalysis(ctx context.Context, binary, repository string, plan migrationP
 	results := make([]migrationResult, 0, len(plan.Targets))
 	verdict := 0
 	for i, target := range plan.Targets {
-		fmt.Printf("Analyzing %s (%d/%d)\n", target, i+1, len(plan.Targets))
+		if _, err := fmt.Printf("Analyzing %s (%d/%d)\n", target, i+1, len(plan.Targets)); err != nil {
+			return 1, err
+		}
 		name := fmt.Sprintf("%03d", i+1)
 		code, err := runCLI(ctx, binary, []string{"--runtime", "--migration", target, directory}, output, name)
 		if err != nil {

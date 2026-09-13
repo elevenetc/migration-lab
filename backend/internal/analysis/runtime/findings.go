@@ -13,7 +13,7 @@ import (
 func Findings(migration *models.Migration, result models.RuntimeAnalysisResult) []models.RuntimeFinding {
 	// Empty rather than nil: a clean run must marshal as [] for the frontend's
 	// RuntimeFinding[], and a clean run is the common case.
-	findings := []models.RuntimeFinding{}
+	findings := make([]models.RuntimeFinding, 0)
 
 	for _, measurement := range result.Statements {
 		findings = append(findings, statementFindings(migration, result, measurement)...)

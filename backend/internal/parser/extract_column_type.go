@@ -3,8 +3,9 @@ package parser
 import (
 	"strings"
 
-	pgquery "github.com/pganalyze/pg_query_go/v6"
 	"migration-lab/backend/internal/models"
+
+	pgquery "github.com/pganalyze/pg_query_go/v6"
 )
 
 // extractColumnType reads a declared type out of the AST into its parts. The

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -196,8 +197,8 @@ func generateReport(infos []models.MigrationInfo) error {
 		return err
 	}
 
-	fmt.Printf("Report generated: %s\n", outputPath)
-	return nil
+	_, err = fmt.Printf("Report generated: %s\n", outputPath)
+	return err
 }
 
 func toTimelineResponse(migrations []*models.Migration) *models.MigrationTimelineResponse {
@@ -236,13 +237,13 @@ func printJSON(v interface{}) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal JSON: %w", err)
 	}
-	fmt.Println(string(output))
-	return nil
+	_, err = fmt.Println(string(output))
+	return err
 }
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		log.New(os.Stderr, "error: ", 0).Print(err)
 		os.Exit(1)
 	}
 }

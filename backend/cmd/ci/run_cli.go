@@ -11,24 +11,28 @@ import (
 	"time"
 )
 
-func runCLI(ctx context.Context, binary string, args []string, output, name string) (int, error) {
+func runCLI(ctx context.Context, binary string, args []string, output, name string) (code int, err error) {
 	stdout, err := os.Create(filepath.Join(output, name+".json"))
 	if err != nil {
 		return 1, err
 	}
-	defer stdout.Close()
+	defer func() {
+		err = errors.Join(err, stdout.Close())
+	}()
 	stderr, err := os.Create(filepath.Join(output, name+".stderr.log"))
 	if err != nil {
 		return 1, err
 	}
-	defer stderr.Close()
+	defer func() {
+		err = errors.Join(err, stderr.Close())
+	}()
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, binary, args...)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 	err = cmd.Run()
-	code := 0
+	code = 0
 	var exitError *exec.ExitError
 	switch {
 	case ctx.Err() != nil:

@@ -3,8 +3,9 @@ package runtime
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5"
 	"migration-lab/backend/internal/models"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // lockRank orders PostgreSQL lock modes weakest to strongest, so the strongest

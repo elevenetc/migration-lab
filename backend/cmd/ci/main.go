@@ -4,7 +4,9 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,10 +29,11 @@ func main() {
 	code, err := runCommand(context.Background(), os.Args[1:], config)
 	if err != nil {
 		message := fmt.Sprintf("Migration Lab automation failed: %v\n", err)
-		fmt.Fprint(os.Stderr, message)
+		logger := log.New(os.Stderr, "", 0)
+		logger.Print(message)
 		if config.output != "" {
 			if writeErr := os.WriteFile(filepath.Join(config.output, "automation-error.txt"), []byte(message), 0o644); writeErr != nil {
-				fmt.Fprintf(os.Stderr, "Could not save automation error: %v\n", writeErr)
+				logger.Printf("Could not save automation error: %v", writeErr)
 			}
 		}
 		code = 1
@@ -73,18 +76,22 @@ func runCommand(ctx context.Context, args []string, config configuration) (int, 
 		if err != nil {
 			return 1, err
 		}
-		defer output.Close()
-		if _, err := fmt.Fprintf(output, "has-targets=%t\n", len(plan.Targets) > 0); err != nil {
+		_, writeErr := fmt.Fprintf(output, "has-targets=%t\n", len(plan.Targets) > 0)
+		if err := errors.Join(writeErr, output.Close()); err != nil {
 			return 1, err
 		}
 		if err := json.NewEncoder(os.Stdout).Encode(plan); err != nil {
 			return 1, err
 		}
 		if len(plan.ExistingChanges) > 0 {
-			fmt.Println("Existing migration edits, deletions, and renames are recorded but not measured.")
+			if _, err := fmt.Println("Existing migration edits, deletions, and renames are recorded but not measured."); err != nil {
+				return 1, err
+			}
 		}
 		if len(plan.Targets) == 0 {
-			fmt.Println("No new migrations; skipping runtime analysis.")
+			if _, err := fmt.Println("No new migrations; skipping runtime analysis."); err != nil {
+				return 1, err
+			}
 		}
 		return 0, nil
 	case "run":

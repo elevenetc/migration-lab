@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/jackc/pgx/v5"
 	"migration-lab/backend/internal/models"
 	"migration-lab/backend/internal/pg"
+
+	"github.com/jackc/pgx/v5"
 )
 
 func RunMigrations(ctx context.Context, migrations []models.MigrationInfo) models.RunMigrationsResult {
@@ -33,7 +34,11 @@ func RunMigrations(ctx context.Context, migrations []models.MigrationInfo) model
 			MigrationsApplied: 0,
 		}
 	}
-	defer conn.Close(ctx)
+	defer func() {
+		if err := conn.Close(context.WithoutCancel(ctx)); err != nil {
+			log.Printf("Failed to close migration runner connection: %v", err)
+		}
+	}()
 
 	applied := 0
 	for _, m := range migrations {
