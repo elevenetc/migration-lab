@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"migration-timeline/backend/internal/models"
+	"migration-lab/backend/internal/models"
 )
 
 // Findings turns the measurements of a run into warning-shaped findings: first

@@ -1,6 +1,6 @@
 package runtime
 
-import "migration-timeline/backend/internal/models"
+import "migration-lab/backend/internal/models"
 
 // TouchedTables returns the tables the migration's operations name, in first
 // appearance order. A partitioned parent named here stands for its partitions,

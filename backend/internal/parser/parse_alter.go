@@ -4,7 +4,7 @@ import (
 	"strconv"
 
 	pgquery "github.com/pganalyze/pg_query_go/v6"
-	"migration-timeline/backend/internal/models"
+	"migration-lab/backend/internal/models"
 )
 
 func parseAlterTableStmt(alterStmt *pgquery.AlterTableStmt) []models.Operation {

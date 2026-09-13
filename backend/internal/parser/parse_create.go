@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	pgquery "github.com/pganalyze/pg_query_go/v6"
-	"migration-timeline/backend/internal/models"
+	"migration-lab/backend/internal/models"
 )
 
 func parseCreateStmt(createStmt *pgquery.CreateStmt) models.Operation {

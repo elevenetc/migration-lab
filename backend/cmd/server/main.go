@@ -5,12 +5,12 @@ import (
 	"log"
 	"path/filepath"
 
-	"migration-timeline/backend/internal/analysis/runtime"
-	"migration-timeline/backend/internal/database"
-	"migration-timeline/backend/internal/datasets"
-	"migration-timeline/backend/internal/loader"
-	"migration-timeline/backend/internal/runner"
-	"migration-timeline/backend/internal/server"
+	"migration-lab/backend/internal/analysis/runtime"
+	"migration-lab/backend/internal/database"
+	"migration-lab/backend/internal/datasets"
+	"migration-lab/backend/internal/loader"
+	"migration-lab/backend/internal/runner"
+	"migration-lab/backend/internal/server"
 )
 
 func main() {

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"migration-timeline/backend/internal/models"
+	"migration-lab/backend/internal/models"
 
 	"github.com/jackc/pgx/v5"
 )

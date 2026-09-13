@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"migration-timeline/backend/internal/models"
+	"migration-lab/backend/internal/models"
 )
 
 // partitionedTimeline is the case the runtime pass exists for: a rewrite of a

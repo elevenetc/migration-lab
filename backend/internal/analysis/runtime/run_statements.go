@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"migration-timeline/backend/internal/models"
+	"migration-lab/backend/internal/models"
 
 	"github.com/jackc/pgx/v5"
 )

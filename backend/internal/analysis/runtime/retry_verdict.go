@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5"
-	"migration-timeline/backend/internal/models"
+	"migration-lab/backend/internal/models"
 )
 
 const invalidIndexesQuery = `SELECT count(*) FROM pg_index WHERE NOT indisvalid`

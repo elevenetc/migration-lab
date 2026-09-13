@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"migration-timeline/backend/internal/models"
+	"migration-lab/backend/internal/models"
 )
 
 func snapshot(fileNode uint32, tuplesRead int64) relationSnapshot {

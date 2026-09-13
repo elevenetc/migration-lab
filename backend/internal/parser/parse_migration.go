@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"migration-timeline/backend/internal/models"
+	"migration-lab/backend/internal/models"
 
 	pgquery "github.com/pganalyze/pg_query_go/v6"
 )

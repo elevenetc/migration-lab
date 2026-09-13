@@ -86,7 +86,7 @@ cli-runtime path rows="1000000" deadline="5000":
 
 # Generate HTML report from migrations (requires build-cli first)
 cli-report path output="report.html":
-    @./build/migration-timeline --report="{{ output }}" "{{ path }}"
+    @./build/migration-lab --report="{{ output }}" "{{ path }}"
 
 # Build CLI binary with embedded frontend assets
 build-cli:
@@ -102,6 +102,6 @@ build-cli:
 
     echo "Building CLI binary..."
     mkdir -p build
-    (cd backend && go build -o ../build/migration-timeline ./cmd/cli)
+    (cd backend && go build -o ../build/migration-lab ./cmd/cli)
 
-    echo "Done! Binary: build/migration-timeline"
+    echo "Done! Binary: build/migration-lab"

@@ -1,7 +1,7 @@
 package parser
 
 import (
-	"migration-timeline/backend/internal/models"
+	"migration-lab/backend/internal/models"
 )
 
 // ParseTimeline parses a whole timeline in order. Some operations cannot be

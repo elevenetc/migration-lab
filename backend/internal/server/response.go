@@ -1,8 +1,8 @@
 package server
 
 import (
-	"migration-timeline/backend/internal/analysis/static"
-	"migration-timeline/backend/internal/models"
+	"migration-lab/backend/internal/analysis/static"
+	"migration-lab/backend/internal/models"
 )
 
 func toResponse(migrations []*models.Migration) *models.MigrationTimelineResponse {

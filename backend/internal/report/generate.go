@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"migration-timeline/backend/internal/models"
+	"migration-lab/backend/internal/models"
 )
 
 func GenerateReport(response *models.MigrationTimelineResponse, outputPath string) error {
@@ -83,7 +83,7 @@ func buildHTML(jsonData, css, js string) string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Migration Timeline Report</title>
+  <title>Migration Lab Report</title>
 `)
 	if css != "" {
 		sb.WriteString("  <style>\n")

@@ -27,7 +27,7 @@ function App() {
   return (
     <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <header style={{ padding: '16px', borderBottom: '1px solid #333', background: '#1a1a1a' }}>
-        <h1 style={{ margin: 0, fontSize: '20px', color: '#fff' }}>Migration Timeline</h1>
+        <h1 style={{ margin: 0, fontSize: '20px', color: '#fff' }}>Migration Lab</h1>
         <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
           {datasets.length > 0 && (
             <select

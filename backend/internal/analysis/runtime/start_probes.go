@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	"migration-timeline/backend/internal/models"
+	"migration-lab/backend/internal/models"
 )
 
 // maxProbes bounds the concurrent reader sessions opened alongside the migration.

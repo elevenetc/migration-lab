@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"migration-timeline/backend/internal/models"
+	"migration-lab/backend/internal/models"
 )
 
 func TestRunMigrationsExecutesSQLSuccessfully(t *testing.T) {

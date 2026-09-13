@@ -1,6 +1,6 @@
 package static
 
-import "migration-timeline/backend/internal/models"
+import "migration-lab/backend/internal/models"
 
 type analysisContext struct {
 	partitionedTables map[string]bool

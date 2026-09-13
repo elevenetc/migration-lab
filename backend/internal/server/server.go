@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"migration-timeline/backend/internal/analysis/runtime"
-	"migration-timeline/backend/internal/models"
+	"migration-lab/backend/internal/analysis/runtime"
+	"migration-lab/backend/internal/models"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"

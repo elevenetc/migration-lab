@@ -2,7 +2,7 @@ package parser
 
 import (
 	pgquery "github.com/pganalyze/pg_query_go/v6"
-	"migration-timeline/backend/internal/models"
+	"migration-lab/backend/internal/models"
 )
 
 func parseRenameStmt(renameStmt *pgquery.RenameStmt) models.Operation {

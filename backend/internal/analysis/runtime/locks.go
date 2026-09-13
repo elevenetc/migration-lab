@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5"
-	"migration-timeline/backend/internal/models"
+	"migration-lab/backend/internal/models"
 )
 
 // lockRank orders PostgreSQL lock modes weakest to strongest, so the strongest

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"migration-timeline/backend/internal/models"
+	"migration-lab/backend/internal/models"
 )
 
 type stubStore struct {

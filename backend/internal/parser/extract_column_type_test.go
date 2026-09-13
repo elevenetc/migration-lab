@@ -3,7 +3,7 @@ package parser
 import (
 	"testing"
 
-	"migration-timeline/backend/internal/models"
+	"migration-lab/backend/internal/models"
 )
 
 // pg_query canonicalises the spelling of every built-in type, so the classifier

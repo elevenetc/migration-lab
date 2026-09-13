@@ -1,7 +1,7 @@
 package runtime
 
 import (
-	"migration-timeline/backend/internal/models"
+	"migration-lab/backend/internal/models"
 )
 
 // withClasses pairs every measurement with what static analysis predicted for it,

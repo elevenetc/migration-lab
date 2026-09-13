@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"migration-timeline/backend/internal/analysis/static"
-	"migration-timeline/backend/internal/models"
-	"migration-timeline/backend/internal/parser"
+	"migration-lab/backend/internal/analysis/static"
+	"migration-lab/backend/internal/models"
+	"migration-lab/backend/internal/parser"
 )
 
 func singleStatement(kind, sql string, ops ...models.Operation) []models.Statement {

@@ -3,7 +3,7 @@ package runtime
 import (
 	"testing"
 
-	"migration-timeline/backend/internal/models"
+	"migration-lab/backend/internal/models"
 )
 
 func addColumnMigration() *models.Migration {

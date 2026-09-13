@@ -3,7 +3,7 @@ package runner
 import (
 	"context"
 
-	"migration-timeline/backend/internal/models"
+	"migration-lab/backend/internal/models"
 )
 
 // Store is the migration source the runner queries (satisfied by *database.Database).

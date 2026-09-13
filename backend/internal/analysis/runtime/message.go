@@ -3,7 +3,7 @@ package runtime
 import (
 	"fmt"
 
-	"migration-timeline/backend/internal/models"
+	"migration-lab/backend/internal/models"
 )
 
 // message is the one-line summary a report leads with: what ended the run.

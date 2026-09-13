@@ -3,8 +3,8 @@ package static
 import (
 	"testing"
 
-	"migration-timeline/backend/internal/models"
-	"migration-timeline/backend/internal/parser"
+	"migration-lab/backend/internal/models"
+	"migration-lab/backend/internal/parser"
 )
 
 func TestAlterOnPartitionedTableProducesWarning(t *testing.T) {

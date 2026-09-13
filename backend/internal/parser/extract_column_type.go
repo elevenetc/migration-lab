@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	pgquery "github.com/pganalyze/pg_query_go/v6"
-	"migration-timeline/backend/internal/models"
+	"migration-lab/backend/internal/models"
 )
 
 // extractColumnType reads a declared type out of the AST into its parts. The

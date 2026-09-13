@@ -8,13 +8,13 @@ import (
 	"strings"
 	"time"
 
-	"migration-timeline/backend/internal/analysis/runtime"
-	"migration-timeline/backend/internal/analysis/static"
-	"migration-timeline/backend/internal/loader"
-	"migration-timeline/backend/internal/models"
-	"migration-timeline/backend/internal/parser"
-	"migration-timeline/backend/internal/report"
-	"migration-timeline/backend/internal/runner"
+	"migration-lab/backend/internal/analysis/runtime"
+	"migration-lab/backend/internal/analysis/static"
+	"migration-lab/backend/internal/loader"
+	"migration-lab/backend/internal/models"
+	"migration-lab/backend/internal/parser"
+	"migration-lab/backend/internal/report"
+	"migration-lab/backend/internal/runner"
 
 	"github.com/spf13/cobra"
 )
@@ -26,22 +26,23 @@ var rowsFlag int64
 var deadlineFlag int64
 
 var rootCmd = &cobra.Command{
-	Use:   "migration-timeline <sql-or-dir>",
-	Short: "Parse SQL migrations and output JSON AST",
-	Long: `Parse and analyze SQL migrations or run them against PostgreSQL.
+	Use:   "migration-lab <sql-or-dir>",
+	Short: "Analyze PostgreSQL migration performance and impact",
+	Long: `Migration Lab analyzes PostgreSQL migration performance and impact.
 
 By default, outputs static analysis as JSON.
+Use --runtime to measure execution, locking, and retry behavior against a seeded PostgreSQL container.
 If argument is a directory, processes all *.sql files in it.
 If argument is a SQL string, processes it as a single migration.
 
 Examples:
-  migration-timeline /path/to/migrations
-  migration-timeline "CREATE TABLE users (id INT);"
-  migration-timeline --run /path/to/migrations
-  migration-timeline --runtime /path/to/migrations
-  migration-timeline --runtime --rows 1000000 --deadline-ms 30000 /path/to/migrations
-  migration-timeline --report /path/to/migrations
-  migration-timeline --report=output.html /path/to/migrations`,
+  migration-lab /path/to/migrations
+  migration-lab "CREATE TABLE users (id INT);"
+  migration-lab --run /path/to/migrations
+  migration-lab --runtime /path/to/migrations
+  migration-lab --runtime --rows 1000000 --deadline-ms 30000 /path/to/migrations
+  migration-lab --report /path/to/migrations
+  migration-lab --report=output.html /path/to/migrations`,
 	Args:          cobra.ExactArgs(1),
 	SilenceUsage:  true,
 	SilenceErrors: true,

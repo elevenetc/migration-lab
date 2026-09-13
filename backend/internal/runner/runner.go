@@ -6,8 +6,8 @@ import (
 	"log"
 
 	"github.com/jackc/pgx/v5"
-	"migration-timeline/backend/internal/models"
-	"migration-timeline/backend/internal/pg"
+	"migration-lab/backend/internal/models"
+	"migration-lab/backend/internal/pg"
 )
 
 func RunMigrations(ctx context.Context, migrations []models.MigrationInfo) models.RunMigrationsResult {

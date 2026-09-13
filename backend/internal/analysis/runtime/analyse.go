@@ -6,9 +6,9 @@ import (
 	"log"
 	"time"
 
-	"migration-timeline/backend/internal/models"
-	"migration-timeline/backend/internal/parser"
-	"migration-timeline/backend/internal/pg"
+	"migration-lab/backend/internal/models"
+	"migration-lab/backend/internal/parser"
+	"migration-lab/backend/internal/pg"
 
 	"github.com/jackc/pgx/v5"
 )

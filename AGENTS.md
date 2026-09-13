@@ -5,8 +5,12 @@ This file provides guidance to coding agents when working with code in this repo
 
 ## Project Overview
 
-Migration Timeline is a tool for analyzing and visualizing database migrations. It parses Flyway PostgreSQL migrations,
-builds AST representations, and renders interactive timelines.
+Migration Lab analyzes the performance and impact of PostgreSQL migrations. It parses Flyway migrations,
+predicts operation costs with static analysis, and measures execution, locking, and retry behavior against seeded
+PostgreSQL containers. Interactive timelines visualize migration history and analysis results.
+
+Use `Migration Lab` for the product name and `migration-lab` for the CLI and package names. `Timeline` remains the
+name of the migration-history visualization and the corresponding internal data model.
 
 ## Architecture
 
@@ -130,29 +134,29 @@ The CLI (`backend/cmd/cli`) outputs static analysis JSON by default:
 just build-cli
 ```
 
-This builds the frontend, embeds assets into `backend/internal/report/dist/`, and produces `build/migration-timeline`.
+This builds the frontend, embeds assets into `backend/internal/report/dist/`, and produces `build/migration-lab`.
 
 ### Analyzing Migrations (Default)
 
 ```bash
 # From directory
-./build/migration-timeline /path/to/migrations
+./build/migration-lab /path/to/migrations
 
 # From inline SQL
-./build/migration-timeline "CREATE TABLE users (id INT);"
+./build/migration-lab "CREATE TABLE users (id INT);"
 
 # With migration runner
-./build/migration-timeline --run /path/to/migrations
+./build/migration-lab --run /path/to/migrations
 ```
 
 ### Runtime Analysis
 
 ```bash
 # Measure the last migration against tables seeded to 1M rows
-./build/migration-timeline --runtime /path/to/migrations
+./build/migration-lab --runtime /path/to/migrations
 
 # Smaller and quicker, with a 30 s pod grace period
-./build/migration-timeline --runtime --rows 50000 --deadline-ms 30000 /path/to/migrations
+./build/migration-lab --runtime --rows 50000 --deadline-ms 30000 /path/to/migrations
 ```
 
 See [docs/supported-runtime-analysis.md](docs/supported-runtime-analysis.md) for what the verdicts mean.
@@ -161,13 +165,13 @@ See [docs/supported-runtime-analysis.md](docs/supported-runtime-analysis.md) for
 
 ```bash
 # From directory
-./build/migration-timeline --report /path/to/migrations
+./build/migration-lab --report /path/to/migrations
 
 # With custom output path
-./build/migration-timeline --report=output.html /path/to/migrations
+./build/migration-lab --report=output.html /path/to/migrations
 
 # From inline SQL
-./build/migration-timeline --report "CREATE TABLE users (id INT);"
+./build/migration-lab --report "CREATE TABLE users (id INT);"
 ```
 
 The generated HTML is fully self-contained (inlined CSS, JS, and data) and opens directly in a browser.

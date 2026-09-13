@@ -1,4 +1,4 @@
-module migration-timeline/backend
+module migration-lab/backend
 
 go 1.25.0
 

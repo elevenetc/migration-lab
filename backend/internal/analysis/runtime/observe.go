@@ -3,7 +3,7 @@ package runtime
 import (
 	"sort"
 
-	"migration-timeline/backend/internal/models"
+	"migration-lab/backend/internal/models"
 )
 
 // observation is what the database was seen doing while one statement ran.

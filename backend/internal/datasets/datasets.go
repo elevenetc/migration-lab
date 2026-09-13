@@ -1,6 +1,6 @@
 package datasets
 
-import "migration-timeline/backend/internal/models"
+import "migration-lab/backend/internal/models"
 
 type migration struct {
 	version string

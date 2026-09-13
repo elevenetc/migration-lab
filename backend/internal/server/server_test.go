@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"migration-timeline/backend/internal/analysis/runtime"
-	"migration-timeline/backend/internal/database"
-	"migration-timeline/backend/internal/datasets"
-	"migration-timeline/backend/internal/models"
+	"migration-lab/backend/internal/analysis/runtime"
+	"migration-lab/backend/internal/database"
+	"migration-lab/backend/internal/datasets"
+	"migration-lab/backend/internal/models"
 )
 
 // rawResponse is used for testing JSON structure without full deserialization

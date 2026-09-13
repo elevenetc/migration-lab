@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"time"
 
-	"migration-timeline/backend/internal/analysis/runtime"
-	"migration-timeline/backend/internal/loader"
-	"migration-timeline/backend/internal/models"
-	"migration-timeline/backend/internal/parser"
+	"migration-lab/backend/internal/analysis/runtime"
+	"migration-lab/backend/internal/loader"
+	"migration-lab/backend/internal/models"
+	"migration-lab/backend/internal/parser"
 
 	"github.com/labstack/echo/v4"
 )

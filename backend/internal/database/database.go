@@ -3,8 +3,8 @@ package database
 import (
 	"sort"
 
-	"migration-timeline/backend/internal/models"
-	"migration-timeline/backend/internal/parser"
+	"migration-lab/backend/internal/models"
+	"migration-lab/backend/internal/parser"
 )
 
 // Database is a temporary, in-memory stand-in for a real migrations database.

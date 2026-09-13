@@ -189,10 +189,10 @@ that just arrived on the branch.
 
 ```bash
 # Last migration of a directory, every touched table seeded to 1M rows
-./build/migration-timeline --runtime /path/to/migrations
+./build/migration-lab --runtime /path/to/migrations
 
 # Smaller and quicker, with a 30 s grace period
-./build/migration-timeline --runtime --rows 50000 --deadline-ms 30000 /path/to/migrations
+./build/migration-lab --runtime --rows 50000 --deadline-ms 30000 /path/to/migrations
 ```
 
 - CLI prints `runtimeResult` alongside the static `analysisResult`, and exits non-zero unless the verdict is

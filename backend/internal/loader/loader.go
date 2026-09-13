@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strings"
 
-	"migration-timeline/backend/internal/models"
-	"migration-timeline/backend/internal/parser"
+	"migration-lab/backend/internal/models"
+	"migration-lab/backend/internal/parser"
 )
 
 // LoadMigrationInfosFromDir reads all *.sql files from dir into MigrationInfos,

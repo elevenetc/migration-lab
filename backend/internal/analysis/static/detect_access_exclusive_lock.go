@@ -3,7 +3,7 @@ package static
 import (
 	"fmt"
 
-	"migration-timeline/backend/internal/models"
+	"migration-lab/backend/internal/models"
 )
 
 // The ACCESS EXCLUSIVE lock is acquired per statement, so the warning is

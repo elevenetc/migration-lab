@@ -3,7 +3,7 @@ package parser
 import (
 	"testing"
 
-	"migration-timeline/backend/internal/models"
+	"migration-lab/backend/internal/models"
 )
 
 func timeline(t *testing.T, sqls ...string) []*models.Migration {
