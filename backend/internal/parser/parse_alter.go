@@ -79,10 +79,11 @@ func parseAddColumn(tableName string, cmd *pgquery.AlterTableCmd) models.Operati
 	return models.AddColumn{
 		TableName: tableName,
 		Column: models.Column{
-			Name:        colDef.Colname,
-			Type:        extractTypeName(colDef.TypeName),
-			Constraints: extractConstraints(colDef.Constraints),
-			DefaultExpr: extractDefaultExpr(colDef.Constraints),
+			Name:            colDef.Colname,
+			Type:            extractColumnType(colDef.TypeName),
+			Constraints:     extractConstraints(colDef.Constraints),
+			DefaultExpr:     extractDefaultExpr(colDef.Constraints),
+			DefaultVolatile: extractDefaultVolatility(colDef.Constraints),
 		},
 	}
 }
@@ -101,7 +102,7 @@ func parseAlterColumnType(tableName string, cmd *pgquery.AlterTableCmd) models.O
 	return models.AlterColumnType{
 		TableName:  tableName,
 		ColumnName: cmd.Name,
-		NewType:    extractTypeName(colDef.TypeName),
+		NewType:    extractColumnType(colDef.TypeName),
 	}
 }
 
@@ -206,7 +207,7 @@ func deparseTypeCast(tc *pgquery.TypeCast) string {
 	}
 
 	arg := deparseDef(tc.Arg)
-	typeName := extractTypeName(tc.TypeName)
+	typeName := extractColumnType(tc.TypeName).String()
 
 	if arg != "" && typeName != "" {
 		return arg + "::" + typeName

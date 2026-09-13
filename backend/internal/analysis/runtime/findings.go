@@ -10,8 +10,10 @@ import (
 // Findings turns the measurements of a run into warning-shaped findings: first
 // what stopped the migration, then what it held up while it ran, then what could
 // not be measured because a table stayed empty.
-func Findings(migration *models.Migration, result models.RuntimeResult) []models.RuntimeFinding {
-	var findings []models.RuntimeFinding
+func Findings(migration *models.Migration, result models.RuntimeAnalysisResult) []models.RuntimeFinding {
+	// Empty rather than nil: a clean run must marshal as [] for the frontend's
+	// RuntimeFinding[], and a clean run is the common case.
+	findings := []models.RuntimeFinding{}
 
 	for _, measurement := range result.Statements {
 		findings = append(findings, statementFindings(migration, result, measurement)...)
@@ -57,7 +59,7 @@ func Findings(migration *models.Migration, result models.RuntimeResult) []models
 	return findings
 }
 
-func statementFindings(migration *models.Migration, result models.RuntimeResult, measurement models.StatementMeasurement) []models.RuntimeFinding {
+func statementFindings(migration *models.Migration, result models.RuntimeAnalysisResult, measurement models.StatementMeasurement) []models.RuntimeFinding {
 	table := tableOfSQL(migration, measurement.SQL)
 	id := statementID(migration, measurement.StatementIndex)
 
@@ -83,7 +85,9 @@ func statementFindings(migration *models.Migration, result models.RuntimeResult,
 		})
 	}
 
-	if holdsALockThatScales(migration, measurement) {
+	findings = append(findings, mismatchFindings(id, table, measurement)...)
+
+	if holdsALockThatScales(measurement) {
 		findings = append(findings, models.RuntimeFinding{
 			Type:        models.FindingExclusiveLock,
 			OperationID: id,
@@ -98,25 +102,81 @@ func statementFindings(migration *models.Migration, result models.RuntimeResult,
 	return findings
 }
 
+// mismatchFindings reports the prediction disagreeing with the measurement, which
+// is what tells a reader how much the offline classifier can be trusted. Silent
+// unless both classes are known: an unmeasured statement is not evidence.
+func mismatchFindings(id models.OperationID, table string, measurement models.StatementMeasurement) []models.RuntimeFinding {
+	observed, predicted := measurement.ObservedClass, measurement.PredictedClass
+	if observed == "" || predicted == "" || observed == predicted {
+		return nil
+	}
+
+	if models.WorseThan(observed, predicted) {
+		return []models.RuntimeFinding{{
+			Type:        models.FindingClassUnderstated,
+			OperationID: id,
+			TableName:   table,
+			Message: fmt.Sprintf(
+				"static analysis predicted %s for statement %d, and it measured as %s: %s. "+
+					"A migration like this passes the offline gate and does the work in production",
+				predicted, measurement.StatementIndex, observed, whatItDid(measurement)),
+		}}
+	}
+
+	return []models.RuntimeFinding{{
+		Type:        models.FindingClassOverstated,
+		OperationID: id,
+		TableName:   table,
+		Message: fmt.Sprintf(
+			"static analysis predicted %s for statement %d, and it measured as %s: %s. "+
+				"The prediction is pessimistic here, not the migration risky",
+			predicted, measurement.StatementIndex, observed, whatItDid(measurement)),
+	}}
+}
+
+// whatItDid names the counts the observed class was derived from, so the finding
+// carries its own evidence.
+func whatItDid(measurement models.StatementMeasurement) string {
+	if len(measurement.RewrittenRelations) > 0 {
+		return fmt.Sprintf("it rewrote %s and read %d rows",
+			strings.Join(measurement.RewrittenRelations, ", "), measurement.TuplesRead)
+	}
+	if measurement.TuplesRead > 0 {
+		return fmt.Sprintf("it read %d rows and rewrote nothing", measurement.TuplesRead)
+	}
+	return "it read no rows and rewrote nothing"
+}
+
 // holdsALockThatScales decides whether a reader-blocking lock is worth reporting,
-// and asks static analysis rather than a stopwatch.
+// and asks what the statement cost rather than a stopwatch.
 //
 // Every ALTER TABLE takes ACCESS EXCLUSIVE, the metadata-only ones included, so
 // the mode alone is not a finding. What separates a harmless hold from a
 // dangerous one is not how many milliseconds it took on this machine — CI
 // hardware would move that number, and a fast enough runner would hide it — but
 // whether the work under the lock is constant in table size or grows with it.
-// That is exactly what the statement's performanceClass already says.
 //
-// A statement static analysis does not model at all (a VACUUM FULL, an index
-// build) is reported on the strength of the observation alone: nothing said it
-// was safe.
-func holdsALockThatScales(migration *models.Migration, measurement models.StatementMeasurement) bool {
+// The measured class answers that where it is usable, and the predicted one
+// stands in where it is not. A statement neither measured nor modelled (a VACUUM
+// FULL, an index build) is reported on the strength of the observation alone:
+// nothing said it was safe.
+func holdsALockThatScales(measurement models.StatementMeasurement) bool {
 	if !BlocksReaders(measurement.StrongestLock) {
 		return false
 	}
-	class, known := classOfSQL(migration, measurement.SQL)
-	return !known || class != models.MetadataOnly
+	if class := effectiveClass(measurement); class != "" {
+		return class != models.MetadataOnly
+	}
+	return true
+}
+
+// effectiveClass is the class to reason about: what was measured, or what was
+// predicted when nothing usable was measured.
+func effectiveClass(measurement models.StatementMeasurement) models.PerformanceClass {
+	if measurement.ObservedClass != "" {
+		return measurement.ObservedClass
+	}
+	return measurement.PredictedClass
 }
 
 // classOfSQL is the performance class of the parsed statement with this SQL, and

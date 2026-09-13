@@ -4,12 +4,17 @@ import "encoding/json"
 
 type Column struct {
 	Name        string   `json:"name"`
-	Type        string   `json:"type"`
+	Type        SQLType  `json:"type"`
 	Constraints []string `json:"constraints"`
 	// Deparsed DEFAULT expression, empty when the column has no default or the
 	// expression could not be deparsed. Constraints carries the "DEFAULT" token
 	// either way, so the two cases stay distinguishable.
 	DefaultExpr string `json:"defaultExpr,omitempty"`
+	// DefaultVolatile reports whether the DEFAULT expression contains a volatile
+	// function, read from the expression tree rather than from DefaultExpr. A
+	// volatile default forces a rewrite; a non-volatile one is stored once in the
+	// catalog. Classification input only, so it stays out of the API.
+	DefaultVolatile bool `json:"-"`
 }
 
 type Migration struct {
@@ -105,9 +110,13 @@ type DropTable struct {
 func (d DropTable) operationType() string { return "DROP_TABLE" }
 
 type AlterColumnType struct {
-	TableName  string `json:"tableName"`
-	ColumnName string `json:"columnName"`
-	NewType    string `json:"newType"`
+	TableName  string  `json:"tableName"`
+	ColumnName string  `json:"columnName"`
+	NewType    SQLType `json:"newType"`
+	// PreviousType is the column's type before this operation, resolved by walking
+	// the timeline; zero when no earlier migration declared it. Whether the change
+	// rewrites the table depends on both types, so the classifier needs it.
+	PreviousType SQLType `json:"-"`
 }
 
 func (a AlterColumnType) operationType() string { return "ALTER_COLUMN_TYPE" }

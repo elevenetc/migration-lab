@@ -31,6 +31,13 @@ const (
 	FindingInvalidIndexLeft = "INVALID_INDEX_LEFT"
 	FindingSeedFailed       = "SEED_FAILED"
 	FindingStatementFailed  = "STATEMENT_FAILED"
+	// The observed class was worse than the predicted one: a statement static
+	// analysis called cheap turned out not to be, which is the direction that
+	// reaches production.
+	FindingClassUnderstated = "CLASS_UNDERSTATED"
+	// The observed class was cheaper than the predicted one: noise in the
+	// prediction rather than a risk in the migration.
+	FindingClassOverstated = "CLASS_OVERSTATED"
 )
 
 // SeededTable is one table filled before the migration ran. Error is set when
@@ -68,6 +75,19 @@ type StatementMeasurement struct {
 	Locks          []LockObservation `json:"locks"`
 	Verdict        RuntimeVerdict    `json:"verdict"`
 	Error          string            `json:"error,omitempty"`
+	// ObservedClass is the performance class the database produced, derived from
+	// counts rather than durations. Empty when the observation is not usable: the
+	// statement never completed, the run could not be wrapped in a transaction, or
+	// the tables were not seeded.
+	ObservedClass PerformanceClass `json:"observedClass,omitempty"`
+	// PredictedClass is what static analysis said before the run, empty for a
+	// statement it does not model.
+	PredictedClass PerformanceClass `json:"predictedClass,omitempty"`
+	// RewrittenRelations are the relations whose relfilenode changed, which is
+	// true if and only if they were rewritten.
+	RewrittenRelations []string `json:"rewrittenRelations"`
+	// TuplesRead is how many rows the statement read from the tables it touched.
+	TuplesRead int64 `json:"tuplesRead"`
 }
 
 // RuntimeFinding carries the same fields as a static analysis warning, so the
@@ -79,8 +99,9 @@ type RuntimeFinding struct {
 	Message     string      `json:"message"`
 }
 
-// RuntimeResult is one migration executed against a seeded container.
-type RuntimeResult struct {
+// RuntimeAnalysisResult is what runtime analysis returns: one migration executed
+// against a seeded container. Its static counterpart is StaticAnalysisResult.
+type RuntimeAnalysisResult struct {
 	MigrationID string                 `json:"migrationId"`
 	Version     string                 `json:"version"`
 	DeadlineMs  int64                  `json:"deadlineMs"`

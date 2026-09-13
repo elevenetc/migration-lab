@@ -1,4 +1,4 @@
-import type {RetryVerdict, RuntimeResult, RuntimeVerdict} from '../api/migrationApi'
+import type {RetryVerdict, RuntimeAnalysisResult, RuntimeVerdict, StatementMeasurement} from '../api/migrationApi'
 import {useMigrationStore} from '../store/migrationStore'
 import './runtimePopup.css'
 
@@ -19,7 +19,24 @@ function Badge({label, color}: {label: string; color: string}) {
   return <span className="runtime-badge" style={{color}}>{label}</span>
 }
 
-function Result({result}: {result: RuntimeResult}) {
+/**
+ * What the statement cost: what static analysis predicted, and what the run measured. The two
+ * disagreeing is the point — the prediction is a guess the measurement scores.
+ */
+function Classes({statement}: {statement: StatementMeasurement}) {
+  const {predictedClass, observedClass} = statement
+  if (!predictedClass && !observedClass) return null
+
+  const mismatch = Boolean(predictedClass && observedClass && predictedClass !== observedClass)
+  return (
+    <span className={mismatch ? 'runtime-classes runtime-classes-mismatch' : 'runtime-classes'}>
+      {predictedClass && ` · predicted ${predictedClass}`}
+      {observedClass && ` · observed ${observedClass}`}
+    </span>
+  )
+}
+
+function Result({result}: {result: RuntimeAnalysisResult}) {
   return (
     <>
       <div className="runtime-verdicts">
@@ -62,6 +79,9 @@ function Result({result}: {result: RuntimeResult}) {
             <li key={statement.statementIndex}>
               {statement.durationMs} ms · {statement.verdict}
               {statement.strongestLock && ` · ${statement.strongestLock}`}
+              <Classes statement={statement} />
+              {statement.rewrittenRelations.length > 0 && ` · rewrote ${statement.rewrittenRelations.join(', ')}`}
+              {statement.tuplesRead > 0 && ` · read ${statement.tuplesRead.toLocaleString()} rows`}
               <code className="runtime-sql">{statement.sql}</code>
             </li>
           ))}
@@ -88,7 +108,7 @@ function Result({result}: {result: RuntimeResult}) {
 /** Result of a runtime analysis, shown over the timeline while it runs and once it is done. */
 export function RuntimePopup() {
   const target = useMigrationStore((state) => state.runtimeTarget)
-  const result = useMigrationStore((state) => state.runtimeResult)
+  const result = useMigrationStore((state) => state.runtimeAnalysis)
   const error = useMigrationStore((state) => state.runtimeError)
   const closeRuntime = useMigrationStore((state) => state.closeRuntime)
 

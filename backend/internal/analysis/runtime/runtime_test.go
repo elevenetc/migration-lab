@@ -258,13 +258,14 @@ func TestFindingsReportWhatStoppedTheRunAndWhatItBlocked(t *testing.T) {
 			Operations: []models.Operation{models.AlterColumnType{TableName: "events"}},
 		}},
 	}
-	result := models.RuntimeResult{
+	result := models.RuntimeAnalysisResult{
 		DeadlineMs: 5000,
 		Seeded:     []models.SeededTable{{Table: "events_2026", Rows: 1000}},
 		Statements: []models.StatementMeasurement{{
 			StatementIndex: 0,
 			SQL:            "ALTER TABLE events ALTER COLUMN note TYPE VARCHAR(200)",
 			DurationMs:     9000,
+			PredictedClass: models.TableRewrite,
 			StrongestLock:  "AccessExclusiveLock",
 			Locks: []models.LockObservation{
 				{Mode: "AccessExclusiveLock", Relation: "events"},
@@ -305,13 +306,15 @@ func TestFindingsStaySilentForAMetadataOnlyAlter(t *testing.T) {
 	}
 	// Every ALTER TABLE takes ACCESS EXCLUSIVE, but a metadata-only one holds it for
 	// a time that does not grow with the table, and no reader was seen waiting.
-	result := models.RuntimeResult{
+	result := models.RuntimeAnalysisResult{
 		DeadlineMs: 5000,
 		Seeded:     []models.SeededTable{{Table: "accounts", Rows: 1_000_000}},
 		Statements: []models.StatementMeasurement{{
 			StatementIndex: 0,
 			SQL:            "ALTER TABLE accounts ADD COLUMN note TEXT",
 			DurationMs:     0,
+			PredictedClass: models.MetadataOnly,
+			ObservedClass:  models.MetadataOnly,
 			StrongestLock:  "AccessExclusiveLock",
 			Locks:          []models.LockObservation{{Mode: "AccessExclusiveLock", Relation: "accounts"}},
 			Verdict:        models.RuntimeCompleted,
@@ -336,11 +339,13 @@ func TestFindingsReportAScanningLockHoweverFastThisMachineWas(t *testing.T) {
 			Operations: []models.Operation{models.SetNotNull{TableName: "accounts", ColumnName: "note"}},
 		}},
 	}
-	result := models.RuntimeResult{
+	result := models.RuntimeAnalysisResult{
 		Statements: []models.StatementMeasurement{{
 			StatementIndex: 0,
 			SQL:            "ALTER TABLE accounts ALTER COLUMN note SET NOT NULL",
 			DurationMs:     3,
+			PredictedClass: models.DataScanning,
+			ObservedClass:  models.DataScanning,
 			StrongestLock:  "AccessExclusiveLock",
 			Locks:          []models.LockObservation{{Mode: "AccessExclusiveLock", Relation: "accounts"}},
 			Verdict:        models.RuntimeCompleted,
@@ -357,7 +362,7 @@ func TestFindingsReportAScanningLockHoweverFastThisMachineWas(t *testing.T) {
 
 func TestFindingsReportALockOfAStatementStaticAnalysisDoesNotModel(t *testing.T) {
 	migration := &models.Migration{ID: "V9__vacuum", Statements: []models.Statement{}}
-	result := models.RuntimeResult{
+	result := models.RuntimeAnalysisResult{
 		Statements: []models.StatementMeasurement{{
 			StatementIndex: 0,
 			SQL:            "VACUUM FULL accounts",
@@ -377,7 +382,7 @@ func TestFindingsReportALockOfAStatementStaticAnalysisDoesNotModel(t *testing.T)
 
 func TestFindingsReportATableThatCouldNotBeSeeded(t *testing.T) {
 	migration := &models.Migration{ID: "V2__alter"}
-	result := models.RuntimeResult{
+	result := models.RuntimeAnalysisResult{
 		Seeded: []models.SeededTable{{Table: "orders", Error: "invalid input syntax"}},
 		Retry:  models.RetryNotApplicable,
 	}
@@ -422,7 +427,7 @@ func TestRowsOfFallsBackToTheDefault(t *testing.T) {
 }
 
 func TestMessageNamesTheStatementThatEndedTheRun(t *testing.T) {
-	completed := models.RuntimeResult{Statements: []models.StatementMeasurement{
+	completed := models.RuntimeAnalysisResult{Statements: []models.StatementMeasurement{
 		{StatementIndex: 0, DurationMs: 120, Verdict: models.RuntimeCompleted},
 		{StatementIndex: 1, DurationMs: 80, Verdict: models.RuntimeCompleted},
 	}}
@@ -430,14 +435,14 @@ func TestMessageNamesTheStatementThatEndedTheRun(t *testing.T) {
 		t.Errorf("message = %q", got)
 	}
 
-	cancelled := models.RuntimeResult{DeadlineMs: 5000, Statements: []models.StatementMeasurement{
+	cancelled := models.RuntimeAnalysisResult{DeadlineMs: 5000, Statements: []models.StatementMeasurement{
 		{StatementIndex: 1, Verdict: models.RuntimeExceedsDeadline},
 	}}
 	if got := message(cancelled); got != "statement 1 was cancelled after the 5000 ms deadline" {
 		t.Errorf("message = %q", got)
 	}
 
-	if got := message(models.RuntimeResult{}); got != "the migration has no statements to run" {
+	if got := message(models.RuntimeAnalysisResult{}); got != "the migration has no statements to run" {
 		t.Errorf("message = %q", got)
 	}
 }

@@ -8,13 +8,13 @@ import (
 	"strings"
 	"time"
 
-	"migration-timeline/backend/internal/analysis"
+	"migration-timeline/backend/internal/analysis/runtime"
+	"migration-timeline/backend/internal/analysis/static"
 	"migration-timeline/backend/internal/loader"
 	"migration-timeline/backend/internal/models"
 	"migration-timeline/backend/internal/parser"
 	"migration-timeline/backend/internal/report"
 	"migration-timeline/backend/internal/runner"
-	"migration-timeline/backend/internal/runtime"
 
 	"github.com/spf13/cobra"
 )
@@ -121,7 +121,7 @@ func processMigrationInfos(infos []models.MigrationInfo) error {
 	if err != nil {
 		return err
 	}
-	result.AnalysisResult = analysis.Analyse(migrations)
+	result.AnalysisResult = static.Analyse(migrations)
 
 	if err := printJSON(result); err != nil {
 		return err
@@ -138,7 +138,7 @@ func processMigrationInfos(infos []models.MigrationInfo) error {
 
 // analyseRuntime measures the last migration of the timeline, the one that just
 // arrived on the branch under review. Naming no target is what asks for it.
-func analyseRuntime(infos []models.MigrationInfo) (*models.RuntimeResult, error) {
+func analyseRuntime(infos []models.MigrationInfo) (*models.RuntimeAnalysisResult, error) {
 	if len(infos) == 0 {
 		return nil, fmt.Errorf("no migrations to analyze")
 	}
@@ -155,13 +155,9 @@ func analyseRuntime(infos []models.MigrationInfo) (*models.RuntimeResult, error)
 }
 
 func parseMigrations(infos []models.MigrationInfo) ([]*models.Migration, error) {
-	var migrations []*models.Migration
-	for _, info := range infos {
-		m, err := parser.ParseMigration(info.ID, info.SQL, info.Timestamp)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse %s: %w", info.ID, err)
-		}
-		migrations = append(migrations, m)
+	migrations, err := parser.ParseTimeline(infos)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse migrations: %w", err)
 	}
 	return migrations, nil
 }
@@ -202,7 +198,7 @@ func toTimelineResponse(migrations []*models.Migration) *models.MigrationTimelin
 		}
 	}
 
-	analysisResult := analysis.Analyse(migrations)
+	analysisResult := static.Analyse(migrations)
 
 	return &models.MigrationTimelineResponse{
 		Timeline:       migrations,
@@ -213,9 +209,9 @@ func toTimelineResponse(migrations []*models.Migration) *models.MigrationTimelin
 }
 
 type cliResult struct {
-	AnalysisResult *models.AnalysisResult      `json:"analysisResult,omitempty"`
-	RunResult      *models.RunMigrationsResult `json:"runResult,omitempty"`
-	RuntimeResult  *models.RuntimeResult       `json:"runtimeResult,omitempty"`
+	AnalysisResult *models.StaticAnalysisResult  `json:"analysisResult,omitempty"`
+	RunResult      *models.RunMigrationsResult   `json:"runResult,omitempty"`
+	RuntimeResult  *models.RuntimeAnalysisResult `json:"runtimeResult,omitempty"`
 }
 
 func printJSON(v interface{}) error {

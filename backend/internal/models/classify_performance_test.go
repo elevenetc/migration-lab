@@ -20,27 +20,28 @@ func TestClassifyPerformance(t *testing.T) {
 
 		{
 			"add nullable column",
-			AddColumn{TableName: "users", Column: Column{Name: "note", Type: "TEXT"}},
+			AddColumn{TableName: "users", Column: Column{Name: "note", Type: NewSQLType("text")}},
 			MetadataOnly,
 		},
 		{
 			"add column with constant default",
 			AddColumn{TableName: "users", Column: Column{
-				Name: "status", Type: "TEXT", Constraints: []string{"DEFAULT"}, DefaultExpr: "'active'",
+				Name: "status", Type: NewSQLType("text"), Constraints: []string{"DEFAULT"}, DefaultExpr: "'active'",
 			}},
 			MetadataOnly,
 		},
 		{
-			"add column with function default",
+			"add column with non-volatile function default",
 			AddColumn{TableName: "users", Column: Column{
-				Name: "created_at", Type: "TIMESTAMP", Constraints: []string{"DEFAULT"}, DefaultExpr: "now()",
+				Name: "created_at", Type: NewSQLType("timestamp"), Constraints: []string{"DEFAULT"}, DefaultExpr: "now()",
 			}},
-			TableRewrite,
+			MetadataOnly,
 		},
 		{
-			"add column with undeparsable default",
+			"add column with volatile default",
 			AddColumn{TableName: "users", Column: Column{
-				Name: "code", Type: "TEXT", Constraints: []string{"DEFAULT"},
+				Name: "token", Type: NewSQLType("int4"), Constraints: []string{"DEFAULT"},
+				DefaultExpr: "random()::int4", DefaultVolatile: true,
 			}},
 			TableRewrite,
 		},
@@ -58,8 +59,8 @@ func TestClassifyPerformance(t *testing.T) {
 		},
 
 		{
-			"alter column type",
-			AlterColumnType{TableName: "users", ColumnName: "email", NewType: "TEXT"},
+			"alter column type from an unknown type",
+			AlterColumnType{TableName: "users", ColumnName: "email", NewType: NewSQLType("text")},
 			TableRewrite,
 		},
 	}

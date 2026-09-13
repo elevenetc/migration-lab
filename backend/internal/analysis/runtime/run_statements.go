@@ -49,9 +49,10 @@ func runStatements(ctx context.Context, conn, sampler *pgx.Conn, statements []st
 	if wrap {
 		if _, err := conn.Exec(ctx, "BEGIN"); err != nil {
 			return runOutcome{Measurements: []models.StatementMeasurement{{
-				Locks:   []models.LockObservation{},
-				Verdict: models.RuntimeFailed,
-				Error:   err.Error(),
+				Locks:              []models.LockObservation{},
+				RewrittenRelations: []string{},
+				Verdict:            models.RuntimeFailed,
+				Error:              err.Error(),
 			}}}
 		}
 	}
@@ -63,7 +64,7 @@ func runStatements(ctx context.Context, conn, sampler *pgx.Conn, statements []st
 	remaining := deadline
 
 	for index, statement := range statements {
-		measurement, blocked := measureStatement(ctx, conn, sampler, index, statement, remaining)
+		measurement, blocked := measureStatement(ctx, conn, sampler, index, statement, remaining, wrap)
 		outcome.Measurements = append(outcome.Measurements, measurement)
 		for pid, ticks := range blocked {
 			outcome.BlockedTicks[pid] += ticks

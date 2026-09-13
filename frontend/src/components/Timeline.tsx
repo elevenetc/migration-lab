@@ -6,13 +6,13 @@ import { RuntimePopup } from './RuntimePopup'
 import '../grid/grid.css'
 
 export function Timeline() {
-  const { migrations, analysis, loading, error } = useMigrationStore()
+  const { migrations, staticAnalysis, loading, error } = useMigrationStore()
   const runRuntime = useMigrationStore((state) => state.runRuntime)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   const model = useMemo(
-    () => buildMigrationCells(migrations, analysis?.warnings ?? []),
-    [migrations, analysis],
+    () => buildMigrationCells(migrations, staticAnalysis?.warnings ?? []),
+    [migrations, staticAnalysis],
   )
   const grid = useMemo(
     () => (model.cells.length > 0 ? buildMigrationGrid(model, runRuntime) : null),

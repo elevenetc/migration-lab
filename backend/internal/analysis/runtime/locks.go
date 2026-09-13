@@ -25,12 +25,16 @@ const BlockingLock = "AccessExclusiveLock"
 
 // The join drops locks on relations that no longer exist in pg_class — the
 // transient heap a table rewrite builds and swaps in — leaving the relations a
-// reader of this schema can actually be blocked on.
+// reader of this schema can actually be blocked on. Catalog relations are dropped
+// for the same reason: every statement reads pg_class, and holding a share lock on
+// it blocks nobody's SELECT.
 const heldLocksQuery = `
 SELECT l.mode, c.relname
 FROM pg_locks l
 JOIN pg_class c ON c.oid = l.relation
-WHERE l.pid = $1 AND l.granted AND l.locktype = 'relation'`
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE l.pid = $1 AND l.granted AND l.locktype = 'relation'
+  AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')`
 
 // Backends waiting on a lock the migration holds. PostgreSQL answers this
 // exactly, so no latency threshold has to stand in for "blocked".

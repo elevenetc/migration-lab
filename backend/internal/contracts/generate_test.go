@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"migration-timeline/backend/internal/analysis"
+	"migration-timeline/backend/internal/analysis/static"
 	"migration-timeline/backend/internal/models"
 	"migration-timeline/backend/internal/parser"
 )
@@ -26,9 +26,9 @@ func TestGenerateMigrationResponseFixture(t *testing.T) {
 				models.CreateTable{
 					TableName: "users",
 					Columns: []models.Column{
-						{Name: "id", Type: "SERIAL", Constraints: []string{"PRIMARY KEY"}},
-						{Name: "email", Type: "VARCHAR(255)", Constraints: []string{"NOT NULL", "UNIQUE"}},
-						{Name: "created_at", Type: "TIMESTAMP", Constraints: []string{"DEFAULT"}, DefaultExpr: "now()"},
+						{Name: "id", Type: models.NewSQLType("serial"), Constraints: []string{"PRIMARY KEY"}},
+						{Name: "email", Type: models.NewSQLType("varchar", 255), Constraints: []string{"NOT NULL", "UNIQUE"}},
+						{Name: "created_at", Type: models.NewSQLType("timestamp"), Constraints: []string{"DEFAULT"}, DefaultExpr: "now()"},
 					},
 					IsPartitioned: false,
 				}),
@@ -42,7 +42,7 @@ func TestGenerateMigrationResponseFixture(t *testing.T) {
 				models.AddColumn{
 					TableName: "users",
 					Column: models.Column{
-						Name: "status", Type: "VARCHAR(50)", Constraints: []string{"DEFAULT"}, DefaultExpr: "'active'",
+						Name: "status", Type: models.NewSQLType("varchar", 50), Constraints: []string{"DEFAULT"}, DefaultExpr: "'active'",
 					},
 				}),
 		},
@@ -55,7 +55,7 @@ func TestGenerateMigrationResponseFixture(t *testing.T) {
 				models.AlterColumnType{
 					TableName:  "users",
 					ColumnName: "email",
-					NewType:    "TEXT",
+					NewType:    models.NewSQLType("text"),
 				}),
 		},
 		{
@@ -179,9 +179,9 @@ func TestGenerateMigrationResponseFixture(t *testing.T) {
 				models.CreateTable{
 					TableName: "measurements",
 					Columns: []models.Column{
-						{Name: "id", Type: "SERIAL", Constraints: []string{}},
-						{Name: "created_at", Type: "TIMESTAMP", Constraints: []string{"NOT NULL"}},
-						{Name: "value", Type: "NUMERIC", Constraints: []string{}},
+						{Name: "id", Type: models.NewSQLType("serial"), Constraints: []string{}},
+						{Name: "created_at", Type: models.NewSQLType("timestamp"), Constraints: []string{"NOT NULL"}},
+						{Name: "value", Type: models.NewSQLType("numeric"), Constraints: []string{}},
 					},
 					IsPartitioned: true,
 				}),
@@ -217,14 +217,15 @@ func TestGenerateMigrationResponseFixture(t *testing.T) {
 			Version:   "V17__add_column_volatile_default",
 			Timestamp: 17000,
 			Statements: singleStatement("ALTER_TABLE",
-				"ALTER TABLE users ADD COLUMN created_at TIMESTAMP DEFAULT now()",
+				"ALTER TABLE users ADD COLUMN token INT DEFAULT random()::int",
 				models.AddColumn{
 					TableName: "users",
 					Column: models.Column{
-						Name:        "created_at",
-						Type:        "TIMESTAMP",
-						Constraints: []string{"DEFAULT"},
-						DefaultExpr: "now()",
+						Name:            "token",
+						Type:            models.NewSQLType("int4"),
+						Constraints:     []string{"DEFAULT"},
+						DefaultExpr:     "random()::int4",
+						DefaultVolatile: true,
 					},
 				}),
 		},
@@ -236,7 +237,7 @@ func TestGenerateMigrationResponseFixture(t *testing.T) {
 				"ALTER TABLE measurements ADD COLUMN description TEXT",
 				models.AddColumn{
 					TableName: "measurements",
-					Column:    models.Column{Name: "description", Type: "TEXT", Constraints: []string{}},
+					Column:    models.Column{Name: "description", Type: models.NewSQLType("text"), Constraints: []string{}},
 				}),
 		},
 	}
@@ -267,7 +268,7 @@ func TestGenerateMigrationResponseFixture(t *testing.T) {
 		migrationMap[m.ID] = m
 	}
 
-	analysisResult := analysis.Analyse(migrations)
+	analysisResult := static.Analyse(migrations)
 
 	response := models.MigrationTimelineResponse{
 		Timeline:       migrations,
@@ -318,7 +319,7 @@ func TestGenerateRuntimeResultFixture(t *testing.T) {
 		OpIndex:        models.StatementScoped,
 	}
 
-	result := models.RuntimeResult{
+	result := models.RuntimeAnalysisResult{
 		MigrationID: "V3__widen_note",
 		Version:     "3",
 		DeadlineMs:  5000,
@@ -329,6 +330,21 @@ func TestGenerateRuntimeResultFixture(t *testing.T) {
 		Statements: []models.StatementMeasurement{
 			{
 				StatementIndex: 0,
+				SQL:            "ALTER TABLE events ADD COLUMN seen_at TIMESTAMP DEFAULT clock_timestamp()",
+				DurationMs:     412,
+				StrongestLock:  "AccessExclusiveLock",
+				Locks: []models.LockObservation{
+					{Mode: "AccessExclusiveLock", Relation: "events"},
+					{Mode: "AccessExclusiveLock", Relation: "events_2026"},
+				},
+				Verdict:            models.RuntimeCompleted,
+				PredictedClass:     models.MetadataOnly,
+				ObservedClass:      models.TableRewrite,
+				RewrittenRelations: []string{"events_2026"},
+				TuplesRead:         2000000,
+			},
+			{
+				StatementIndex: 1,
 				SQL:            "ALTER TABLE events ALTER COLUMN note TYPE VARCHAR(200)",
 				DurationMs:     5001,
 				StrongestLock:  "AccessExclusiveLock",
@@ -336,8 +352,10 @@ func TestGenerateRuntimeResultFixture(t *testing.T) {
 					{Mode: "AccessExclusiveLock", Relation: "events"},
 					{Mode: "AccessExclusiveLock", Relation: "events_2026"},
 				},
-				Verdict: models.RuntimeExceedsDeadline,
-				Error:   "ERROR: canceling statement due to statement timeout (SQLSTATE 57014)",
+				Verdict:            models.RuntimeExceedsDeadline,
+				Error:              "ERROR: canceling statement due to statement timeout (SQLSTATE 57014)",
+				PredictedClass:     models.TableRewrite,
+				RewrittenRelations: []string{},
 			},
 		},
 		Probes: []models.ProbeResult{
@@ -347,16 +365,23 @@ func TestGenerateRuntimeResultFixture(t *testing.T) {
 		Retry:   models.RetryFailureLoop,
 		Findings: []models.RuntimeFinding{
 			{
+				Type:        models.FindingClassUnderstated,
+				OperationID: statementID,
+				TableName:   "events",
+				Message: "static analysis predicted METADATA_ONLY for statement 0, and it measured as " +
+					"TABLE_REWRITE: it rewrote events_2026 and read 2000000 rows",
+			},
+			{
 				Type:        models.FindingExceedsDeadline,
 				OperationID: statementID,
 				TableName:   "events",
-				Message:     "statement 0 was still running after the 5000 ms deadline and was cancelled",
+				Message:     "statement 1 was still running after the 5000 ms deadline and was cancelled",
 			},
 			{
 				Type:        models.FindingExclusiveLock,
 				OperationID: statementID,
 				TableName:   "events",
-				Message:     "statement 0 held AccessExclusiveLock on events, events_2026 for 5001 ms",
+				Message:     "statement 1 held AccessExclusiveLock on events, events_2026 for 5001 ms",
 			},
 			{
 				Type:        models.FindingBlocksReaders,

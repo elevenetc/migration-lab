@@ -7,7 +7,7 @@ import (
 )
 
 // message is the one-line summary a report leads with: what ended the run.
-func message(result models.RuntimeResult) string {
+func message(result models.RuntimeAnalysisResult) string {
 	if len(result.Statements) == 0 {
 		return "the migration has no statements to run"
 	}

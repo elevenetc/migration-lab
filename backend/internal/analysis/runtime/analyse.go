@@ -40,20 +40,24 @@ type Request struct {
 // It returns models.ErrNotFound when the timeline is empty or holds no such
 // migration. A failure of the run itself is part of the result rather than an
 // error, since that is the answer the caller asked for.
-func Analyse(ctx context.Context, request Request) (models.RuntimeResult, error) {
+func Analyse(ctx context.Context, request Request) (models.RuntimeAnalysisResult, error) {
 	index, err := targetIndex(request.Migrations, request.Target)
 	if err != nil {
-		return models.RuntimeResult{}, err
+		return models.RuntimeAnalysisResult{}, err
 	}
 
 	info := request.Migrations[index]
-	migration, err := parser.ParseMigration(info.ID, info.SQL, info.Timestamp)
+	// The whole timeline is parsed, not just the analyzed migration: an operation
+	// such as ALTER COLUMN TYPE is only classifiable against the schema its
+	// predecessors built.
+	timeline, err := parser.ParseTimeline(request.Migrations[:index+1])
 	if err != nil {
-		return models.RuntimeResult{}, err
+		return models.RuntimeAnalysisResult{}, err
 	}
+	migration := timeline[index]
 	statements, err := parser.SplitStatements(info.SQL)
 	if err != nil {
-		return models.RuntimeResult{}, err
+		return models.RuntimeAnalysisResult{}, err
 	}
 
 	deadline := request.Deadline
@@ -62,7 +66,7 @@ func Analyse(ctx context.Context, request Request) (models.RuntimeResult, error)
 	}
 	// The collections start empty rather than nil so every field of the response
 	// is an array, whichever step the run stops at.
-	result := models.RuntimeResult{
+	result := models.RuntimeAnalysisResult{
 		MigrationID: info.ID,
 		Version:     migration.Version,
 		DeadlineMs:  deadline.Milliseconds(),
@@ -103,7 +107,7 @@ func Analyse(ctx context.Context, request Request) (models.RuntimeResult, error)
 	log.Printf("Measuring %s: %d statements, %d ms deadline", info.ID, len(statements), deadline.Milliseconds())
 	stopProbes := startProbes(ctx, connString, probedTables(result.Seeded))
 	outcome := runStatements(ctx, conn, sampler, statements, deadline)
-	result.Statements = outcome.Measurements
+	result.Statements = withClasses(migration, result.Seeded, outcome.Measurements)
 	result.Probes = stopProbes(outcome.BlockedTicks)
 
 	result.Verdict = verdictOfRun(result.Statements)
@@ -159,7 +163,7 @@ func targetIndex(migrations []models.MigrationInfo, target string) (int, error) 
 	return 0, models.ErrNotFound
 }
 
-func failed(result models.RuntimeResult, message string) models.RuntimeResult {
+func failed(result models.RuntimeAnalysisResult, message string) models.RuntimeAnalysisResult {
 	result.Verdict = models.RuntimeFailed
 	result.Retry = models.RetryNotApplicable
 	result.Message = message

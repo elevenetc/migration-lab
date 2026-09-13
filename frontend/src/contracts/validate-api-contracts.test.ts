@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { MigrationTimelineResponse, PerformanceClass, RetryVerdict, RunMigrationsResult, RuntimeResult, RuntimeVerdict, Warning } from '../api/migrationApi'
+import type { MigrationTimelineResponse, PerformanceClass, RetryVerdict, RunMigrationsResult, RuntimeAnalysisResult, RuntimeVerdict, Warning } from '../api/migrationApi'
 import migrationFixture from '../../../api-contracts/fixtures/migration-response.json' with { type: 'json' }
 import runMigrationsFixture from '../../../api-contracts/fixtures/run-migrations-result.json' with { type: 'json' }
 import runtimeFixture from '../../../api-contracts/fixtures/runtime-result.json' with { type: 'json' }
@@ -8,7 +8,7 @@ import runtimeFixture from '../../../api-contracts/fixtures/runtime-result.json'
 // to the TypeScript types. `tsc` fails here if backend and frontend types drift.
 const migrationResponse: MigrationTimelineResponse = migrationFixture as MigrationTimelineResponse
 const runMigrationsResult: RunMigrationsResult = runMigrationsFixture as RunMigrationsResult
-const runtimeResult: RuntimeResult = runtimeFixture as RuntimeResult
+const runtimeResult: RuntimeAnalysisResult = runtimeFixture as RuntimeAnalysisResult
 
 function assertExhaustive(val: never): never {
   throw new Error(`Unhandled type: ${JSON.stringify(val)}`)
@@ -170,16 +170,21 @@ describe('API contract: run-migrations result fixture', () => {
 const RUNTIME_VERDICTS: RuntimeVerdict[] = ['COMPLETED', 'EXCEEDS_DEADLINE', 'FAILED']
 const RETRY_VERDICTS: RetryVerdict[] = ['SAFE_TO_RETRY', 'NEEDS_MANUAL_CLEANUP', 'FAILURE_LOOP', 'NOT_APPLICABLE']
 
-function validateRuntimeResult(result: RuntimeResult): void {
+function validateRuntimeAnalysisResult(result: RuntimeAnalysisResult): void {
   if (!RUNTIME_VERDICTS.includes(result.verdict)) {
-    throw new Error(`RuntimeResult has unknown verdict: ${result.verdict}`)
+    throw new Error(`RuntimeAnalysisResult has unknown verdict: ${result.verdict}`)
   }
   if (!RETRY_VERDICTS.includes(result.retry)) {
-    throw new Error(`RuntimeResult has unknown retry verdict: ${result.retry}`)
+    throw new Error(`RuntimeAnalysisResult has unknown retry verdict: ${result.retry}`)
   }
   for (const statement of result.statements) {
     if (!RUNTIME_VERDICTS.includes(statement.verdict)) {
       throw new Error(`Statement ${statement.statementIndex} has unknown verdict: ${statement.verdict}`)
+    }
+    for (const measured of [statement.observedClass, statement.predictedClass]) {
+      if (measured !== undefined && !PERFORMANCE_CLASSES.includes(measured)) {
+        throw new Error(`Statement ${statement.statementIndex} has unknown performance class: ${measured}`)
+      }
     }
   }
   for (const finding of result.findings) {
@@ -191,7 +196,7 @@ function validateRuntimeResult(result: RuntimeResult): void {
 
 describe('API contract: runtime result fixture', () => {
   it('has known verdicts and well-formed findings', () => {
-    expect(() => validateRuntimeResult(runtimeResult)).not.toThrow()
+    expect(() => validateRuntimeAnalysisResult(runtimeResult)).not.toThrow()
   })
 
   // Go marshals a nil slice as null, which every consumer here would have to guard.
@@ -201,5 +206,17 @@ describe('API contract: runtime result fixture', () => {
     expect(Array.isArray(runtimeResult.probes)).toBe(true)
     expect(Array.isArray(runtimeResult.findings)).toBe(true)
     expect(runtimeResult.statements.every(statement => Array.isArray(statement.locks))).toBe(true)
+    expect(runtimeResult.statements.every(statement => Array.isArray(statement.rewrittenRelations))).toBe(true)
+  })
+
+  // Phase 1 of the migration to runtime analysis: the prediction is carried beside the
+  // measurement so a disagreement is visible rather than assumed away.
+  it('scores the static prediction against the measurement', () => {
+    const understated = runtimeResult.statements.find(
+      statement => statement.observedClass === 'TABLE_REWRITE' && statement.predictedClass === 'METADATA_ONLY',
+    )
+    expect(understated).toBeDefined()
+    expect(understated!.rewrittenRelations.length).toBeGreaterThan(0)
+    expect(runtimeResult.findings.some(finding => finding.type === 'CLASS_UNDERSTATED')).toBe(true)
   })
 })

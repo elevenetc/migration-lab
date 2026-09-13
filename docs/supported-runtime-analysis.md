@@ -10,26 +10,32 @@ Static analysis reads the AST and reasons about what a statement *is*. Runtime a
 
 ## Relation to the other analysis axes
 
-| Axis                                                   | Source         | Output                       | Question                    |
-|--------------------------------------------------------|----------------|------------------------------|-----------------------------|
-| [`performanceClass`](supported-performance-classes.md) | AST            | attribute on every operation | What class of cost is this? |
-| [Static analysis](supported-static-analysis.md)        | AST            | sparse warning               | What is structurally risky? |
-| Runtime analysis                                       | real execution | measurement + sparse finding | What happens at real scale? |
+| Axis                                                   | Source         | Output                       | Question                       |
+|--------------------------------------------------------|----------------|------------------------------|--------------------------------|
+| [`performanceClass`](supported-performance-classes.md) | AST            | attribute on every operation | What class of cost *should* this be? |
+| [Static analysis](supported-static-analysis.md)        | AST            | sparse warning               | What is structurally risky?    |
+| Runtime analysis                                       | real execution | measurement + sparse finding | What happened at real scale?   |
+
+Cost is the axis where the two overlap, and runtime is the authority on it: the AST class is a *prediction* that the
+measurement scores, and the observed class is what the findings reason about. The prediction stands in only where there is
+nothing to observe — see [Observed performance class](#observed-performance-class).
 
 Runtime findings carry the same fields as static warnings (`type`, `operationId`, `tableName`, `message`), so both
 render through one path. Measurements ride alongside as extra payload.
 
 ## What runs today
 
-Entry point `Analyse` (`internal/runtime`), given a timeline and which migration to measure:
+Entry point `Analyse` (`internal/analysis/runtime`), given a timeline and which migration to measure:
 
 1. Start a throwaway `postgres:16-alpine` container — pinned, so version-gated fast paths match what is measured
 2. Apply every migration *before* the analyzed one
 3. Read the catalog: tables, partitioning, fillable columns
 4. [Seed](#seeding) the touched tables, then `ANALYZE` each so the planner sees real statistics
 5. Open a [reader probe](#probes) per seeded table
-6. Execute the statements under a shared [deadline](#deadline-and-retry-safety), sampling locks throughout
-7. Classify the run, check what a killed attempt left behind, turn measurements into [findings](#findings)
+6. Execute the statements under a shared [deadline](#deadline-and-retry-safety), sampling locks throughout and
+   snapshotting the schema around each one
+7. Derive each statement's [observed performance class](#observed-performance-class) and pair it with the prediction
+8. Classify the run, check what a killed attempt left behind, turn measurements into [findings](#findings)
 
 Notes:
 
@@ -37,6 +43,34 @@ Notes:
 - A statement PostgreSQL refuses to run in a transaction (`CONCURRENTLY`, `VACUUM`, `REINDEX`, `ALTER SYSTEM`, database
   and tablespace DDL) forces the migration to run without one; its effects stay applied
 - Statements are split with `pg_query`, so unmodelled ones run too — a backfill `UPDATE` is measured like any other
+
+## Observed performance class
+
+What class of cost a statement really was, from two snapshots of the public schema taken around it. Every signal is a
+**count**, so the answer does not move with the hardware the run happened on:
+
+1. a relation's `pg_class.relfilenode` changed — which happens if and only if it was rewritten — then `TABLE_REWRITE`,
+   and the relations are named in `rewrittenRelations`
+2. otherwise `pg_stat_get_xact_tuples_returned` grew, so rows were read: `DATA_SCANNING`
+3. otherwise `METADATA_ONLY`
+
+Both snapshots are read on the connection running the migration: a `relfilenode` swapped by an uncommitted `ALTER TABLE`
+is invisible to every other backend, and the tuple counters are transaction-local to the calling backend. They are read
+outside the timed window, so `durationMs` stays comparable.
+
+The measurement is reported as `observedClass` beside the AST's `predictedClass`, and three cases leave `observedClass`
+empty, so the prediction stands in:
+
+- **the statement did not complete.** A cancelled or failed statement leaves the transaction aborted, where nothing can
+  be read. The deadline or failure finding is the answer for those anyway
+- **the migration could not run in a transaction** (`CONCURRENTLY`, `VACUUM`, …). The tuple counters are
+  transaction-local, so outside one they read back as zero and cannot tell a scan from a catalog change. A rewrite is
+  still decidable there, since `relfilenode` is committed state
+- **a table could not be seeded.** A table holding no rows reads nothing and rewrites nothing measurable, so the
+  observation collapses to `METADATA_ONLY` — the same shape a genuinely cheap statement produces, and blind must not read
+  as clean. An observed `TABLE_REWRITE` survives, because a changed `relfilenode` proves a rewrite at any row count.
+  Seed trust is a property of the whole run, since a partitioned parent is seeded through leaves whose names do not match
+  the statement's table
 
 ## Inputs
 
@@ -122,15 +156,24 @@ What the cancelled attempt left behind decides whether a restarting pod ever con
 | `BLOCKS_READERS`      | a reader was observed waiting on a lock the migration held                    |
 | `INVALID_INDEX_LEFT`  | the cancelled run left an invalid index behind                                |
 | `SEED_FAILED`         | a table could not be filled, so its measurements are of an empty table        |
+| `CLASS_UNDERSTATED`   | the observed class was worse than the predicted one                           |
+| `CLASS_OVERSTATED`    | the observed class was cheaper than the predicted one                         |
 
-Why the lock finding consults static analysis:
+The two class findings are what makes the prediction accountable. `CLASS_UNDERSTATED` is the direction that matters: a
+statement the offline gate called cheap and the database rewrote — a migration that passes CI and then rewrites the table
+in production. `CLASS_OVERSTATED` is noise in the prediction rather than risk in the migration; it is what turns a
+warning into background noise. Both are silent unless *both* classes are known, since an unmeasured statement is not
+evidence.
+
+Why the lock finding asks what the statement cost:
 
 - Every `ALTER TABLE` takes `ACCESS EXCLUSIVE`, metadata-only ones included, so the mode alone says nothing
 - What matters is not milliseconds — CI hardware moves that, and a fast runner hides the problem — but whether the work
-  under the lock is constant in table size or grows with it, which is what `performanceClass` already answers
+  under the lock is constant in table size or grows with it, which is what the performance class answers
 - So: raised when the class is worse than `METADATA_ONLY` **and** a reader-blocking lock was observed. No threshold, no
   calibration factor
-- A statement static analysis does not model (`VACUUM FULL`, a hand-written index build) is reported on the observation
+- The class it uses is `observedClass` where there is one, and `predictedClass` where there is not
+- A statement neither measured nor modelled (`VACUUM FULL`, a hand-written index build) is reported on the observation
   alone: nothing said it was safe
 - Below that bar the lock is still reported as the measurement's `strongestLock` — an attribute, not a warning
 
@@ -162,7 +205,8 @@ CI hardware is not production hardware, and a freshly seeded container sits in p
 Absolute durations are optimistic and not portable.
 
 - Prefer ratios over seconds: "exceeds the grace period by 14x" survives a hardware change, "29 minutes" does not
-- Lock modes, blocked-reader observations and retry verdicts are hardware-independent — trust those
+- Lock modes, blocked-reader observations, observed classes and retry verdicts are hardware-independent — trust those.
+  The observed class is derived from counts (`relfilenode`, rows read), never from a duration
 - No finding is gated on a duration threshold, so a fast runner cannot make a problem disappear. The only threshold is
   the deadline, which the caller sets to its own pod's grace period
 - The rollback's own cost is not measured, and a real deploy would pay it

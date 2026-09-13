@@ -35,12 +35,13 @@ func (d *Database) Migrations(migrationId string) ([]models.Migration, error) {
 		return nil, models.ErrNotFound
 	}
 
-	migrations := make([]models.Migration, len(infos))
-	for i, info := range infos {
-		m, err := parser.ParseMigration(info.ID, info.SQL, info.Timestamp)
-		if err != nil {
-			return nil, err
-		}
+	parsed, err := parser.ParseTimeline(infos)
+	if err != nil {
+		return nil, err
+	}
+
+	migrations := make([]models.Migration, len(parsed))
+	for i, m := range parsed {
 		migrations[i] = *m
 	}
 	return migrations, nil

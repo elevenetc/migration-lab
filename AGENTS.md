@@ -15,12 +15,22 @@ Two-module monorepo:
 - **backend/**: Go service for migration parsing, AST generation, static analysis, and runtime analysis
 - **frontend/**: React + TypeScript + Zustand web client for visualization
 
-Analysis comes in two groups, and the docs and packages are named after them:
+Analysis comes in two groups, one package each under `internal/analysis`, and the docs are named
+after them:
 
-- **static analysis** (`internal/analysis`) reads the AST and raises warnings
-- **runtime analysis** (`internal/runtime`) executes one migration against a seeded PostgreSQL
-  container and raises findings from what it measured. See
+- **static analysis** (`internal/analysis/static`) reads the AST and raises warnings. No database
+- **runtime analysis** (`internal/analysis/runtime`) executes one migration against a seeded
+  PostgreSQL container and raises findings from what it measured. See
   [docs/supported-runtime-analysis.md](docs/supported-runtime-analysis.md)
+
+Where a rule lives follows from that split: derivable from the migration text -> `static`,
+only observable -> `runtime`. Two things sit outside both on purpose:
+
+- `models.OperationID` (`operation_id.go`) anchors a static `Warning` and a `RuntimeFinding` alike,
+  so it belongs to neither group
+- performance-class prediction (`models/classify_performance.go`) is static analysis by subject but
+  lives in `models`, because the class is injected while marshalling an operation and `models`
+  cannot import the analysis packages
 
 ## Tech Stack
 
@@ -57,7 +67,7 @@ operations. See [docs/supported-performance-classes.md](docs/supported-performan
 
 A `RuntimeFinding` carries the same fields as a static `Warning` (`type`, `operationId`, `tableName`,
 `message`), so both analysis groups stay renderable through one path. Runtime measurements
-(`StatementMeasurement`, `ProbeResult`, `SeededTable`) ride alongside in `RuntimeResult`.
+(`StatementMeasurement`, `ProbeResult`, `SeededTable`) ride alongside in `RuntimeAnalysisResult`.
 
 #### Data Flow
 
@@ -224,10 +234,10 @@ When adding new Operation types:
 
 ## Static analysis implementation process
 
-1. Create detection function in `internal/analysis/` (e.g., `detect_something.go`)
+1. Create detection function in `internal/analysis/static/` (e.g., `detect_something.go`)
 2. Add to `analyzeStatement()` in `analyse.go` (statement-scoped warnings use `OpIndex = -1`)
-3. Add warning type to `internal/models/analysis.go`
-4. Add test in `internal/analysis/analysis_test.go`
+3. Add warning type to `internal/models/warning.go`
+4. Add test in `internal/analysis/static/analysis_test.go`
 5. Update [docs/supported-static-analysis.md](docs/supported-static-analysis.md)
 
 ## Runtime analysis implementation process
@@ -239,9 +249,9 @@ When adding new Operation types:
 3. Put anything that talks to the database in a file of its own, and wire it into `Analyse`
    (`analyse.go`), which is the package's only entry point
 4. Add a finding type to `internal/models/runtime.go` and raise it in `findings.go`
-5. Add unit tests to `internal/runtime/runtime_test.go`; add a container-backed test to
-   `internal/runtime/analyse_test.go` only for behaviour a real PostgreSQL has to confirm
-6. Keep every collection in `RuntimeResult` an empty slice rather than nil — the frontend types are
+5. Add unit tests to `internal/analysis/runtime/runtime_test.go`; add a container-backed test to
+   `internal/analysis/runtime/analyse_test.go` only for behaviour a real PostgreSQL has to confirm
+6. Keep every collection in `RuntimeAnalysisResult` an empty slice rather than nil — the frontend types are
    arrays, and Go marshals nil as `null`
 7. Extend the fixture in `internal/contracts/generate_test.go` and the validator in
    `validate-api-contracts.test.ts`

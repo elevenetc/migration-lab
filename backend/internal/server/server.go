@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"net/http"
 
+	"migration-timeline/backend/internal/analysis/runtime"
+	"migration-timeline/backend/internal/models"
+
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"migration-timeline/backend/internal/models"
-	"migration-timeline/backend/internal/runtime"
 )
 
 type Config struct {
@@ -32,7 +33,7 @@ type MigrationRunner interface {
 // RuntimeAnalyse measures one migration of a timeline against a seeded container
 // (satisfied by runtime.Analyse). A function rather than an interface: there is
 // one operation, and the tests stub it without a type of their own.
-type RuntimeAnalyse func(ctx context.Context, request runtime.Request) (models.RuntimeResult, error)
+type RuntimeAnalyse func(ctx context.Context, request runtime.Request) (models.RuntimeAnalysisResult, error)
 
 func New(cfg Config) *echo.Echo {
 	e := echo.New()

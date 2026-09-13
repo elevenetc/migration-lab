@@ -17,7 +17,7 @@
                                         "PRIMARY KEY"
                                     ],
                                     "name": "id",
-                                    "type": "SERIAL"
+                                    "type": "serial"
                                 },
                                 {
                                     "constraints": [
@@ -25,7 +25,7 @@
                                         "UNIQUE"
                                     ],
                                     "name": "email",
-                                    "type": "VARCHAR(255)"
+                                    "type": "varchar(255)"
                                 },
                                 {
                                     "constraints": [
@@ -33,7 +33,7 @@
                                     ],
                                     "defaultExpr": "now()",
                                     "name": "created_at",
-                                    "type": "TIMESTAMP"
+                                    "type": "timestamp"
                                 }
                             ],
                             "isPartitioned": false,
@@ -63,7 +63,7 @@
                                 ],
                                 "defaultExpr": "'active'",
                                 "name": "status",
-                                "type": "VARCHAR(50)"
+                                "type": "varchar(50)"
                             },
                             "performanceClass": "METADATA_ONLY",
                             "tableName": "users",
@@ -86,7 +86,7 @@
                     "operations": [
                         {
                             "columnName": "email",
-                            "newType": "TEXT",
+                            "newType": "text",
                             "performanceClass": "TABLE_REWRITE",
                             "tableName": "users",
                             "type": "ALTER_COLUMN_TYPE"
@@ -324,19 +324,19 @@
                                 {
                                     "constraints": [],
                                     "name": "id",
-                                    "type": "SERIAL"
+                                    "type": "serial"
                                 },
                                 {
                                     "constraints": [
                                         "NOT NULL"
                                     ],
                                     "name": "created_at",
-                                    "type": "TIMESTAMP"
+                                    "type": "timestamp"
                                 },
                                 {
                                     "constraints": [],
                                     "name": "value",
-                                    "type": "NUMERIC"
+                                    "type": "numeric"
                                 }
                             ],
                             "isPartitioned": true,
@@ -403,16 +403,16 @@
                 {
                     "index": 0,
                     "kind": "ALTER_TABLE",
-                    "sql": "ALTER TABLE users ADD COLUMN created_at TIMESTAMP DEFAULT now()",
+                    "sql": "ALTER TABLE users ADD COLUMN token INT DEFAULT random()::int",
                     "operations": [
                         {
                             "column": {
                                 "constraints": [
                                     "DEFAULT"
                                 ],
-                                "defaultExpr": "now()",
-                                "name": "created_at",
-                                "type": "TIMESTAMP"
+                                "defaultExpr": "random()::int4",
+                                "name": "token",
+                                "type": "int4"
                             },
                             "performanceClass": "TABLE_REWRITE",
                             "tableName": "users",
@@ -437,7 +437,7 @@
                             "column": {
                                 "constraints": [],
                                 "name": "description",
-                                "type": "TEXT"
+                                "type": "text"
                             },
                             "performanceClass": "METADATA_ONLY",
                             "tableName": "measurements",
@@ -479,7 +479,7 @@
                                         "PRIMARY KEY"
                                     ],
                                     "name": "id",
-                                    "type": "SERIAL"
+                                    "type": "serial"
                                 },
                                 {
                                     "constraints": [
@@ -487,7 +487,7 @@
                                         "UNIQUE"
                                     ],
                                     "name": "email",
-                                    "type": "VARCHAR(255)"
+                                    "type": "varchar(255)"
                                 },
                                 {
                                     "constraints": [
@@ -495,7 +495,7 @@
                                     ],
                                     "defaultExpr": "now()",
                                     "name": "created_at",
-                                    "type": "TIMESTAMP"
+                                    "type": "timestamp"
                                 }
                             ],
                             "isPartitioned": false,
@@ -608,19 +608,19 @@
                                 {
                                     "constraints": [],
                                     "name": "id",
-                                    "type": "SERIAL"
+                                    "type": "serial"
                                 },
                                 {
                                     "constraints": [
                                         "NOT NULL"
                                     ],
                                     "name": "created_at",
-                                    "type": "TIMESTAMP"
+                                    "type": "timestamp"
                                 },
                                 {
                                     "constraints": [],
                                     "name": "value",
-                                    "type": "NUMERIC"
+                                    "type": "numeric"
                                 }
                             ],
                             "isPartitioned": true,
@@ -687,16 +687,16 @@
                 {
                     "index": 0,
                     "kind": "ALTER_TABLE",
-                    "sql": "ALTER TABLE users ADD COLUMN created_at TIMESTAMP DEFAULT now()",
+                    "sql": "ALTER TABLE users ADD COLUMN token INT DEFAULT random()::int",
                     "operations": [
                         {
                             "column": {
                                 "constraints": [
                                     "DEFAULT"
                                 ],
-                                "defaultExpr": "now()",
-                                "name": "created_at",
-                                "type": "TIMESTAMP"
+                                "defaultExpr": "random()::int4",
+                                "name": "token",
+                                "type": "int4"
                             },
                             "performanceClass": "TABLE_REWRITE",
                             "tableName": "users",
@@ -721,7 +721,7 @@
                             "column": {
                                 "constraints": [],
                                 "name": "description",
-                                "type": "TEXT"
+                                "type": "text"
                             },
                             "performanceClass": "METADATA_ONLY",
                             "tableName": "measurements",
@@ -749,7 +749,7 @@
                                 ],
                                 "defaultExpr": "'active'",
                                 "name": "status",
-                                "type": "VARCHAR(50)"
+                                "type": "varchar(50)"
                             },
                             "performanceClass": "METADATA_ONLY",
                             "tableName": "users",
@@ -772,7 +772,7 @@
                     "operations": [
                         {
                             "columnName": "email",
-                            "newType": "TEXT",
+                            "newType": "text",
                             "performanceClass": "TABLE_REWRITE",
                             "tableName": "users",
                             "type": "ALTER_COLUMN_TYPE"
@@ -917,19 +917,19 @@
             "columns": [
                 {
                     "name": "id",
-                    "type": "SERIAL",
+                    "type": "serial",
                     "constraints": []
                 },
                 {
                     "name": "created_at",
-                    "type": "TIMESTAMP",
+                    "type": "timestamp",
                     "constraints": [
                         "NOT NULL"
                     ]
                 },
                 {
                     "name": "value",
-                    "type": "NUMERIC",
+                    "type": "numeric",
                     "constraints": []
                 }
             ],
@@ -946,14 +946,14 @@
             "columns": [
                 {
                     "name": "id",
-                    "type": "SERIAL",
+                    "type": "serial",
                     "constraints": [
                         "PRIMARY KEY"
                     ]
                 },
                 {
                     "name": "email",
-                    "type": "VARCHAR(255)",
+                    "type": "varchar(255)",
                     "constraints": [
                         "NOT NULL",
                         "UNIQUE"
@@ -961,7 +961,7 @@
                 },
                 {
                     "name": "created_at",
-                    "type": "TIMESTAMP",
+                    "type": "timestamp",
                     "constraints": [
                         "DEFAULT"
                     ],
@@ -990,7 +990,7 @@
                                             "PRIMARY KEY"
                                         ],
                                         "name": "id",
-                                        "type": "SERIAL"
+                                        "type": "serial"
                                     },
                                     {
                                         "constraints": [
@@ -998,7 +998,7 @@
                                             "UNIQUE"
                                         ],
                                         "name": "email",
-                                        "type": "VARCHAR(255)"
+                                        "type": "varchar(255)"
                                     },
                                     {
                                         "constraints": [
@@ -1006,7 +1006,7 @@
                                         ],
                                         "defaultExpr": "now()",
                                         "name": "created_at",
-                                        "type": "TIMESTAMP"
+                                        "type": "timestamp"
                                     }
                                 ],
                                 "isPartitioned": false,
@@ -1036,7 +1036,7 @@
                                     ],
                                     "defaultExpr": "'active'",
                                     "name": "status",
-                                    "type": "VARCHAR(50)"
+                                    "type": "varchar(50)"
                                 },
                                 "performanceClass": "METADATA_ONLY",
                                 "tableName": "users",
@@ -1059,7 +1059,7 @@
                         "operations": [
                             {
                                 "columnName": "email",
-                                "newType": "TEXT",
+                                "newType": "text",
                                 "performanceClass": "TABLE_REWRITE",
                                 "tableName": "users",
                                 "type": "ALTER_COLUMN_TYPE"
@@ -1297,19 +1297,19 @@
                                     {
                                         "constraints": [],
                                         "name": "id",
-                                        "type": "SERIAL"
+                                        "type": "serial"
                                     },
                                     {
                                         "constraints": [
                                             "NOT NULL"
                                         ],
                                         "name": "created_at",
-                                        "type": "TIMESTAMP"
+                                        "type": "timestamp"
                                     },
                                     {
                                         "constraints": [],
                                         "name": "value",
-                                        "type": "NUMERIC"
+                                        "type": "numeric"
                                     }
                                 ],
                                 "isPartitioned": true,
@@ -1376,16 +1376,16 @@
                     {
                         "index": 0,
                         "kind": "ALTER_TABLE",
-                        "sql": "ALTER TABLE users ADD COLUMN created_at TIMESTAMP DEFAULT now()",
+                        "sql": "ALTER TABLE users ADD COLUMN token INT DEFAULT random()::int",
                         "operations": [
                             {
                                 "column": {
                                     "constraints": [
                                         "DEFAULT"
                                     ],
-                                    "defaultExpr": "now()",
-                                    "name": "created_at",
-                                    "type": "TIMESTAMP"
+                                    "defaultExpr": "random()::int4",
+                                    "name": "token",
+                                    "type": "int4"
                                 },
                                 "performanceClass": "TABLE_REWRITE",
                                 "tableName": "users",
@@ -1410,7 +1410,7 @@
                                 "column": {
                                     "constraints": [],
                                     "name": "description",
-                                    "type": "TEXT"
+                                    "type": "text"
                                 },
                                 "performanceClass": "METADATA_ONLY",
                                 "tableName": "measurements",

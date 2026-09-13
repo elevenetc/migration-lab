@@ -1,4 +1,4 @@
-package analysis
+package static
 
 import (
 	"fmt"

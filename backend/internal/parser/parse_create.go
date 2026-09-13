@@ -2,7 +2,6 @@ package parser
 
 import (
 	"fmt"
-	"strings"
 
 	pgquery "github.com/pganalyze/pg_query_go/v6"
 	"migration-timeline/backend/internal/models"
@@ -18,15 +17,12 @@ func parseCreateStmt(createStmt *pgquery.CreateStmt) models.Operation {
 			continue
 		}
 
-		colName := colDef.Colname
-		colType := extractTypeName(colDef.TypeName)
-		constraints := extractConstraints(colDef.Constraints)
-
 		columns = append(columns, models.Column{
-			Name:        colName,
-			Type:        colType,
-			Constraints: constraints,
-			DefaultExpr: extractDefaultExpr(colDef.Constraints),
+			Name:            colDef.Colname,
+			Type:            extractColumnType(colDef.TypeName),
+			Constraints:     extractConstraints(colDef.Constraints),
+			DefaultExpr:     extractDefaultExpr(colDef.Constraints),
+			DefaultVolatile: extractDefaultVolatility(colDef.Constraints),
 		})
 	}
 
@@ -57,38 +53,6 @@ func ParseCreateTable(sql string) (*models.CreateTable, error) {
 	op := parseCreateStmt(createStmt)
 	ct := op.(models.CreateTable)
 	return &ct, nil
-}
-
-func extractTypeName(typeName *pgquery.TypeName) string {
-	if typeName == nil {
-		return ""
-	}
-
-	var parts []string
-	for _, name := range typeName.Names {
-		str := name.GetString_()
-		if str != nil && str.Sval != "pg_catalog" {
-			parts = append(parts, str.Sval)
-		}
-	}
-
-	result := strings.Join(parts, ".")
-
-	if len(typeName.Typmods) > 0 {
-		var mods []string
-		for _, mod := range typeName.Typmods {
-			if constVal := mod.GetAConst(); constVal != nil {
-				if ival := constVal.GetIval(); ival != nil {
-					mods = append(mods, fmt.Sprintf("%d", ival.Ival))
-				}
-			}
-		}
-		if len(mods) > 0 {
-			result = fmt.Sprintf("%s(%s)", result, strings.Join(mods, ","))
-		}
-	}
-
-	return result
 }
 
 func extractConstraints(constraints []*pgquery.Node) []string {

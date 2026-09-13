@@ -28,7 +28,7 @@ func TestParseCreateTable(t *testing.T) {
 	if idCol.Name != "id" {
 		t.Errorf("expected first column name 'id', got '%s'", idCol.Name)
 	}
-	if idCol.Type != "serial" {
+	if idCol.Type.String() != "serial" {
 		t.Errorf("expected first column type 'serial', got '%s'", idCol.Type)
 	}
 	if !containsConstraint(idCol.Constraints, "PRIMARY KEY") {
@@ -39,7 +39,7 @@ func TestParseCreateTable(t *testing.T) {
 	if nameCol.Name != "name" {
 		t.Errorf("expected second column name 'name', got '%s'", nameCol.Name)
 	}
-	if nameCol.Type != "varchar(255)" {
+	if nameCol.Type.String() != "varchar(255)" {
 		t.Errorf("expected second column type 'varchar(255)', got '%s'", nameCol.Type)
 	}
 	if !containsConstraint(nameCol.Constraints, "NOT NULL") {
@@ -79,7 +79,7 @@ func TestParseMigration_AddColumn(t *testing.T) {
 	if op.Column.Name != "email" {
 		t.Errorf("expected column name 'email', got '%s'", op.Column.Name)
 	}
-	if op.Column.Type != "varchar(255)" {
+	if op.Column.Type.String() != "varchar(255)" {
 		t.Errorf("expected column type 'varchar(255)', got '%s'", op.Column.Type)
 	}
 }
@@ -109,7 +109,7 @@ func TestParseMigration_AlterColumnType(t *testing.T) {
 	if op.ColumnName != "name" {
 		t.Errorf("expected column name 'name', got '%s'", op.ColumnName)
 	}
-	if op.NewType != "text" {
+	if op.NewType.String() != "text" {
 		t.Errorf("expected new type 'text', got '%s'", op.NewType)
 	}
 }
@@ -223,6 +223,37 @@ func TestParseMigration_AddColumnDefaultExpr(t *testing.T) {
 			op := parseSingleOp(t, test.sql).(models.AddColumn)
 			if op.Column.DefaultExpr != test.expected {
 				t.Errorf("expected default expression '%s', got '%s'", test.expected, op.Column.DefaultExpr)
+			}
+		})
+	}
+}
+
+// Volatility comes from the expression tree, not from the deparsed string: a cast
+// hides the call from any suffix match, and a volatile default is the difference
+// between a catalog write and a full rewrite.
+func TestParseMigration_AddColumnDefaultVolatility(t *testing.T) {
+	tests := []struct {
+		name     string
+		sql      string
+		volatile bool
+	}{
+		{"no default", `ALTER TABLE users ADD COLUMN note TEXT;`, false},
+		{"string constant", `ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'active';`, false},
+		{"cast constant", `ALTER TABLE users ADD COLUMN retries INT DEFAULT '3'::int;`, false},
+		{"stable function", `ALTER TABLE users ADD COLUMN created_at TIMESTAMP DEFAULT now();`, false},
+		{"keyword function", `ALTER TABLE users ADD COLUMN seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;`, false},
+		{"stable function of a constant", `ALTER TABLE users ADD COLUMN tag TEXT DEFAULT upper('a');`, false},
+		{"volatile function", `ALTER TABLE users ADD COLUMN key UUID DEFAULT gen_random_uuid();`, true},
+		{"volatile behind a cast", `ALTER TABLE users ADD COLUMN token INT DEFAULT random()::int;`, true},
+		{"volatile in an expression", `ALTER TABLE users ADD COLUMN score INT DEFAULT random() * 100;`, true},
+		{"volatile nested in a stable call", `ALTER TABLE users ADD COLUMN hash TEXT DEFAULT md5(random()::text);`, true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			op := parseSingleOp(t, test.sql).(models.AddColumn)
+			if op.Column.DefaultVolatile != test.volatile {
+				t.Errorf("expected volatile %v, got %v", test.volatile, op.Column.DefaultVolatile)
 			}
 		})
 	}

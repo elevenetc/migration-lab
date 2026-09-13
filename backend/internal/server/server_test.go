@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
+	"migration-timeline/backend/internal/analysis/runtime"
 	"migration-timeline/backend/internal/database"
 	"migration-timeline/backend/internal/datasets"
 	"migration-timeline/backend/internal/models"
-	"migration-timeline/backend/internal/runtime"
 )
 
 // rawResponse is used for testing JSON structure without full deserialization
@@ -51,8 +51,8 @@ func (f fakeRunner) Run(context.Context, string) (models.RunMigrationsResult, er
 
 // captureAnalyse stands in for runtime.Analyse, recording the request the handler
 // built so the query-parameter mapping is testable without Docker.
-func captureAnalyse(result models.RuntimeResult, err error, seen *runtime.Request) RuntimeAnalyse {
-	return func(_ context.Context, request runtime.Request) (models.RuntimeResult, error) {
+func captureAnalyse(result models.RuntimeAnalysisResult, err error, seen *runtime.Request) RuntimeAnalyse {
+	return func(_ context.Context, request runtime.Request) (models.RuntimeAnalysisResult, error) {
 		*seen = request
 		return result, err
 	}
@@ -117,7 +117,7 @@ func TestResponseStructure(t *testing.T) {
 						models.CreateTable{
 							TableName: "test",
 							Columns: []models.Column{
-								{Name: "id", Type: "serial", Constraints: []string{"PRIMARY KEY"}},
+								{Name: "id", Type: models.NewSQLType("serial"), Constraints: []string{"PRIMARY KEY"}},
 							},
 						},
 					},
@@ -272,7 +272,7 @@ func TestRuntimeUnknownIdReturns404(t *testing.T) {
 	e := New(Config{
 		Port:    8081,
 		Store:   fakeStore{err: models.ErrNotFound},
-		Analyse: captureAnalyse(models.RuntimeResult{}, nil, &seen),
+		Analyse: captureAnalyse(models.RuntimeAnalysisResult{}, nil, &seen),
 	})
 
 	req := httptest.NewRequest(http.MethodPost, "/api/migrations/runtime-analysis?migrationId=bogus", nil)
@@ -297,7 +297,7 @@ func TestRuntimePassesTheQueryThroughAndReturnsTheResult(t *testing.T) {
 	e := New(Config{
 		Port:  8081,
 		Store: store,
-		Analyse: captureAnalyse(models.RuntimeResult{
+		Analyse: captureAnalyse(models.RuntimeAnalysisResult{
 			MigrationID: "v3",
 			Verdict:     models.RuntimeExceedsDeadline,
 			Retry:       models.RetryFailureLoop,
@@ -321,7 +321,7 @@ func TestRuntimePassesTheQueryThroughAndReturnsTheResult(t *testing.T) {
 		t.Errorf("expected the dataset's raw migrations to be handed over, got %+v", seen.Migrations)
 	}
 
-	var result models.RuntimeResult
+	var result models.RuntimeAnalysisResult
 	if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil {
 		t.Fatalf("failed to unmarshal result: %v", err)
 	}
@@ -339,7 +339,7 @@ func TestRuntimeRejectsANonNumericParameter(t *testing.T) {
 		e := New(Config{
 			Port:    8081,
 			Store:   fakeStore{migrations: []models.Migration{{ID: "v1", SQL: "CREATE TABLE t (id int);"}}},
-			Analyse: captureAnalyse(models.RuntimeResult{}, nil, &seen),
+			Analyse: captureAnalyse(models.RuntimeAnalysisResult{}, nil, &seen),
 		})
 
 		req := httptest.NewRequest(http.MethodPost, "/api/migrations/runtime-analysis?migrationId=x&"+query, nil)
@@ -365,7 +365,7 @@ func TestRuntimeFromAPathResolvesTheDirectory(t *testing.T) {
 	e := New(Config{
 		Port:    8081,
 		Store:   fakeStore{err: models.ErrNotFound},
-		Analyse: captureAnalyse(models.RuntimeResult{}, nil, &seen),
+		Analyse: captureAnalyse(models.RuntimeAnalysisResult{}, nil, &seen),
 	})
 
 	target := "/api/migrations/runtime-analysis?migrationsPath=" + url.QueryEscape(dir)

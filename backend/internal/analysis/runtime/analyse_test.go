@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
@@ -93,6 +94,77 @@ func TestAnalyseReportsAFailureLoopWhenTheDeadlineIsTooShort(t *testing.T) {
 	}
 	if !hasFinding(result.Findings, models.FindingExceedsDeadline) {
 		t.Errorf("expected an EXCEEDS_DEADLINE finding, got %+v", result.Findings)
+	}
+}
+
+// One migration per performance class, measured in one run: the observed class
+// comes from counts — a changed relfilenode, rows read inside the transaction —
+// so a faster or slower machine cannot move any of these answers.
+func classTimeline() []models.MigrationInfo {
+	return []models.MigrationInfo{
+		{ID: "V1__create_accounts", Timestamp: 1, SQL: `CREATE TABLE accounts (
+			id SERIAL PRIMARY KEY,
+			email VARCHAR(255),
+			age INT,
+			note TEXT
+		);`},
+		{ID: "V2__classes", Timestamp: 2, SQL: `ALTER TABLE accounts ADD COLUMN c1 TEXT;
+			ALTER TABLE accounts ADD COLUMN c2 TIMESTAMP DEFAULT now();
+			ALTER TABLE accounts ALTER COLUMN email TYPE TEXT;
+			ALTER TABLE accounts ALTER COLUMN note SET NOT NULL;
+			ALTER TABLE accounts ADD COLUMN token INT DEFAULT random()::int;
+			ALTER TABLE accounts ALTER COLUMN age TYPE BIGINT;`},
+	}
+}
+
+func TestAnalyseObservesThePerformanceClassOfEveryStatement(t *testing.T) {
+	result, err := Analyse(context.Background(), Request{
+		Migrations: classTimeline(),
+		Rows:       20_000,
+		Deadline:   2 * time.Minute,
+	})
+	if err != nil {
+		t.Fatalf("Analyse failed: %v", err)
+	}
+	if result.Verdict != models.RuntimeCompleted {
+		t.Fatalf("expected the migration to complete inside two minutes, got %s (%s)", result.Verdict, result.Message)
+	}
+
+	want := []models.PerformanceClass{
+		models.MetadataOnly, // ADD COLUMN c1 TEXT
+		models.MetadataOnly, // ADD COLUMN c2 ... DEFAULT now(), stored in the catalog since PG 11
+		models.MetadataOnly, // varchar(255) -> text is binary-coercible and drops the limit
+		models.DataScanning, // SET NOT NULL reads every row to verify it
+		models.TableRewrite, // DEFAULT random()::int is volatile however the cast hides it
+		models.TableRewrite, // int -> bigint changes the on-disk representation
+	}
+	if len(result.Statements) != len(want) {
+		t.Fatalf("expected %d measured statements, got %d", len(want), len(result.Statements))
+	}
+
+	for i, expected := range want {
+		measurement := result.Statements[i]
+		if measurement.ObservedClass != expected {
+			t.Errorf("statement %d (%s) observed %q, want %q — read %d rows, rewrote %v",
+				i, measurement.SQL, measurement.ObservedClass, expected,
+				measurement.TuplesRead, measurement.RewrittenRelations)
+		}
+		if measurement.PredictedClass != expected {
+			t.Errorf("statement %d (%s) predicted %q, want %q",
+				i, measurement.SQL, measurement.PredictedClass, expected)
+		}
+	}
+
+	for _, i := range []int{4, 5} {
+		if !slices.Contains(result.Statements[i].RewrittenRelations, "accounts") {
+			t.Errorf("statement %d should have named the rewritten relation, got %v",
+				i, result.Statements[i].RewrittenRelations)
+		}
+	}
+
+	if hasFinding(result.Findings, models.FindingClassUnderstated) ||
+		hasFinding(result.Findings, models.FindingClassOverstated) {
+		t.Errorf("expected the prediction to agree with the measurement throughout, got %+v", result.Findings)
 	}
 }
 

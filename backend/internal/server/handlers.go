@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"time"
 
+	"migration-timeline/backend/internal/analysis/runtime"
 	"migration-timeline/backend/internal/loader"
 	"migration-timeline/backend/internal/models"
 	"migration-timeline/backend/internal/parser"
-	"migration-timeline/backend/internal/runtime"
 
 	"github.com/labstack/echo/v4"
 )
@@ -48,13 +48,9 @@ func migrationsFromPath(c echo.Context, path string) error {
 		return badRequest(c, err)
 	}
 
-	migrations := make([]*models.Migration, len(infos))
-	for i, info := range infos {
-		m, err := parser.ParseMigration(info.ID, info.SQL, info.Timestamp)
-		if err != nil {
-			return badRequest(c, err)
-		}
-		migrations[i] = m
+	migrations, err := parser.ParseTimeline(infos)
+	if err != nil {
+		return badRequest(c, err)
 	}
 
 	return c.JSON(http.StatusOK, toResponse(migrations))

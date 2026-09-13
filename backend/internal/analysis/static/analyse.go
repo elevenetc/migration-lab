@@ -1,4 +1,4 @@
-package analysis
+package static
 
 import "migration-timeline/backend/internal/models"
 
@@ -6,7 +6,7 @@ type analysisContext struct {
 	partitionedTables map[string]bool
 }
 
-func Analyse(migrations []*models.Migration) *models.AnalysisResult {
+func Analyse(migrations []*models.Migration) *models.StaticAnalysisResult {
 	partitionedTables := make(map[string]bool)
 
 	for _, m := range migrations {
@@ -30,7 +30,7 @@ func Analyse(migrations []*models.Migration) *models.AnalysisResult {
 		}
 	}
 
-	return &models.AnalysisResult{
+	return &models.StaticAnalysisResult{
 		Migrations: migrations,
 		Warnings:   warnings,
 	}

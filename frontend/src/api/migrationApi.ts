@@ -147,7 +147,7 @@ export interface AccessExclusiveLock {
 
 export type Warning = AccessExclusiveLock
 
-export interface AnalysisResult {
+export interface StaticAnalysisResult {
   warnings: Warning[]
 }
 
@@ -155,7 +155,7 @@ export interface MigrationTimelineResponse {
   timeline: Migration[]
   map: Record<string, Migration>
   createTableMap: Record<string, CreateTableMapEntry>
-  analysis: AnalysisResult
+  analysis: StaticAnalysisResult
 }
 
 function withParams(path: string, params: Record<string, string | null>): string {
@@ -240,6 +240,14 @@ export interface StatementMeasurement {
   locks: LockObservation[]
   verdict: RuntimeVerdict
   error?: string
+  // The class the database produced, derived from counts rather than durations. Absent when the
+  // observation is not usable: the statement never completed, or the tables held no rows.
+  observedClass?: PerformanceClass
+  // What static analysis predicted before the run, absent for a statement it does not model.
+  predictedClass?: PerformanceClass
+  // Relations whose relfilenode changed, which is true if and only if they were rewritten.
+  rewrittenRelations: string[]
+  tuplesRead: number
 }
 
 /** Carries the same fields as a static analysis warning, raised from a measurement. */
@@ -250,7 +258,7 @@ export interface RuntimeFinding {
   message: string
 }
 
-export interface RuntimeResult {
+export interface RuntimeAnalysisResult {
   migrationId: string
   version: string
   deadlineMs: number
@@ -268,7 +276,7 @@ export async function runRuntimeAnalysis(
   migrationId: string | null,
   migrationsPath: string | null,
   migration: string,
-): Promise<RuntimeResult> {
+): Promise<RuntimeAnalysisResult> {
   const target = withParams('/api/migrations/runtime-analysis', { migrationId, migrationsPath, migration })
   const response = await fetch(target, { method: 'POST' })
   if (!response.ok) {

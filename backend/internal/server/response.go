@@ -1,7 +1,7 @@
 package server
 
 import (
-	"migration-timeline/backend/internal/analysis"
+	"migration-timeline/backend/internal/analysis/static"
 	"migration-timeline/backend/internal/models"
 )
 
@@ -20,7 +20,7 @@ func toResponse(migrations []*models.Migration) *models.MigrationTimelineRespons
 		}
 	}
 
-	analysisResult := analysis.Analyse(migrations)
+	analysisResult := static.Analyse(migrations)
 
 	return &models.MigrationTimelineResponse{
 		Timeline:       migrations,
