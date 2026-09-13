@@ -1,0 +1,7 @@
+# GitHub.com documents these job fields, but actionlint's job schema does not
+# include them yet. Remove this exception when actionlint adds support.
+# https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#job-context
+paths:
+  .github/workflows/runtime-analysis.yml:
+    ignore:
+      - 'property "workflow_(repository|sha)" is not defined in object type'

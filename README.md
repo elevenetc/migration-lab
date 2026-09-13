@@ -61,6 +61,8 @@ To measure the last migration, first apply its predecessors and seed the affecte
 ```bash
 ./build/migration-lab --runtime backend/testdata/rewrite
 ./build/migration-lab --runtime --rows 50000 --deadline-ms 30000 backend/testdata/rewrite
+# Select a migration by filename, applying only its predecessors first
+./build/migration-lab --runtime --migration V2__add_email.sql backend/testdata/migrations
 ```
 
 Runtime analysis uses PostgreSQL 16, defaults to 1,000,000 generated rows per touched table, and gives
@@ -80,6 +82,15 @@ performance classes, and retry verdicts.
 Open `report.html` directly in a browser. It includes the frontend assets, migration SQL, and static
 analysis, so the timeline works offline. Runtime measurements are available through the CLI and live
 web application; they are not included in the HTML report. Review the embedded SQL before sharing a report.
+
+## GitHub Actions
+
+Use the reusable [runtime analysis workflow](.github/workflows/runtime-analysis.yml) from another
+repository with one input: `migrations-directory`. It measures new migrations in pull requests, or
+the latest migration on a manual run, using a GitHub-hosted Ubuntu runner and disposable PostgreSQL.
+Results and logs are downloadable artifacts; no PR comments or external server are needed.
+
+See [GitHub setup and debugging](docs/github-actions.md) for the caller workflow and current limits.
 
 ## Web timeline
 
@@ -142,6 +153,8 @@ just test
 
 This generates API contract fixtures, runs the Go tests, typechecks the frontend, and runs the Vitest
 tests. Docker is required for container-backed tests.
+The Go tests include the GitHub automation tests, which also require Git. Run those separately with
+`just test-automation`.
 
 To run the services directly, use `just run-backend` and `just run-frontend` in separate terminals.
 The frontend listens on port 3000 and proxies API requests to port 8080. With Compose, frontend edits
@@ -154,6 +167,7 @@ setting. That recipe also requires the local Go toolchain.
 - [Static analysis warnings](docs/supported-static-analysis.md)
 - [Predicted performance classes](docs/supported-performance-classes.md)
 - [Runtime analysis and findings](docs/supported-runtime-analysis.md)
+- [GitHub Actions setup and debugging](docs/github-actions.md)
 
 ## License
 

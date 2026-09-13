@@ -22,6 +22,7 @@ import (
 var runFlag bool
 var reportFlag string
 var runtimeFlag bool
+var migrationTargetFlag string
 var rowsFlag int64
 var deadlineFlag int64
 
@@ -46,6 +47,12 @@ Examples:
 	Args:          cobra.ExactArgs(1),
 	SilenceUsage:  true,
 	SilenceErrors: true,
+	PreRunE: func(cmd *cobra.Command, args []string) error {
+		if cmd.Flags().Changed("migration") && !runtimeFlag {
+			return fmt.Errorf("--migration requires --runtime")
+		}
+		return nil
+	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		arg := args[0]
 
@@ -62,6 +69,8 @@ func init() {
 	rootCmd.Flags().BoolVar(&runFlag, "run", false, "Run migrations against a PostgreSQL container (requires Docker)")
 	rootCmd.Flags().StringVar(&reportFlag, "report", "", "Generate self-contained HTML report (default: report.html)")
 	rootCmd.Flags().BoolVar(&runtimeFlag, "runtime", false, "Measure the last migration against a seeded PostgreSQL container (requires Docker); exits non-zero unless it completes")
+	rootCmd.Flags().StringVar(&migrationTargetFlag, "migration", "", "Migration filename to measure with --runtime (default: last migration)")
+	rootCmd.MarkFlagsMutuallyExclusive("runtime", "report")
 	rootCmd.Flags().Int64Var(&rowsFlag, "rows", 0, "Rows to seed every touched table to (default 1000000)")
 	rootCmd.Flags().Int64Var(&deadlineFlag, "deadline-ms", 0, "Deadline standing for the pod grace period (default 5000)")
 }
@@ -89,7 +98,7 @@ func processSQL(sql string) error {
 
 func splitStatements(sql string) []string {
 	var statements []string
-	for _, stmt := range strings.Split(sql, ";") {
+	for stmt := range strings.SplitSeq(sql, ";") {
 		stmt = strings.TrimSpace(stmt)
 		if stmt != "" {
 			statements = append(statements, stmt+";")
@@ -99,6 +108,13 @@ func splitStatements(sql string) []string {
 }
 
 func processMigrationInfos(infos []models.MigrationInfo) error {
+	if migrationTargetFlag != "" {
+		var err error
+		infos, err = selectRuntimeMigrations(infos, migrationTargetFlag)
+		if err != nil {
+			return err
+		}
+	}
 	if reportFlag != "" {
 		return generateReport(infos)
 	}
@@ -137,8 +153,7 @@ func processMigrationInfos(infos []models.MigrationInfo) error {
 	return nil
 }
 
-// analyseRuntime measures the last migration of the timeline, the one that just
-// arrived on the branch under review. Naming no target is what asks for it.
+// analyseRuntime measures the selected migration, or the last when none is named.
 func analyseRuntime(infos []models.MigrationInfo) (*models.RuntimeAnalysisResult, error) {
 	if len(infos) == 0 {
 		return nil, fmt.Errorf("no migrations to analyze")
@@ -146,6 +161,7 @@ func analyseRuntime(infos []models.MigrationInfo) (*models.RuntimeAnalysisResult
 
 	result, err := runtime.Analyse(context.Background(), runtime.Request{
 		Migrations: infos,
+		Target:     migrationTargetFlag,
 		Rows:       rowsFlag,
 		Deadline:   time.Duration(deadlineFlag) * time.Millisecond,
 	})

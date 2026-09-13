@@ -2,11 +2,14 @@ package main
 
 import (
 	"encoding/json"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+
+	"migration-lab/backend/internal/models"
 )
 
 func TestCLI_DefaultAnalyze(t *testing.T) {
@@ -165,6 +168,58 @@ func TestCLI_RuntimeFlag(t *testing.T) {
 	users := seeded[0].(map[string]interface{})
 	if users["table"] != "users" || users["rows"].(float64) != 1000 {
 		t.Errorf("expected users seeded to 1000 rows, got %v", users)
+	}
+}
+
+func TestCLI_RuntimeFlag_SelectsMigrationAndIgnoresLaterSQL(t *testing.T) {
+	dir := t.TempDir()
+	files := map[string]string{
+		"V1__create.sql": "CREATE TABLE users (id INT);",
+		"V2__add.sql":    "ALTER TABLE users ADD COLUMN email TEXT;",
+		"V3__later.sql":  "NOT VALID SQL;",
+	}
+	for name, sql := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(sql), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	out := runCLI(t, "--runtime", "--migration", "V2__add.sql", "--rows", "100", dir)
+	var result struct {
+		RuntimeResult  models.RuntimeAnalysisResult `json:"runtimeResult"`
+		AnalysisResult struct {
+			Migrations []json.RawMessage `json:"migrations"`
+		} `json:"analysisResult"`
+	}
+	if err := json.Unmarshal(out, &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.RuntimeResult.MigrationID != "V2__add.sql" || result.RuntimeResult.Verdict != "COMPLETED" {
+		t.Fatalf("unexpected runtime result: %+v", result.RuntimeResult)
+	}
+	if len(result.RuntimeResult.Seeded) != 1 || result.RuntimeResult.Seeded[0].Rows != 100 {
+		t.Fatalf("expected the predecessor's table to be seeded: %+v", result.RuntimeResult.Seeded)
+	}
+	if len(result.AnalysisResult.Migrations) != 2 {
+		t.Fatalf("expected static analysis through the target, got %d migrations", len(result.AnalysisResult.Migrations))
+	}
+}
+
+func TestCLI_MigrationFlagValidation(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"requires runtime", []string{"--migration", "V2__missing.sql"}, "--migration requires --runtime"},
+		{"unknown target", []string{"--runtime", "--migration", "V2__missing.sql"}, `migration "V2__missing.sql" not found`},
+		{"report conflict", []string{"--runtime", "--report=report.html"}, "none of the others can be"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			stderr := runCLIExpectingFailure(t, append(test.args, testdataPath(t, "migrations"))...)
+			if !strings.Contains(stderr, test.want) {
+				t.Fatalf("expected %q, got %s", test.want, stderr)
+			}
+		})
 	}
 }
 

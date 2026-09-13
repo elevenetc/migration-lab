@@ -125,7 +125,8 @@ The CLI (`backend/cmd/cli`) outputs static analysis JSON by default:
 - Default - Parse migrations and output static analysis as JSON
 - `--run` - Also run migrations against a PostgreSQL container
 - `--runtime` - Also measure the last migration against a seeded container;
-  tuned by `--rows` / `--deadline-ms`, exits non-zero unless the verdict is `COMPLETED`
+  select a target with `--migration <filename>`, tune with `--rows` / `--deadline-ms`;
+  exits non-zero unless the verdict is `COMPLETED`
 - `--report` - Generate self-contained HTML report instead of JSON
 
 ### Building CLI with Report Support
@@ -186,7 +187,13 @@ just test
 
 `just test` runs, in order: `generate-contracts` (backend fixtures), `test-backend` (Go),
 `typecheck-frontend` (`tsc --noEmit`, compile-time type-drift guard), and `test-frontend`
-(Vitest unit tests). Frontend-only: `just test-frontend` (or `cd frontend && npm test`).
+(Vitest unit tests). The backend tests include the reusable GitHub workflow's Go/Git tests;
+run those separately with `just test-automation`.
+Frontend-only: `just test-frontend` (or `cd frontend && npm test`).
+
+The reusable workflow is `.github/workflows/runtime-analysis.yml`; its setup and debugging guide is
+[docs/github-actions.md](docs/github-actions.md). It runs on GitHub.com Ubuntu runners and builds
+the CLI from the workflow's own commit. Its Go orchestration lives in `backend/cmd/ci/`.
 
 ## Frontend tests
 

@@ -23,22 +23,22 @@ func LoadMigrationInfosFromDir(dir string) ([]models.MigrationInfo, error) {
 		return nil, fmt.Errorf("not a directory: %s", dir)
 	}
 
-	files, err := filepath.Glob(filepath.Join(dir, "*.sql"))
+	files, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err
 	}
 
 	var infos []models.MigrationInfo
 	for _, file := range files {
-		if strings.HasPrefix(filepath.Base(file), ".") {
+		if file.IsDir() || filepath.Ext(file.Name()) != ".sql" || strings.HasPrefix(file.Name(), ".") {
 			continue
 		}
-		content, err := os.ReadFile(file)
+		content, err := os.ReadFile(filepath.Join(dir, file.Name()))
 		if err != nil {
 			return nil, err
 		}
 		infos = append(infos, models.MigrationInfo{
-			ID:  filepath.Base(file),
+			ID:  file.Name(),
 			SQL: string(content),
 		})
 	}

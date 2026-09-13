@@ -1,0 +1,107 @@
+name: Migration Lab runtime analysis
+
+on:
+  workflow_call:
+    inputs:
+      migrations-directory:
+        description: Repository-relative directory containing the SQL migration history
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      migrations-directory:
+        description: Repository-relative directory containing the SQL migration history
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    concurrency:
+      group: migration-lab-${{ github.workflow }}-${{ inputs.migrations-directory }}-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
+    env:
+      CALLER_ROOT: ${{ github.workspace }}/caller
+      MIGRATION_LAB_ROOT: ${{ github.workspace }}/migration-lab
+      MIGRATIONS_DIRECTORY: ${{ inputs.migrations-directory }}
+      RESULTS_DIR: ${{ github.workspace }}/migration-lab-results
+    steps:
+      - name: Check out migrations
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          path: caller
+          persist-credentials: false
+
+      # The github context belongs to the caller. The job context identifies
+      # this reusable workflow, so its CI command and CLI come from the same SHA.
+      - name: Check out Migration Lab
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: migration-lab
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: migration-lab/backend/go.mod
+          cache-dependency-path: migration-lab/backend/go.sum
+
+      - name: Build CI command
+        working-directory: migration-lab/backend
+        shell: bash
+        run: |
+          mkdir -p "$RESULTS_DIR" ../build
+          exec > >(tee "$RESULTS_DIR/ci-build.log") 2>&1
+          go build -o ../build/migration-lab-ci ./cmd/ci
+
+      - name: Select migrations
+        id: plan
+        run: '"$MIGRATION_LAB_ROOT/build/migration-lab-ci" plan'
+
+      # The CLI imports the HTML report package, whose embedded assets must
+      # exist at build time even though this workflow only produces JSON.
+      - name: Set up Node.js
+        if: steps.plan.outputs.has-targets == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: migration-lab/frontend/package-lock.json
+
+      - name: Build CLI
+        if: steps.plan.outputs.has-targets == 'true'
+        working-directory: migration-lab
+        shell: bash
+        run: |
+          exec > >(tee "$RESULTS_DIR/build.log") 2>&1
+          npm ci --prefix frontend
+          npm run build --prefix frontend
+          cp -r frontend/dist backend/internal/report/dist
+          mkdir -p build
+          cd backend
+          go build -o ../build/migration-lab ./cmd/cli
+
+      - name: Check Docker
+        if: steps.plan.outputs.has-targets == 'true'
+        run: docker info > "$RESULTS_DIR/docker-info.txt" 2>&1
+
+      - name: Analyze migrations
+        if: steps.plan.outputs.has-targets == 'true'
+        run: '"$MIGRATION_LAB_ROOT/build/migration-lab-ci" run'
+
+      - name: Upload results and diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-lab-${{ github.run_id }}-${{ github.run_attempt }}
+          path: migration-lab-results/
+          if-no-files-found: warn
+          retention-days: 7

@@ -193,11 +193,16 @@ that just arrived on the branch.
 
 # Smaller and quicker, with a 30 s grace period
 ./build/migration-lab --runtime --rows 50000 --deadline-ms 30000 /path/to/migrations
+
+# Select an earlier migration by its filename; later migrations are excluded
+./build/migration-lab --runtime --migration V42__add_index.sql /path/to/migrations
 ```
 
 - CLI prints `runtimeResult` alongside the static `analysisResult`, and exits non-zero unless the verdict is
   `COMPLETED` — which is what fails the CI job
 - Web client: each migration cell has a `runtime` button under `focus-in`, result shown in a popup
+- [GitHub Actions](github-actions.md): a reusable workflow measures added migrations in pull requests
+  and retains JSON and diagnostic logs as artifacts
 
 ## Reading the numbers
 

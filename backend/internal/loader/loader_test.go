@@ -48,3 +48,22 @@ func TestLoadMigrationInfosFromDir_Order(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadMigrationInfosFromLiteralDirectory(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "db[1]")
+	if err := os.MkdirAll(filepath.Join(dir, "nested.sql"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"V1__create.sql", ".hidden.sql", "notes.txt"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("SELECT 1;"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	infos, err := LoadMigrationInfosFromDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(infos) != 1 || infos[0].ID != "V1__create.sql" {
+		t.Fatalf("expected only the visible SQL file, got %+v", infos)
+	}
+}
