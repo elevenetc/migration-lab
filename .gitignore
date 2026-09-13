@@ -9,11 +9,16 @@ out/
 node_modules/
 dist/
 .vite/
+*.tsbuildinfo
 
 # Environment
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+
+# Generated reports
+/report.html
+/backend/report.html
 
 # OS
 .DS_Store
@@ -31,5 +36,4 @@ npm-debug.log*
 /.playwright-mcp/
 .compose-build-state/
 /local/
-/backend/report.html
 /.junie/
