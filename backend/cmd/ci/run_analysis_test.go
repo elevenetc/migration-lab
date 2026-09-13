@@ -59,8 +59,12 @@ func TestRunAnalysisPreservesFailureAndContinues(t *testing.T) {
 	if err := readJSON(filepath.Join(output, "results.json"), &results); err != nil {
 		t.Fatal(err)
 	}
-	if len(results) != 2 || results[0].ExitCode != 1 || results[1].ExitCode != 0 {
-		t.Fatalf("expected failure followed by success: %+v", results)
+	want := []migrationResult{
+		{Migration: "V2__space $(name).sql", ExitCode: 1, Result: "V2__space $(name).sql.json", Log: "V2__space $(name).sql.stderr.log"},
+		{Migration: "V10__last.sql", ExitCode: 0, Result: "V10__last.sql.json", Log: "V10__last.sql.stderr.log"},
+	}
+	if !slices.Equal(results, want) {
+		t.Fatalf("expected migration-named artifacts with failure followed by success: %+v", results)
 	}
 	for i, result := range results {
 		var data struct {
@@ -98,7 +102,7 @@ func TestRunAnalysisStopsAtStaticFailure(t *testing.T) {
 	if log, err := os.ReadFile(filepath.Join(output, "static-analysis.stderr.log")); err != nil || !strings.Contains(string(log), "diagnostic") {
 		t.Fatalf("missing diagnostics: %q, %v", log, err)
 	}
-	if _, err := os.Stat(filepath.Join(output, "001.json")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(output, "V10__last.sql.json")); !os.IsNotExist(err) {
 		t.Fatal("runtime analysis should not have started")
 	}
 }

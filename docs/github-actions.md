@@ -22,6 +22,7 @@ permissions:
 
 jobs:
   analyze:
+    name: Migration Lab
     uses: elevenetc/migration-lab/.github/workflows/runtime-analysis.yml@main
     with:
       migrations-directory: db/migrations
@@ -84,9 +85,13 @@ Download the `migration-lab-<run-id>-<attempt>` artifact for:
 | `docker-info.txt`                      | Docker environment information                                                             |
 | `static-analysis.json` / `.stderr.log` | Static analysis of the migration history and parsing diagnostics                           |
 | `results.json`                         | Each target, exit code, and its result/log filenames, in execution order                   |
-| `001.json`, `002.json`, …              | CLI JSON for each measured target, including `runtimeResult`                               |
-| `001.stderr.log`, `002.stderr.log`, …  | Matching execution diagnostics                                                             |
+| `<migration>.sql.json`                 | CLI JSON for each measured target, including `runtimeResult`                               |
+| `<migration>.sql.stderr.log`           | Matching execution diagnostics                                                             |
 | `automation-error.txt`                 | Selection or orchestration errors, when present                                            |
+
+Per-migration files retain the complete SQL filename: analyzing `V2__add_account_status.sql`
+produces `V2__add_account_status.sql.json` and `V2__add_account_status.sql.stderr.log`.
+`results.json` lists these filenames in execution order.
 
 Artifacts are retained for seven days. Upload runs after ordinary failures as well as success;
 forced cancellation or the overall job timeout can interrupt result collection. Individual command

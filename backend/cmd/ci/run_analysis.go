@@ -31,7 +31,7 @@ func runAnalysis(ctx context.Context, binary, repository string, plan migrationP
 		if _, err := fmt.Printf("Analyzing %s (%d/%d)\n", target, i+1, len(plan.Targets)); err != nil {
 			return 1, err
 		}
-		name := fmt.Sprintf("%03d", i+1)
+		name := filepath.Base(target)
 		code, err := runCLI(ctx, binary, []string{"--runtime", "--migration", target, directory}, output, name)
 		if err != nil {
 			return 1, err
