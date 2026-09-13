@@ -22,6 +22,8 @@ jobs:
     name: Runtime analysis
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    outputs:
+      artifact-id: ${{ steps.artifacts.outputs.artifact-id }}
     concurrency:
       group: migration-lab-${{ github.workflow }}-${{ inputs.migrations-directory }}-${{ github.event.pull_request.number || github.ref }}
       cancel-in-progress: true
@@ -99,6 +101,7 @@ jobs:
         run: '"$MIGRATION_LAB_ROOT/build/migration-lab-ci" run'
 
       - name: Upload results and diagnostic logs
+        id: artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -106,3 +109,58 @@ jobs:
           path: migration-lab-results/
           if-no-files-found: warn
           retention-days: 7
+
+  comment:
+    name: PR summary
+    needs: analyze
+    # Fork and Dependabot pull_request tokens are read-only. Keep their analysis
+    # and artifacts without trying to publish with an unavailable permission.
+    if: >-
+      ${{ !cancelled() && github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.actor != 'dependabot[bot]' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    concurrency:
+      group: migration-lab-comment-${{ github.repository }}-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+    env:
+      MIGRATIONS_DIRECTORY: ${{ inputs.migrations-directory }}
+      RESULTS_DIR: ${{ github.workspace }}/migration-lab-results
+      ANALYSIS_STATUS: ${{ needs.analyze.result }}
+    steps:
+      # Only trusted analyzer code is checked out in this job. The analysis job
+      # retains read-only permissions and never receives the publishing token.
+      - name: Check out Migration Lab
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: migration-lab
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: migration-lab/backend/go.mod
+          cache-dependency-path: migration-lab/backend/go.sum
+
+      - name: Download analysis results
+        if: needs.analyze.outputs.artifact-id != ''
+        uses: actions/download-artifact@v4
+        # An early build or checkout failure may leave no artifact. Publish a
+        # failure summary with a run link in that case, replacing any old success.
+        continue-on-error: true
+        with:
+          artifact-ids: ${{ needs.analyze.outputs.artifact-id }}
+          path: migration-lab-results
+          merge-multiple: true
+
+      - name: Create or update PR comment
+        working-directory: migration-lab/backend
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: go run ./cmd/ci comment

@@ -88,7 +88,9 @@ web application; they are not included in the HTML report. Review the embedded S
 Use the reusable [runtime analysis workflow](.github/workflows/runtime-analysis.yml) from another
 repository with one input: `migrations-directory`. It measures new migrations in pull requests, or
 the latest migration on a manual run, using a GitHub-hosted Ubuntu runner and disposable PostgreSQL.
-Results and logs are downloadable artifacts; no PR comments or external server are needed.
+Same-repository PRs receive one bot summary comment, updated on subsequent runs. Full results and
+logs remain downloadable artifacts. The caller grants `pull-requests: write`; no external server
+is needed.
 
 See [GitHub setup and debugging](docs/github-actions.md) for the caller workflow and current limits.
 

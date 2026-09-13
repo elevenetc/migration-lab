@@ -194,6 +194,10 @@ Frontend-only: `just test-frontend` (or `cd frontend && npm test`).
 The reusable workflow is `.github/workflows/runtime-analysis.yml`; its setup and debugging guide is
 [docs/github-actions.md](docs/github-actions.md). It runs on GitHub.com Ubuntu runners and builds
 the CLI from the workflow's own commit. Its Go orchestration lives in `backend/cmd/ci/`.
+It keeps analysis read-only and uses a separate job to create or update one bot comment per
+same-repository PR. Callers must grant `pull-requests: write`; fork and Dependabot PRs retain
+analysis and artifacts without comments. Comment formatting and GitHub API tests are included
+in `just test-automation`.
 
 ## Frontend tests
 

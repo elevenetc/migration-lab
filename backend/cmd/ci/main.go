@@ -48,11 +48,14 @@ func runCommand(ctx context.Context, args []string, config configuration) (int, 
 	if err := os.MkdirAll(config.output, 0o755); err != nil {
 		return 1, err
 	}
+	if len(args) != 1 {
+		return 1, fmt.Errorf("usage: migration-lab-ci <plan|run|comment>")
+	}
+	if args[0] == "comment" {
+		return 0, commentOnPR(ctx, config)
+	}
 	if config.repository == "" || config.source == "" {
 		return 1, fmt.Errorf("CALLER_ROOT and MIGRATION_LAB_ROOT are required")
-	}
-	if len(args) != 1 {
-		return 1, fmt.Errorf("usage: migration-lab-ci <plan|run>")
 	}
 	switch args[0] {
 	case "plan":
@@ -101,6 +104,6 @@ func runCommand(ctx context.Context, args []string, config configuration) (int, 
 		}
 		return runAnalysis(ctx, filepath.Join(config.source, "build", "migration-lab"), config.repository, plan, config.output)
 	default:
-		return 1, fmt.Errorf("unknown command %q; expected plan or run", args[0])
+		return 1, fmt.Errorf("unknown command %q; expected plan, run, or comment", args[0])
 	}
 }

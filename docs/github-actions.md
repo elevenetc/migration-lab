@@ -2,7 +2,8 @@
 
 The reusable workflow at `.github/workflows/runtime-analysis.yml` runs Migration Lab on a
 GitHub-hosted Ubuntu 24.04 runner. PostgreSQL is disposable; no server, persistent database,
-Marketplace installation, or PR comment permissions are needed.
+or Marketplace installation is needed. It posts one summary comment on same-repository PRs and
+updates that comment after subsequent runs.
 
 ## Set up another repository
 
@@ -19,6 +20,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
   analyze:
@@ -33,6 +35,8 @@ initial testing; replace it with a full commit SHA to pin the workflow. The anal
 checked out at the workflow's own SHA, so pinning also pins the CLI. A tag or GitHub Release is
 optional. The source repository must be readable by the caller's token; a public Migration Lab
 repository supports this example without extra credentials. Organization Actions policies still apply.
+The caller must grant `pull-requests: write`: reusable workflows cannot elevate the caller's
+permissions. This also applies when upgrading an existing caller to the version with PR comments.
 
 This workflow targets GitHub.com: it uses `job.workflow_repository` and `job.workflow_sha` to
 identify its own source when called from another repository.
@@ -66,11 +70,40 @@ directory.
 
 The workflow sets up Go and builds `backend/cmd/ci` before selecting targets. Its `plan` command
 uses the shared migration loader for numeric Flyway ordering; its `run` command invokes the CLI
-and collects results. No Python interpreter or packages are required.
+and collects results. Its `comment` command publishes the PR summary from the collected results.
+No Python interpreter or packages are required.
 
 The first version builds the CLI from source when targets are found. That also builds the frontend
 because the CLI's HTML report package embeds its assets, although this workflow only outputs JSON.
 Go and npm dependencies are cached; databases are recreated for each target.
+
+## PR summary
+
+The **PR summary** job creates a comment authored by `github-actions[bot]` containing:
+
+- The analyzed commit, migration directory, and a link to the workflow run and its artifacts.
+- Each selected migration's verdict, measured execution time, and execution deadline.
+- Actual seeded row counts per table, including seeding failures.
+- Runtime findings and their explanations.
+
+Execution time sums the measured statements; it excludes container setup and seeding. A
+`COMPLETED` verdict can still have findings or failed seeding, which remain visible in the comment.
+Long reports show a bounded summary and link to the complete artifacts.
+
+The publisher finds its existing comment using a hidden marker and verified bot author, then
+updates it. It searches all comment pages and leaves human comments untouched. Publishers are
+serialized per PR, and results for an outdated PR head or older run/attempt are skipped. Use one
+migration-directory configuration per PR; the comment represents the latest analysis run.
+
+Ordinary analysis failures still publish a summary, including when only partial results or no
+artifacts were collected. A PR that no longer adds migrations updates the comment to say analysis
+was skipped. Forced cancellation and job timeouts can prevent publication; check the commit and
+run link in an existing comment. A GitHub API error fails the publishing job with a diagnostic.
+
+The analysis job keeps `contents: read`. A separate publishing job receives `pull-requests: write`,
+checks out only the analyzer's source, and reads the analysis artifacts. Manual runs, fork PRs, and
+Dependabot-triggered PRs do not post comments; their analysis checks and downloadable artifacts
+remain available. Fork PRs follow GitHub's normal workflow approval rules and use read-only tokens.
 
 ## Inspect a run
 
@@ -102,9 +135,6 @@ The job fails if parsing, setup, or any runtime target fails or exceeds its dead
 findings alone do not fail it: `COMPLETED` may still contain reader blocking, table rewrites, or
 `SEED_FAILED`. Inspect the result and its seeding coverage during validation.
 
-Fork PRs follow GitHub's normal workflow approval rules. The workflow uses read-only repository
-permissions and does not require secrets or a comment-publishing job.
-
 ## Local checks
 
 ```bash
@@ -116,6 +146,8 @@ go run github.com/rhysd/actionlint/cmd/actionlint@latest -shellcheck= .github/wo
 Automation tests live alongside `backend/cmd/ci` and run as part of `go test ./...`. They use
 temporary Git repositories and a Go test subprocess as a stub CLI to check whole-PR diffs, numeric
 ordering from the shared loader, manual selection, and artifact retention after failures.
+Comment tests cover runtime summaries, missing and partial results, bounded and escaped output,
+and a local fake GitHub API for create/update, pagination, stale runs, and API failures.
 The Go CLI tests cover selecting a real migration and replaying its predecessors against PostgreSQL.
 The actionlint configuration suppresses only its currently unknown `job.workflow_repository` and
 `job.workflow_sha` properties; both are documented GitHub.com contexts.

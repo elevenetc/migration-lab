@@ -10,6 +10,7 @@ import (
 )
 
 type workflowEvent struct {
+	Number      int `json:"number"`
 	PullRequest struct {
 		Head struct {
 			SHA string `json:"sha"`
