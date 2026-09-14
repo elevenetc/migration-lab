@@ -10,7 +10,7 @@ import (
 	"migration-lab/backend/internal/models"
 )
 
-func TestCommentSummarizesActualRuntimeCoverage(t *testing.T) {
+func TestCommentShowsConciseReviewSummary(t *testing.T) {
 	run := testCommentRun()
 	output := t.TempDir()
 	target := "V2__add_account_status.sql"
@@ -18,17 +18,29 @@ func TestCommentSummarizesActualRuntimeCoverage(t *testing.T) {
 	saveCommentFixture(t, output, "results.json", []migrationResult{{Migration: target, Result: target + ".json"}})
 	saveCommentFixture(t, output, target+".json", map[string]any{"runtimeResult": models.RuntimeAnalysisResult{
 		MigrationID: target, Verdict: models.RuntimeCompleted, DeadlineMs: 5000,
-		Statements: []models.StatementMeasurement{{DurationMs: 12}, {DurationMs: 3}},
-		Seeded:     []models.SeededTable{{Table: "accounts", Rows: 1_000_000}},
+		Statements: []models.StatementMeasurement{
+			{DurationMs: 12, PredictedClass: models.MetadataOnly, ObservedClass: models.MetadataOnly},
+			{DurationMs: 3, PredictedClass: models.MetadataOnly, ObservedClass: models.MetadataOnly},
+		},
+		Seeded:  []models.SeededTable{{Table: "accounts", Rows: 1_000_000}},
+		Message: "all 2 statements completed in 15 ms",
 	}})
 	body := renderPRComment(loadCommentSummary(output, run.Head), run)
 	for _, want := range []string{
-		"Migration Lab — Completed", target, run.Head, "db/migrations",
-		"**Execution:** 15 ms", "**Deadline:** 5000 ms", "` accounts `: 1000000 rows",
-		"**Runtime findings:** none", "/actions/runs/100/attempts/1", "excluding setup and seeding",
+		"## Migration runtime analysis\n", target, "**Recommendation:** No runtime concerns found.",
+		"**Execution:** 15 ms", "**Predicted class:** ` METADATA_ONLY `", "**Observed class:** ` METADATA_ONLY `",
+		"[View full analysis]", "/actions/runs/100/attempts/1",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing %q in comment:\n%s", want, body)
+		}
+	}
+	for _, unwanted := range []string{
+		"Commit:", run.Head, "Directory:", "db/migrations", "Deadline:", "5000", "1000000", "**Seeding**",
+		"all 2 statements", "Execution time is the sum", "findings alone do not fail", "**Verdict:**", "COMPLETED",
+	} {
+		if strings.Contains(body, unwanted) {
+			t.Errorf("unwanted detail %q in comment:\n%s", unwanted, body)
 		}
 	}
 }
@@ -44,12 +56,12 @@ func TestCommentShowsFindingsAndFailedSeedingEvenWhenCompleted(t *testing.T) {
 			},
 		},
 	}}}, testCommentRun())
-	for _, want := range []string{"Migration Lab — Completed", "**failed**", "could not seed accounts", "SEED_FAILED", "BLOCKS_READERS", "Readers waited for a lock", "findings alone do not fail"} {
+	for _, want := range []string{"Migration runtime analysis", "Analysis incomplete", "**Seeding failed:**", "could not seed accounts", "SEED_FAILED", "BLOCKS_READERS", "Readers waited for a lock"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing %q in comment:\n%s", want, body)
 		}
 	}
-	if strings.Contains(body, "1000000") || strings.Contains(body, "findings:** none") {
+	if strings.Contains(body, "1000000") || strings.Contains(body, "No runtime concerns found") {
 		t.Fatalf("comment must not invent seeding coverage or hide findings:\n%s", body)
 	}
 }
@@ -89,7 +101,7 @@ func TestCommentHandlesFailuresAndPartialArtifacts(t *testing.T) {
 				tc.setup(t, output, run)
 			}
 			body := renderPRComment(loadCommentSummary(output, run.Head), run)
-			if !strings.Contains(body, tc.want) || strings.Contains(body, "Migration Lab — Completed") || strings.Contains(body, "findings:** none") {
+			if !strings.Contains(body, tc.want) || strings.Contains(body, "No runtime concerns found") {
 				t.Fatalf("misleading failure summary:\n%s", body)
 			}
 		})
@@ -107,7 +119,7 @@ func TestCommentIncludesAllTargetsAfterRuntimeFailure(t *testing.T) {
 		saveCommentFixture(t, output, targets[i]+".json", map[string]any{"runtimeResult": models.RuntimeAnalysisResult{MigrationID: targets[i], Verdict: verdict}})
 	}
 	body := renderPRComment(loadCommentSummary(output, run.Head), run)
-	for _, want := range []string{"Analysis failed", targets[0], targets[1], targets[2], "EXCEEDS_DEADLINE", "COMPLETED", "No runtime result was collected"} {
+	for _, want := range []string{"Analysis did not finish successfully", targets[0], targets[1], targets[2], "Do not merge", "exceeded the runtime limit", "Review before merging", "No runtime result was collected"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing %q:\n%s", want, body)
 		}
@@ -162,7 +174,7 @@ func TestCommentEscapingPreservesEntitiesAndCodeBoundaries(t *testing.T) {
 }
 
 func testCommentRun() commentRun {
-	return commentRun{Repository: "owner/repo", Number: 7, Head: strings.Repeat("a", 40), Directory: "db/migrations", RunID: 100, Attempt: 1, Status: "success"}
+	return commentRun{Repository: "owner/repo", Number: 7, Head: strings.Repeat("a", 40), RunID: 100, Attempt: 1, Status: "success"}
 }
 
 func saveCommentFixture(t *testing.T, output, name string, value any) {

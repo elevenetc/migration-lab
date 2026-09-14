@@ -23,7 +23,7 @@ func commentOnPR(ctx context.Context, config configuration) error {
 	attempt, attemptErr := strconv.ParseInt(os.Getenv("GITHUB_RUN_ATTEMPT"), 10, 64)
 	run := commentRun{
 		Repository: os.Getenv("GITHUB_REPOSITORY"), Number: event.Number,
-		Head: event.PullRequest.Head.SHA, Directory: config.directory,
+		Head:  event.PullRequest.Head.SHA,
 		RunID: runID, Attempt: attempt, Status: os.Getenv("ANALYSIS_STATUS"),
 	}
 	if runErr != nil || attemptErr != nil || runID < 1 || attempt < 1 || run.Number < 1 ||
