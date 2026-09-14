@@ -12,25 +12,15 @@ import (
 
 const lockSampleInterval = 20 * time.Millisecond
 
-// lockSample is what the sampler saw while a statement ran.
-type lockSample struct {
-	Locks []models.LockObservation
-	// BlockedTicks counts the ticks in which a backend was waiting on a lock the
-	// migration held, keyed by that backend's pid. Multiplied by the sample
-	// interval it is how long that backend waited.
-	BlockedTicks map[uint32]int
-}
-
-// startLockSampler polls what the migration's backend holds, and who is stuck
-// behind it, until the returned stop function is called. Sampling runs on a
-// connection of its own, since the sampled backend is busy running DDL.
-func startLockSampler(ctx context.Context, sampler *pgx.Conn, pid uint32) func() lockSample {
+// startLockSampler polls the locks the migration's backend holds until the
+// returned stop function is called. Sampling runs on a connection of its own,
+// since the sampled backend is busy running DDL.
+func startLockSampler(ctx context.Context, sampler *pgx.Conn, pid uint32) func() []models.LockObservation {
 	stopped := make(chan struct{})
-	done := make(chan lockSample, 1)
+	done := make(chan []models.LockObservation, 1)
 
 	go func() {
 		seen := map[models.LockObservation]bool{}
-		blockedTicks := map[uint32]int{}
 
 		for {
 			if locks, err := sampleLocks(ctx, sampler, pid); err == nil {
@@ -38,22 +28,16 @@ func startLockSampler(ctx context.Context, sampler *pgx.Conn, pid uint32) func()
 					seen[lock] = true
 				}
 			}
-			if blocked, err := sampleBlockedReaders(ctx, sampler, pid); err == nil {
-				for _, blockedPID := range blocked {
-					blockedTicks[blockedPID]++
-				}
-			}
-
 			select {
 			case <-stopped:
-				done <- lockSample{Locks: sortedLocks(seen), BlockedTicks: blockedTicks}
+				done <- sortedLocks(seen)
 				return
 			case <-time.After(lockSampleInterval):
 			}
 		}
 	}()
 
-	return func() lockSample {
+	return func() []models.LockObservation {
 		close(stopped)
 		return <-done
 	}

@@ -65,11 +65,8 @@ func TestAnalyseSeedsThePartitionAndSeesTheExclusiveLock(t *testing.T) {
 		t.Errorf("expected the parent and its partition to be locked, got %+v", measurement.Locks)
 	}
 
-	if len(result.Probes) != 1 || result.Probes[0].Table != "events_2026" {
-		t.Fatalf("expected one reader probe on the seeded partition, got %+v", result.Probes)
-	}
-	if result.Probes[0].Samples == 0 {
-		t.Error("expected the reader probe to have read at least once")
+	if !hasFinding(result.Findings, models.FindingExclusiveLock) {
+		t.Errorf("expected an exclusive lock finding for the rewrite, got %+v", result.Findings)
 	}
 	if result.Retry != models.RetryNotApplicable {
 		t.Errorf("expected no retry question for a completed migration, got %s", result.Retry)

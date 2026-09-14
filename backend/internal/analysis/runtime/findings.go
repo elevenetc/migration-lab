@@ -8,8 +8,8 @@ import (
 )
 
 // Findings turns the measurements of a run into warning-shaped findings: first
-// what stopped the migration, then what it held up while it ran, then what could
-// not be measured because a table stayed empty.
+// statement failures, performance and locks, then what could not be measured
+// because a table stayed empty, and finally any leftovers that prevent retrying.
 func Findings(migration *models.Migration, result models.RuntimeAnalysisResult) []models.RuntimeFinding {
 	// Empty rather than nil: a clean run must marshal as [] for the frontend's
 	// RuntimeFinding[], and a clean run is the common case.
@@ -17,21 +17,6 @@ func Findings(migration *models.Migration, result models.RuntimeAnalysisResult) 
 
 	for _, measurement := range result.Statements {
 		findings = append(findings, statementFindings(migration, result, measurement)...)
-	}
-
-	for _, probe := range result.Probes {
-		if probe.BlockedMs <= 0 {
-			continue
-		}
-		findings = append(findings, models.RuntimeFinding{
-			Type:        models.FindingBlocksReaders,
-			OperationID: statementID(migration, models.StatementScoped),
-			TableName:   probe.Table,
-			Message: fmt.Sprintf(
-				"a concurrent reader of %s was waiting on a lock the migration held for %d ms of the run, "+
-					"its slowest read taking %d ms",
-				probe.Table, probe.BlockedMs, probe.MaxLatencyMs),
-		})
 	}
 
 	for _, seeded := range result.Seeded {

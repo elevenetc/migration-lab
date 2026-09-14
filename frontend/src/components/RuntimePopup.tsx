@@ -87,20 +87,6 @@ function Result({result}: {result: RuntimeAnalysisResult}) {
           ))}
         </ul>
       </section>
-
-      {result.probes.length > 0 && (
-        <section className="runtime-section">
-          <h3>Concurrent readers</h3>
-          <ul>
-            {result.probes.map((probe) => (
-              <li key={probe.table}>
-                {probe.table} — blocked {probe.blockedMs} ms, slowest read {probe.maxLatencyMs} ms,
-                {' '}{probe.samples} reads
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
     </>
   )
 }

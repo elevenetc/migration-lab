@@ -358,9 +358,6 @@ func TestGenerateRuntimeResultFixture(t *testing.T) {
 				RewrittenRelations: []string{},
 			},
 		},
-		Probes: []models.ProbeResult{
-			{Table: "events_2026", Samples: 84, Errors: 0, MaxLatencyMs: 4903, BlockedMs: 4903},
-		},
 		Verdict: models.RuntimeExceedsDeadline,
 		Retry:   models.RetryFailureLoop,
 		Findings: []models.RuntimeFinding{
@@ -382,12 +379,6 @@ func TestGenerateRuntimeResultFixture(t *testing.T) {
 				OperationID: statementID,
 				TableName:   "events",
 				Message:     "statement 1 held AccessExclusiveLock on events, events_2026 for 5001 ms",
-			},
-			{
-				Type:        models.FindingBlocksReaders,
-				OperationID: statementID,
-				TableName:   "events_2026",
-				Message:     "a concurrent reader of events_2026 waited 4903 ms across the run",
 			},
 		},
 		Message: "statement 0 was cancelled after the 5000 ms deadline",

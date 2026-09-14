@@ -71,7 +71,7 @@ operations. See [docs/supported-performance-classes.md](docs/supported-performan
 
 A `RuntimeFinding` carries the same fields as a static `Warning` (`type`, `operationId`, `tableName`,
 `message`), so both analysis groups stay renderable through one path. Runtime measurements
-(`StatementMeasurement`, `ProbeResult`, `SeededTable`) ride alongside in `RuntimeAnalysisResult`.
+(`StatementMeasurement`, `SeededTable`) ride alongside in `RuntimeAnalysisResult`.
 
 #### Data Flow
 

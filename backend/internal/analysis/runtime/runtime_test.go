@@ -250,7 +250,7 @@ func TestTransactionalRejectsStatementsPostgresRefusesInATransaction(t *testing.
 	}
 }
 
-func TestFindingsReportWhatStoppedTheRunAndWhatItBlocked(t *testing.T) {
+func TestFindingsReportWhatStoppedTheRunAndWhichLocksItHeld(t *testing.T) {
 	migration := &models.Migration{
 		ID: "V3__widen_note",
 		Statements: []models.Statement{{
@@ -274,8 +274,7 @@ func TestFindingsReportWhatStoppedTheRunAndWhatItBlocked(t *testing.T) {
 			},
 			Verdict: models.RuntimeExceedsDeadline,
 		}},
-		Probes: []models.ProbeResult{{Table: "events_2026", BlockedMs: 4800, MaxLatencyMs: 4800}},
-		Retry:  models.RetryFailureLoop,
+		Retry: models.RetryFailureLoop,
 	}
 
 	findings := Findings(migration, result)
@@ -284,7 +283,7 @@ func TestFindingsReportWhatStoppedTheRunAndWhatItBlocked(t *testing.T) {
 	for i, finding := range findings {
 		types[i] = finding.Type
 	}
-	want := []string{models.FindingExceedsDeadline, models.FindingExclusiveLock, models.FindingBlocksReaders}
+	want := []string{models.FindingExceedsDeadline, models.FindingExclusiveLock}
 	if !reflect.DeepEqual(types, want) {
 		t.Errorf("finding types = %v, want %v", types, want)
 	}
@@ -306,7 +305,7 @@ func TestFindingsStaySilentForAMetadataOnlyAlter(t *testing.T) {
 		}},
 	}
 	// Every ALTER TABLE takes ACCESS EXCLUSIVE, but a metadata-only one holds it for
-	// a time that does not grow with the table, and no reader was seen waiting.
+	// work that does not grow with the table.
 	result := models.RuntimeAnalysisResult{
 		DeadlineMs: 5000,
 		Seeded:     []models.SeededTable{{Table: "accounts", Rows: 1_000_000}},
@@ -320,8 +319,7 @@ func TestFindingsStaySilentForAMetadataOnlyAlter(t *testing.T) {
 			Locks:          []models.LockObservation{{Mode: "AccessExclusiveLock", Relation: "accounts"}},
 			Verdict:        models.RuntimeCompleted,
 		}},
-		Probes: []models.ProbeResult{{Table: "accounts", Samples: 1, BlockedMs: 0}},
-		Retry:  models.RetryNotApplicable,
+		Retry: models.RetryNotApplicable,
 	}
 
 	if findings := Findings(migration, result); len(findings) != 0 {

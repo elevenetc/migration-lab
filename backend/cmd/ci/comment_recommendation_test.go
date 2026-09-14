@@ -14,8 +14,9 @@ func TestCommentRecommendationUsesRiskAndEvidence(t *testing.T) {
 		want   string
 	}{
 		{name: "clean metadata operation", want: "No runtime concerns found"},
-		{name: "brief reader blocking still needs review", want: "Review before merging — concurrent readers were blocked", change: func(m *commentMigration) {
-			m.Runtime.Findings = []models.RuntimeFinding{{Type: models.FindingBlocksReaders}}
+		{name: "metadata-only exclusive lock", want: "No runtime concerns found", change: func(m *commentMigration) {
+			m.Runtime.Statements[0].StrongestLock = "AccessExclusiveLock"
+			m.Runtime.Statements[0].Locks = []models.LockObservation{{Mode: "AccessExclusiveLock", Relation: "accounts"}}
 		}},
 		{name: "reader-blocking lock", want: "Review before merging — reader-blocking lock duration", change: func(m *commentMigration) {
 			m.Runtime.Findings = []models.RuntimeFinding{{Type: models.FindingExclusiveLock}}
@@ -49,7 +50,7 @@ func TestCommentRecommendationUsesRiskAndEvidence(t *testing.T) {
 			m.Runtime.Retry = models.RetryFailureLoop
 		}},
 		{name: "failure finding takes priority over blocking", want: "Do not merge", change: func(m *commentMigration) {
-			m.Runtime.Findings = []models.RuntimeFinding{{Type: models.FindingBlocksReaders}, {Type: models.FindingStatementFailed}}
+			m.Runtime.Findings = []models.RuntimeFinding{{Type: models.FindingExclusiveLock}, {Type: models.FindingStatementFailed}}
 		}},
 		{name: "failed seeding", want: "Analysis incomplete — resolve seeding coverage", change: func(m *commentMigration) {
 			m.Runtime.Seeded[0].Error = "failed"

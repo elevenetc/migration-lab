@@ -4,7 +4,7 @@ Findings produced by *executing* one migration against a real PostgreSQL contain
 size.
 
 Static analysis reads the AST and reasons about what a statement *is*. Runtime analysis runs it and observes what it
-*does*: duration, locks held, who was blocked, what a killed attempt leaves behind.
+*does*: duration, locks held, rows scanned, relations rewritten, and what a killed attempt leaves behind.
 
 > Status: [What runs today](#what-runs-today) is implemented. Sections marked **planned** are not.
 
@@ -31,11 +31,10 @@ Entry point `Analyse` (`internal/analysis/runtime`), given a timeline and which 
 2. Apply every migration *before* the analyzed one
 3. Read the catalog: tables, partitioning, fillable columns
 4. [Seed](#seeding) the touched tables, then `ANALYZE` each so the planner sees real statistics
-5. Open a [reader probe](#probes) per seeded table
-6. Execute the statements under a shared [deadline](#deadline-and-retry-safety), sampling locks throughout and
+5. Execute the statements under a shared [deadline](#deadline-and-retry-safety), sampling locks throughout and
    snapshotting the schema around each one
-7. Derive each statement's [observed performance class](#observed-performance-class) and pair it with the prediction
-8. Classify the run, check what a killed attempt left behind, turn measurements into [findings](#findings)
+6. Derive each statement's [observed performance class](#observed-performance-class) and pair it with the prediction
+7. Classify the run, check what a killed attempt left behind, turn measurements into [findings](#findings)
 
 Notes:
 
@@ -110,18 +109,18 @@ How: `generate_series`, skipping columns the database fills itself (identity, ge
 Anything else (enums, arrays, domains) is left to its default. A `NOT NULL` column with no filler fails the seed: raised
 as `SEED_FAILED`, and the run continues against an empty table rather than crashing.
 
-## Probes
+## Lock observations
 
-- One concurrent reader per seeded table, `SELECT 1 FROM t LIMIT 1` every 5 ms, at most four tables
-- The reads take `ACCESS SHARE`, so `ACCESS EXCLUSIVE` stalls them exactly as it stalls production readers
-- *Blocked* is not inferred from latency — any threshold is wrong on hardware it was not picked for. PostgreSQL is asked
-  directly: `pg_stat_activity.wait_event_type = 'Lock'` plus `pg_blocking_pids`, sampled every 20 ms
-- Reported per table: reads, errors, slowest read (raw data, not a verdict), time observed waiting
-- Locks come from `pg_locks` on the same sampling connection. Relations gone from `pg_class` — the transient heap of a
-  rewrite — are dropped; parent *and* every partition show up, so fan-out is visible
+- Locks come from `pg_locks` on a separate connection, sampled every 20 ms while each statement runs
+- Relations gone from `pg_class` — the transient heap of a rewrite — are dropped; parent *and* partition locks can
+  show up, so fan-out is visible
+- Reported per statement: observed relation locks and their strongest mode. Brief locks can fall between samples;
+  an empty observation does not prove that no lock was held
+- Findings combine reader-blocking lock modes with work that scales with table size. A metadata-only column addition
+  with a fixed default does not warrant a lock finding just because it takes `ACCESS EXCLUSIVE`
 
-**Planned**: a `writer` probe (blocked writers, serialization failures) and a `longTransaction` probe (DDL queueing
-behind a slow query, then head-of-line blocking every later reader).
+Runtime analysis does not start concurrent readers or report reader latency or wait time. A sampled reader wait depends
+on scheduling and does not establish whether the migration's cost grows with table size.
 
 ## Deadline and retry safety
 
@@ -153,7 +152,6 @@ What the cancelled attempt left behind decides whether a restarting pod ever con
 | `EXCEEDS_DEADLINE`    | a statement was cancelled at the deadline                                     |
 | `STATEMENT_FAILED`    | a statement raised an error                                                   |
 | `EXCLUSIVE_LOCK_HELD` | a reader-blocking lock **and** a cost that scales with table size — see below |
-| `BLOCKS_READERS`      | a reader was observed waiting on a lock the migration held                    |
 | `INVALID_INDEX_LEFT`  | the cancelled run left an invalid index behind                                |
 | `SEED_FAILED`         | a table could not be filled, so its measurements are of an empty table        |
 | `CLASS_UNDERSTATED`   | the observed class was worse than the predicted one                           |
@@ -210,10 +208,10 @@ CI hardware is not production hardware, and a freshly seeded container sits in p
 Absolute durations are optimistic and not portable.
 
 - Prefer ratios over seconds: "exceeds the grace period by 14x" survives a hardware change, "29 minutes" does not
-- Lock modes, blocked-reader observations, observed classes and retry verdicts are hardware-independent — trust those.
-  The observed class is derived from counts (`relfilenode`, rows read), never from a duration
-- No finding is gated on a duration threshold, so a fast runner cannot make a problem disappear. The only threshold is
-  the deadline, which the caller sets to its own pod's grace period
+- The observed class is derived from counts (`relfilenode`, rows read), never from a duration
+- Lock modes describe PostgreSQL's locking semantics, but whether a brief lock is sampled depends on timing
+- Findings use work and lock modes rather than an arbitrary duration threshold. The configured deadline is the
+  exception: it represents the caller's pod grace period, and its verdict depends on execution speed
 - The rollback's own cost is not measured, and a real deploy would pay it
 
 ## Planned
@@ -232,7 +230,10 @@ Absolute durations are optimistic and not portable.
 
 - **Scaling curves** — measure at two row counts and fit, so scaling is reported instead of one extrapolated point
 - **Seed caching** — keyed by schema hash and row count, so repeated CI runs do not re-seed
-- **Writer and long-transaction probes** — see [Probes](#probes)
+- **Contention scenarios** — coordinate sessions to test DDL queueing behind an existing transaction and its effect on
+  readers and writers, with explicit synchronization rather than opportunistic reads
+- **Retained lock snapshots** — inspect locks before rollback to capture fast transactional operations, accounting for
+  locks inherited from earlier statements; transient and nontransactional locks still need separate treatment
 - **Timeline integration** — findings are warning-shaped already, but only the popup and CLI show them; the grid and the
   HTML report do not
 

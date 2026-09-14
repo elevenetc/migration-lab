@@ -196,7 +196,7 @@ func TestCLI_RuntimeFlag_SelectsMigrationAndIgnoresLaterSQL(t *testing.T) {
 	dir := t.TempDir()
 	files := map[string]string{
 		"V1__create.sql": "CREATE TABLE users (id INT);",
-		"V2__add.sql":    "ALTER TABLE users ADD COLUMN email TEXT;",
+		"V2__add.sql":    "ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active';",
 		"V3__later.sql":  "NOT VALID SQL;",
 	}
 	for name, sql := range files {
@@ -219,6 +219,12 @@ func TestCLI_RuntimeFlag_SelectsMigrationAndIgnoresLaterSQL(t *testing.T) {
 	}
 	if len(result.RuntimeResult.Seeded) != 1 || result.RuntimeResult.Seeded[0].Rows != 100 {
 		t.Fatalf("expected the predecessor's table to be seeded: %+v", result.RuntimeResult.Seeded)
+	}
+	if len(result.RuntimeResult.Statements) != 1 || result.RuntimeResult.Statements[0].ObservedClass != models.MetadataOnly {
+		t.Fatalf("expected a fixed default to be metadata-only: %+v", result.RuntimeResult.Statements)
+	}
+	if len(result.RuntimeResult.Findings) != 0 {
+		t.Errorf("expected no findings for a fixed-default column addition: %+v", result.RuntimeResult.Findings)
 	}
 	if len(result.AnalysisResult.Migrations) != 2 {
 		t.Fatalf("expected static analysis through the target, got %d migrations", len(result.AnalysisResult.Migrations))

@@ -203,7 +203,6 @@ describe('API contract: runtime result fixture', () => {
   it('carries arrays rather than nulls for its collections', () => {
     expect(Array.isArray(runtimeResult.seeded)).toBe(true)
     expect(Array.isArray(runtimeResult.statements)).toBe(true)
-    expect(Array.isArray(runtimeResult.probes)).toBe(true)
     expect(Array.isArray(runtimeResult.findings)).toBe(true)
     expect(runtimeResult.statements.every(statement => Array.isArray(statement.locks))).toBe(true)
     expect(runtimeResult.statements.every(statement => Array.isArray(statement.rewrittenRelations))).toBe(true)

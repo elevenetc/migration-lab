@@ -43,8 +43,6 @@ func commentRecommendation(migration commentMigration) string {
 	}
 	for _, finding := range result.Findings {
 		switch finding.Type {
-		case models.FindingBlocksReaders:
-			return "Review before merging — concurrent readers were blocked."
 		case models.FindingExclusiveLock:
 			return "Review before merging — reader-blocking lock duration grows with table size."
 		case models.FindingClassOverstated:

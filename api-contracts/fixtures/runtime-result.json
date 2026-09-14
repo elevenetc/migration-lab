@@ -59,15 +59,6 @@
             "tuplesRead": 0
         }
     ],
-    "probes": [
-        {
-            "table": "events_2026",
-            "samples": 84,
-            "errors": 0,
-            "maxLatencyMs": 4903,
-            "blockedMs": 4903
-        }
-    ],
     "verdict": "EXCEEDS_DEADLINE",
     "retry": "FAILURE_LOOP",
     "findings": [
@@ -100,16 +91,6 @@
             },
             "tableName": "events",
             "message": "statement 1 held AccessExclusiveLock on events, events_2026 for 5001 ms"
-        },
-        {
-            "type": "BLOCKS_READERS",
-            "operationId": {
-                "migrationId": "V3__widen_note",
-                "statementIndex": 0,
-                "opIndex": -1
-            },
-            "tableName": "events_2026",
-            "message": "a concurrent reader of events_2026 waited 4903 ms across the run"
         }
     ],
     "message": "statement 0 was cancelled after the 5000 ms deadline"

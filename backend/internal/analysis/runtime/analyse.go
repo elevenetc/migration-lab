@@ -34,8 +34,8 @@ type Request struct {
 }
 
 // Analyse executes one migration of a timeline against a container seeded to
-// production-like size, and reports how long it took, which locks it held, whom
-// it blocked, and what a killed attempt would leave behind.
+// production-like size, and reports how long it took, which locks it held,
+// and what a killed attempt would leave behind.
 //
 // It returns models.ErrNotFound when the timeline is empty or holds no such
 // migration. A failure of the run itself is part of the result rather than an
@@ -72,7 +72,6 @@ func Analyse(ctx context.Context, request Request) (models.RuntimeAnalysisResult
 		DeadlineMs:  deadline.Milliseconds(),
 		Seeded:      []models.SeededTable{},
 		Statements:  []models.StatementMeasurement{},
-		Probes:      []models.ProbeResult{},
 		Findings:    []models.RuntimeFinding{},
 	}
 
@@ -113,10 +112,8 @@ func Analyse(ctx context.Context, request Request) (models.RuntimeAnalysisResult
 	}()
 
 	log.Printf("Measuring %s: %d statements, %d ms deadline", info.ID, len(statements), deadline.Milliseconds())
-	stopProbes := startProbes(ctx, connString, probedTables(result.Seeded))
-	outcome := runStatements(ctx, conn, sampler, statements, deadline)
-	result.Statements = withClasses(migration, result.Seeded, outcome.Measurements)
-	result.Probes = stopProbes(outcome.BlockedTicks)
+	measurements := runStatements(ctx, conn, sampler, statements, deadline)
+	result.Statements = withClasses(migration, result.Seeded, measurements)
 
 	result.Verdict = verdictOfRun(result.Statements)
 	result.Retry = retryVerdict(ctx, conn, result.Verdict)

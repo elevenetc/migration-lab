@@ -37,13 +37,6 @@ JOIN pg_namespace n ON n.oid = c.relnamespace
 WHERE l.pid = $1 AND l.granted AND l.locktype = 'relation'
   AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')`
 
-// Backends waiting on a lock the migration holds. PostgreSQL answers this
-// exactly, so no latency threshold has to stand in for "blocked".
-const blockedReadersQuery = `
-SELECT pid
-FROM pg_stat_activity
-WHERE wait_event_type = 'Lock' AND $1 = ANY(pg_blocking_pids(pid))`
-
 // StrongestLock is the strongest mode among the observations, "" for none.
 func StrongestLock(locks []models.LockObservation) string {
 	strongest := ""
@@ -78,24 +71,4 @@ func sampleLocks(ctx context.Context, conn *pgx.Conn, pid uint32) ([]models.Lock
 		locks = append(locks, lock)
 	}
 	return locks, rows.Err()
-}
-
-// sampleBlockedReaders reads which backends are waiting on a lock the migration's
-// backend holds, right now.
-func sampleBlockedReaders(ctx context.Context, conn *pgx.Conn, pid uint32) ([]uint32, error) {
-	rows, err := conn.Query(ctx, blockedReadersQuery, pid)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var blocked []uint32
-	for rows.Next() {
-		var blockedPID uint32
-		if err := rows.Scan(&blockedPID); err != nil {
-			return nil, err
-		}
-		blocked = append(blocked, blockedPID)
-	}
-	return blocked, rows.Err()
 }

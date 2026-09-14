@@ -26,7 +26,6 @@ const (
 // groups render through one path.
 const (
 	FindingExceedsDeadline  = "EXCEEDS_DEADLINE"
-	FindingBlocksReaders    = "BLOCKS_READERS"
 	FindingExclusiveLock    = "EXCLUSIVE_LOCK_HELD"
 	FindingInvalidIndexLeft = "INVALID_INDEX_LEFT"
 	FindingSeedFailed       = "SEED_FAILED"
@@ -53,17 +52,6 @@ type SeededTable struct {
 type LockObservation struct {
 	Mode     string `json:"mode"`
 	Relation string `json:"relation"`
-}
-
-// ProbeResult is what a concurrent reader session saw while the migration ran.
-type ProbeResult struct {
-	Table        string `json:"table"`
-	Samples      int    `json:"samples"`
-	Errors       int    `json:"errors"`
-	MaxLatencyMs int64  `json:"maxLatencyMs"`
-	// How long the reader was observed waiting on a lock the migration held, read
-	// from PostgreSQL rather than inferred from read latency.
-	BlockedMs int64 `json:"blockedMs"`
 }
 
 // StatementMeasurement is one executed statement of the analyzed migration.
@@ -107,7 +95,6 @@ type RuntimeAnalysisResult struct {
 	DeadlineMs  int64                  `json:"deadlineMs"`
 	Seeded      []SeededTable          `json:"seeded"`
 	Statements  []StatementMeasurement `json:"statements"`
-	Probes      []ProbeResult          `json:"probes"`
 	Verdict     RuntimeVerdict         `json:"verdict"`
 	Retry       RetryVerdict           `json:"retry"`
 	Findings    []RuntimeFinding       `json:"findings"`

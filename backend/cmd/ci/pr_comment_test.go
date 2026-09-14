@@ -52,11 +52,11 @@ func TestCommentShowsFindingsAndFailedSeedingEvenWhenCompleted(t *testing.T) {
 			Seeded:  []models.SeededTable{{Table: "accounts", Error: "could not seed accounts"}},
 			Findings: []models.RuntimeFinding{
 				{Type: models.FindingSeedFailed, Message: "Measurements used an unseeded table"},
-				{Type: models.FindingBlocksReaders, Message: "Readers waited for a lock"},
+				{Type: models.FindingExclusiveLock, Message: "Reader-blocking lock duration grows with table size"},
 			},
 		},
 	}}}, testCommentRun())
-	for _, want := range []string{"Migration runtime analysis", "Analysis incomplete", "**Seeding failed:**", "could not seed accounts", "SEED_FAILED", "BLOCKS_READERS", "Readers waited for a lock"} {
+	for _, want := range []string{"Migration runtime analysis", "Analysis incomplete", "**Seeding failed:**", "could not seed accounts", "SEED_FAILED", "EXCLUSIVE_LOCK_HELD", "Reader-blocking lock duration grows with table size"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing %q in comment:\n%s", want, body)
 		}

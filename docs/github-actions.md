@@ -91,8 +91,9 @@ Recommendations distinguish execution failures from runtime risks:
 - **Do not merge:** execution failed, exceeded the runtime limit, or left a retry failure.
 - **Analysis incomplete — rerun before merging:** results are missing, the CLI failed without a
   usable failure verdict, or table seeding failed or produced no rows.
-- **Review before merging:** reader blocking, a scan or rewrite, another risk finding, or incomplete
-  performance observations need attention. A short execution time does not suppress these risks.
+- **Review before merging:** a scan or rewrite, a reader-blocking lock held during work that scales
+  with table size, another risk finding, or incomplete performance observations need attention.
+  A short execution time does not suppress these risks.
 - **No runtime concerns found:** execution completed with fully observed metadata-only statements
   and no risk findings. A pessimistic prediction (`CLASS_OVERSTATED`) alone is informational.
 
@@ -145,7 +146,7 @@ timeouts retain their partial output and use exit code `124`. SQL and database e
 these files. Logs are printed after each CLI invocation finishes.
 
 The job fails if parsing, setup, or any runtime target fails or exceeds its deadline. Runtime
-findings alone do not fail it: `COMPLETED` may still contain reader blocking, table rewrites, or
+findings alone do not fail it: `COMPLETED` may still contain `EXCLUSIVE_LOCK_HELD`, table rewrites, or
 `SEED_FAILED`. Inspect the result and its seeding coverage during validation.
 
 ## Local checks

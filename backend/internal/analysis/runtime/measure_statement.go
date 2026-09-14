@@ -18,12 +18,10 @@ import (
 const queryCanceled = "57014"
 
 // measureStatement runs one statement under the deadline left for it while a
-// second connection samples the locks its backend holds and who waits behind
-// them. The schema is snapshotted around the statement — outside the timed
-// window, so the duration stays comparable — which is what the observed
-// performance class is derived from. The blocked-backend tick counts are returned
-// for the caller to attribute to the reader probes once the whole run is over.
-func measureStatement(ctx context.Context, conn, sampler *pgx.Conn, index int, sql string, budget time.Duration, countersUsable bool) (models.StatementMeasurement, map[uint32]int) {
+// second connection samples the locks its backend holds. The schema is
+// snapshotted around the statement — outside the timed window, so the duration
+// stays comparable — which is what the observed performance class is derived from.
+func measureStatement(ctx context.Context, conn, sampler *pgx.Conn, index int, sql string, budget time.Duration, countersUsable bool) models.StatementMeasurement {
 	measurement := models.StatementMeasurement{
 		StatementIndex:     index,
 		SQL:                sql,
@@ -34,7 +32,7 @@ func measureStatement(ctx context.Context, conn, sampler *pgx.Conn, index int, s
 	if budget <= 0 {
 		measurement.Verdict = models.RuntimeExceedsDeadline
 		measurement.Error = "the deadline was spent by the statements before it"
-		return measurement, nil
+		return measurement
 	}
 
 	before, err := readRelations(ctx, conn)
@@ -45,7 +43,7 @@ func measureStatement(ctx context.Context, conn, sampler *pgx.Conn, index int, s
 	if _, err := conn.Exec(ctx, fmt.Sprintf("SET statement_timeout = %d", budget.Milliseconds())); err != nil {
 		measurement.Verdict = models.RuntimeFailed
 		measurement.Error = err.Error()
-		return measurement, nil
+		return measurement
 	}
 
 	stopSampling := startLockSampler(ctx, sampler, conn.PgConn().PID())
@@ -53,13 +51,12 @@ func measureStatement(ctx context.Context, conn, sampler *pgx.Conn, index int, s
 	_, err = conn.Exec(ctx, sql)
 	measurement.DurationMs = time.Since(start).Milliseconds()
 
-	sample := stopSampling()
-	measurement.Locks = sample.Locks
-	measurement.StrongestLock = StrongestLock(sample.Locks)
+	measurement.Locks = stopSampling()
+	measurement.StrongestLock = StrongestLock(measurement.Locks)
 	measurement.Verdict = verdictOf(err)
 	if err != nil {
 		measurement.Error = err.Error()
-		return measurement, sample.BlockedTicks
+		return measurement
 	}
 
 	seen := observeAfter(ctx, conn, index, before, countersUsable)
@@ -67,7 +64,7 @@ func measureStatement(ctx context.Context, conn, sampler *pgx.Conn, index int, s
 	measurement.RewrittenRelations = seen.Rewritten
 	measurement.TuplesRead = seen.TuplesRead
 
-	return measurement, sample.BlockedTicks
+	return measurement
 }
 
 // observeAfter snapshots the schema again and compares it with the snapshot taken

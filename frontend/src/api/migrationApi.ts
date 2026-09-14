@@ -223,15 +223,6 @@ export interface LockObservation {
   relation: string
 }
 
-/** What a concurrent reader session saw while the migration ran. */
-export interface ProbeResult {
-  table: string
-  samples: number
-  errors: number
-  maxLatencyMs: number
-  blockedMs: number
-}
-
 export interface StatementMeasurement {
   statementIndex: number
   sql: string
@@ -264,7 +255,6 @@ export interface RuntimeAnalysisResult {
   deadlineMs: number
   seeded: SeededTable[]
   statements: StatementMeasurement[]
-  probes: ProbeResult[]
   verdict: RuntimeVerdict
   retry: RetryVerdict
   findings: RuntimeFinding[]

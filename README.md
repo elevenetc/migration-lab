@@ -6,8 +6,8 @@ locking, and retry behavior against PostgreSQL containers seeded with generated 
 
 - **Static analysis:** inspect SQL without a database, flag risky operations, and predict whether a
   change updates metadata, scans data, or rewrites a table.
-- **Runtime analysis:** measure a migration against a seeded database, observe blocked readers and
-  locks, compare observed costs with predictions, and report what a cancelled attempt leaves behind.
+- **Runtime analysis:** measure a migration against a seeded database, observe locks,
+  compare observed costs with predictions, and report what a cancelled attempt leaves behind.
 - **Timeline:** explore tables and migrations in an interactive grid, including renames and partitions.
 - **HTML reports:** export the timeline and static analysis as a self-contained file.
 

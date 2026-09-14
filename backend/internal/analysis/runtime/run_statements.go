@@ -33,42 +33,29 @@ func transactional(statements []string) bool {
 	return true
 }
 
-// runOutcome is the whole measured migration: what each statement did, and how
-// many sampler ticks each other backend spent waiting behind it.
-type runOutcome struct {
-	Measurements []models.StatementMeasurement
-	BlockedTicks map[uint32]int
-}
-
 // runStatements measures every statement of the migration against one shared
 // deadline — the grace period a pod gets — and stops at the first statement that
 // does not complete, the way a killed pod does. Wrapped in a transaction it
 // rolls back when the migration allows one, so the seeded database is reusable.
-func runStatements(ctx context.Context, conn, sampler *pgx.Conn, statements []string, deadline time.Duration) runOutcome {
+func runStatements(ctx context.Context, conn, sampler *pgx.Conn, statements []string, deadline time.Duration) []models.StatementMeasurement {
 	wrap := transactional(statements)
 	if wrap {
 		if _, err := conn.Exec(ctx, "BEGIN"); err != nil {
-			return runOutcome{Measurements: []models.StatementMeasurement{{
+			return []models.StatementMeasurement{{
 				Locks:              []models.LockObservation{},
 				RewrittenRelations: []string{},
 				Verdict:            models.RuntimeFailed,
 				Error:              err.Error(),
-			}}}
+			}}
 		}
 	}
 
-	outcome := runOutcome{
-		Measurements: make([]models.StatementMeasurement, 0, len(statements)),
-		BlockedTicks: map[uint32]int{},
-	}
+	measurements := make([]models.StatementMeasurement, 0, len(statements))
 	remaining := deadline
 
 	for index, statement := range statements {
-		measurement, blocked := measureStatement(ctx, conn, sampler, index, statement, remaining, wrap)
-		outcome.Measurements = append(outcome.Measurements, measurement)
-		for pid, ticks := range blocked {
-			outcome.BlockedTicks[pid] += ticks
-		}
+		measurement := measureStatement(ctx, conn, sampler, index, statement, remaining, wrap)
+		measurements = append(measurements, measurement)
 		remaining -= time.Duration(measurement.DurationMs) * time.Millisecond
 
 		if measurement.Verdict != models.RuntimeCompleted {
@@ -86,5 +73,5 @@ func runStatements(ctx context.Context, conn, sampler *pgx.Conn, statements []st
 		log.Printf("Failed to clear statement_timeout: %v", err)
 	}
 
-	return outcome
+	return measurements
 }
