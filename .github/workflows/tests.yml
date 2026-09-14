@@ -1,0 +1,53 @@
+name: Tests
+
+on:
+  pull_request:
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: just test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Set up just
+        uses: extractions/setup-just@v3
+
+      - name: Install frontend dependencies
+        run: npm ci --prefix frontend
+
+      # Go tests compile the CLI, which embeds the built frontend assets.
+      - name: Build CLI and embedded frontend
+        run: just build-cli
+
+      - name: Check Docker
+        run: docker info
+
+      - name: Run all tests
+        run: just test
