@@ -19,25 +19,24 @@ func TestCommentShowsConciseReviewSummary(t *testing.T) {
 	saveCommentFixture(t, output, target+".json", map[string]any{"runtimeResult": models.RuntimeAnalysisResult{
 		MigrationID: target, Verdict: models.RuntimeCompleted, DeadlineMs: 5000,
 		Statements: []models.StatementMeasurement{
-			{DurationMs: 12, PredictedClass: models.MetadataOnly, ObservedClass: models.MetadataOnly},
+			{DurationMs: 12, PredictedClass: models.TableRewrite, ObservedClass: models.MetadataOnly},
 			{DurationMs: 3, PredictedClass: models.MetadataOnly, ObservedClass: models.MetadataOnly},
 		},
 		Seeded:  []models.SeededTable{{Table: "accounts", Rows: 1_000_000}},
 		Message: "all 2 statements completed in 15 ms",
 	}})
 	body := renderPRComment(loadCommentSummary(output, run.Head), run)
-	for _, want := range []string{
-		"## Migration runtime analysis\n", target, "**Recommendation:** No runtime concerns found.",
-		"**Execution:** 15 ms", "**Predicted class:** ` METADATA_ONLY `", "**Observed class:** ` METADATA_ONLY `",
-		"[View full analysis]", "/actions/runs/100/attempts/1",
-	} {
-		if !strings.Contains(body, want) {
-			t.Errorf("missing %q in comment:\n%s", want, body)
-		}
+	want := "## ✅ Migration runtime analysis - ` " + target + " `\n\n" +
+		"- No runtime concerns found.\n" +
+		"- Performance class: ` METADATA_ONLY `\n" +
+		"- [View full analysis](https://github.com/owner/repo/actions/runs/100/attempts/1)\n"
+	if !strings.Contains(body, want) {
+		t.Errorf("missing %q in comment:\n%s", want, body)
 	}
 	for _, unwanted := range []string{
 		"Commit:", run.Head, "Directory:", "db/migrations", "Deadline:", "5000", "1000000", "**Seeding**",
 		"all 2 statements", "Execution time is the sum", "findings alone do not fail", "**Verdict:**", "COMPLETED",
+		"Recommendation:", "Execution:", "Predicted class:", "Observed class:", "TABLE_REWRITE", "### ",
 	} {
 		if strings.Contains(body, unwanted) {
 			t.Errorf("unwanted detail %q in comment:\n%s", unwanted, body)
@@ -56,7 +55,7 @@ func TestCommentShowsFindingsAndFailedSeedingEvenWhenCompleted(t *testing.T) {
 			},
 		},
 	}}}, testCommentRun())
-	for _, want := range []string{"Migration runtime analysis", "Analysis incomplete", "**Seeding failed:**", "could not seed accounts", "SEED_FAILED", "EXCLUSIVE_LOCK_HELD", "Reader-blocking lock duration grows with table size"} {
+	for _, want := range []string{"## ⚠️ Migration runtime analysis - ` V2__change.sql `", "- Analysis incomplete", "- Performance class: Unavailable", "- **Seeding failed:**", "could not seed accounts", "SEED_FAILED", "EXCLUSIVE_LOCK_HELD", "Reader-blocking lock duration grows with table size"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing %q in comment:\n%s", want, body)
 		}
@@ -101,7 +100,7 @@ func TestCommentHandlesFailuresAndPartialArtifacts(t *testing.T) {
 				tc.setup(t, output, run)
 			}
 			body := renderPRComment(loadCommentSummary(output, run.Head), run)
-			if !strings.Contains(body, tc.want) || strings.Contains(body, "No runtime concerns found") {
+			if !strings.Contains(body, tc.want) || !strings.Contains(body, "## ⚠️ Migration runtime analysis") || strings.Contains(body, "✅") || strings.Contains(body, "No runtime concerns found") {
 				t.Fatalf("misleading failure summary:\n%s", body)
 			}
 		})
@@ -124,6 +123,11 @@ func TestCommentIncludesAllTargetsAfterRuntimeFailure(t *testing.T) {
 			t.Errorf("missing %q:\n%s", want, body)
 		}
 	}
+	for _, target := range targets {
+		if !strings.Contains(body, "## ⚠️ Migration runtime analysis - ` "+target+" `\n") {
+			t.Errorf("missing migration heading for %s:\n%s", target, body)
+		}
+	}
 	if strings.Index(body, targets[0]) > strings.Index(body, targets[1]) {
 		t.Fatal("comment should preserve the plan's numeric migration order")
 	}
@@ -134,7 +138,7 @@ func TestCommentUpdatesWhenAddedMigrationIsRemoved(t *testing.T) {
 	run := testCommentRun()
 	saveCommentFixture(t, output, "plan.json", migrationPlan{Head: run.Head, Targets: []string{}, ExistingChanges: []migrationChange{{}}})
 	body := renderPRComment(loadCommentSummary(output, run.Head), run)
-	for _, want := range []string{commentMarker, "No new migrations", "runtime analysis was skipped", "1 existing migration change(s)"} {
+	for _, want := range []string{commentMarker, "## ℹ️ Migration runtime analysis", "- No new migrations", "runtime analysis was skipped", "- 1 existing migration change(s)", "- [View full analysis]"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing %q:\n%s", want, body)
 		}
@@ -149,7 +153,7 @@ func TestCommentEscapesRepositoryTextAndBoundsLargeReports(t *testing.T) {
 	body := renderPRComment(summary, testCommentRun())
 	for _, unwanted := range []string{"<script>", "@someone", "[link]", "`tick`", "*bold*"} {
 		// The migration filename is in a code span; Markdown syntax there is inert.
-		findingText := strings.Split(body, "**Runtime findings")[1]
+		findingText := strings.Split(body, "- ` TYPE `:")[1]
 		if strings.Contains(findingText, unwanted) {
 			t.Errorf("unescaped text %q:\n%s", unwanted, body)
 		}

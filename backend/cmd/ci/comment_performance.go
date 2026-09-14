@@ -3,22 +3,15 @@ package main
 import "migration-lab/backend/internal/models"
 
 type commentClasses struct {
-	Predicted         models.PerformanceClass
-	Observed          models.PerformanceClass
-	PredictedComplete bool
-	ObservedComplete  bool
+	Observed         models.PerformanceClass
+	ObservedComplete bool
 }
 
 // Summarize the most expensive measured statement without turning missing
 // classifications into METADATA_ONLY. Partial coverage stays visible.
 func commentPerformance(statements []models.StatementMeasurement) commentClasses {
-	classes := commentClasses{PredictedComplete: len(statements) > 0, ObservedComplete: len(statements) > 0}
+	classes := commentClasses{ObservedComplete: len(statements) > 0}
 	for _, statement := range statements {
-		if !knownCommentClass(statement.PredictedClass) {
-			classes.PredictedComplete = false
-		} else if classes.Predicted == "" || models.WorseThan(statement.PredictedClass, classes.Predicted) {
-			classes.Predicted = statement.PredictedClass
-		}
 		if !knownCommentClass(statement.ObservedClass) {
 			classes.ObservedComplete = false
 		} else if classes.Observed == "" || models.WorseThan(statement.ObservedClass, classes.Observed) {

@@ -9,12 +9,13 @@ import (
 
 func TestCommentRecommendationUsesRiskAndEvidence(t *testing.T) {
 	for _, tc := range []struct {
-		name   string
-		change func(*commentMigration)
-		want   string
+		name      string
+		change    func(*commentMigration)
+		want      string
+		wantEmoji string
 	}{
-		{name: "clean metadata operation", want: "No runtime concerns found"},
-		{name: "metadata-only exclusive lock", want: "No runtime concerns found", change: func(m *commentMigration) {
+		{name: "clean metadata operation", want: "No runtime concerns found", wantEmoji: "✅"},
+		{name: "metadata-only exclusive lock", want: "No runtime concerns found", wantEmoji: "✅", change: func(m *commentMigration) {
 			m.Runtime.Statements[0].StrongestLock = "AccessExclusiveLock"
 			m.Runtime.Statements[0].Locks = []models.LockObservation{{Mode: "AccessExclusiveLock", Relation: "accounts"}}
 		}},
@@ -25,11 +26,24 @@ func TestCommentRecommendationUsesRiskAndEvidence(t *testing.T) {
 			m.Runtime.Statements[0].ObservedClass = models.DataScanning
 			m.Runtime.Statements[0].PredictedClass = models.DataScanning
 		}},
-		{name: "fast rewrite with no findings", want: "Review before merging — the migration rewrites table data", change: func(m *commentMigration) {
+		{name: "fast rewrite with no findings", want: "Review before merging — the migration rewrites table data", wantEmoji: "🚨", change: func(m *commentMigration) {
 			m.Runtime.Statements[0].ObservedClass = models.TableRewrite
-			m.Runtime.Statements[0].PredictedClass = models.TableRewrite
 		}},
-		{name: "pessimistic prediction alone is informative", want: "No runtime concerns found", change: func(m *commentMigration) {
+		{name: "mixed observed classes", want: "Review before merging — the migration rewrites table data", wantEmoji: "🚨", change: func(m *commentMigration) {
+			m.Runtime.Statements = append(m.Runtime.Statements,
+				models.StatementMeasurement{ObservedClass: models.TableRewrite},
+				models.StatementMeasurement{ObservedClass: models.DataScanning},
+			)
+		}},
+		{name: "rewrite with reader-blocking finding", want: "Review before merging — reader-blocking lock duration", wantEmoji: "🚨", change: func(m *commentMigration) {
+			m.Runtime.Statements[0].ObservedClass = models.TableRewrite
+			m.Runtime.Findings = []models.RuntimeFinding{{Type: models.FindingExclusiveLock}}
+		}},
+		{name: "partial rewrite observations", want: "Review before merging — performance could not be verified", wantEmoji: "🚨", change: func(m *commentMigration) {
+			m.Runtime.Statements[0].ObservedClass = models.TableRewrite
+			m.Runtime.Statements = append(m.Runtime.Statements, models.StatementMeasurement{})
+		}},
+		{name: "pessimistic prediction alone is informative", want: "No runtime concerns found", wantEmoji: "✅", change: func(m *commentMigration) {
 			m.Runtime.Statements[0].PredictedClass = models.TableRewrite
 			m.Runtime.Findings = []models.RuntimeFinding{{Type: models.FindingClassOverstated}}
 		}},
@@ -64,6 +78,9 @@ func TestCommentRecommendationUsesRiskAndEvidence(t *testing.T) {
 		{name: "missing runtime result", want: "Analysis incomplete", change: func(m *commentMigration) {
 			m.Runtime = nil
 		}},
+		{name: "invalid runtime result", want: "Analysis incomplete", change: func(m *commentMigration) {
+			m.Problem = "Runtime output is invalid."
+		}},
 		{name: "failed CLI despite completed execution", want: "Analysis incomplete", change: func(m *commentMigration) {
 			m.ExitCode = 1
 		}},
@@ -91,8 +108,15 @@ func TestCommentRecommendationUsesRiskAndEvidence(t *testing.T) {
 			if tc.change != nil {
 				tc.change(&migration)
 			}
-			if advice := commentRecommendation(migration); !strings.HasPrefix(advice, tc.want) {
-				t.Fatalf("wanted %q, got %q", tc.want, advice)
+			if advice := commentRecommendation(migration); !strings.HasPrefix(advice.Message, tc.want) {
+				t.Fatalf("wanted %q, got %q", tc.want, advice.Message)
+			}
+			emoji := tc.wantEmoji
+			if emoji == "" {
+				emoji = "⚠️"
+			}
+			if body := renderCommentMigration(migration); !strings.HasPrefix(body, "## "+emoji+" Migration runtime analysis - ") {
+				t.Fatalf("heading must reflect observed performance and runtime concerns:\n%s", body)
 			}
 		})
 	}
@@ -104,18 +128,18 @@ func TestCommentPerformanceReportsWorstClassesAndMissingCoverage(t *testing.T) {
 		{PredictedClass: models.TableRewrite, ObservedClass: models.MetadataOnly},
 	}
 	classes := commentPerformance(statements)
-	if classes.Predicted != models.TableRewrite || classes.Observed != models.DataScanning || !classes.PredictedComplete || !classes.ObservedComplete {
-		t.Fatalf("must show the worst known class in each group: %+v", classes)
+	if classes.Observed != models.DataScanning || !classes.ObservedComplete {
+		t.Fatalf("must show the worst observed class: %+v", classes)
 	}
 	classes = commentPerformance(append(statements, models.StatementMeasurement{}))
-	if classes.Predicted != models.TableRewrite || classes.Observed != models.DataScanning || classes.PredictedComplete || classes.ObservedComplete {
+	if classes.Observed != models.DataScanning || classes.ObservedComplete {
 		t.Fatalf("unknown statements must not be classified as metadata-only: %+v", classes)
 	}
 	if text := renderCommentClass(classes.Observed, classes.ObservedComplete); !strings.Contains(text, "DATA_SCANNING") || !strings.Contains(text, "(partial)") {
 		t.Fatalf("partial coverage should be visible: %s", text)
 	}
-	classes = commentPerformance([]models.StatementMeasurement{{PredictedClass: "NEW_CLASS"}})
-	if text := renderCommentClass(classes.Predicted, classes.PredictedComplete); text != "Unavailable" {
+	classes = commentPerformance([]models.StatementMeasurement{{ObservedClass: "NEW_CLASS"}})
+	if text := renderCommentClass(classes.Observed, classes.ObservedComplete); text != "Unavailable" {
 		t.Fatalf("unknown classifications must remain unavailable: %s", text)
 	}
 }

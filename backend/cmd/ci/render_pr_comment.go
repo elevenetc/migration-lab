@@ -22,61 +22,72 @@ type commentRun struct {
 
 func renderPRComment(summary commentSummary, run commentRun) string {
 	body := commentMarker + fmt.Sprintf("\n<!-- migration-lab-run: %d %d -->\n", run.RunID, run.Attempt)
-	body += "## Migration runtime analysis\n\n"
+	if len(summary.Migrations) == 0 {
+		emoji := "ℹ️"
+		if run.Status != "success" || summary.Problem != "" {
+			emoji = "⚠️"
+		}
+		body += "## " + emoji + " Migration runtime analysis\n\n"
+	}
 	if run.Status != "success" {
-		body += "**Analysis did not finish successfully.** See the workflow for diagnostics.\n\n"
+		body += "- **Analysis did not finish successfully.** See the workflow for diagnostics.\n"
 	}
 	if summary.Problem != "" {
-		body += "**Analysis incomplete — rerun before merging.** " + commentText(summary.Problem) + "\n\n"
+		body += "- **Analysis incomplete — rerun before merging.** " + commentText(summary.Problem) + "\n"
 	}
 	if len(summary.Migrations) == 0 && summary.Problem == "" {
-		body += "No new migrations; runtime analysis was skipped.\n\n"
+		body += "- No new migrations; runtime analysis was skipped.\n"
 	}
 	if summary.ExistingChanges > 0 {
-		body += fmt.Sprintf("%d existing migration change(s) were recorded but not measured.\n\n", summary.ExistingChanges)
+		body += fmt.Sprintf("- %d existing migration change(s) were recorded but not measured.\n", summary.ExistingChanges)
+	}
+	if run.Status != "success" || summary.Problem != "" || summary.ExistingChanges > 0 {
+		body += "\n"
 	}
 	for _, migration := range summary.Migrations {
 		section := renderCommentMigration(migration)
 		// GitHub limits comment bodies to 65,536 characters. Bound bytes as well
 		// and keep whole sections so truncation never breaks Markdown formatting.
 		if len(body)+len(section) > 55_000 {
-			body += "Additional migration results are available in the workflow artifacts.\n\n"
+			body += "- Additional migration results are available in the workflow artifacts.\n"
 			break
 		}
-		body += section
+		body += section + "\n"
 	}
-	body += fmt.Sprintf("[View full analysis](https://github.com/%s/actions/runs/%d/attempts/%d)\n", run.Repository, run.RunID, run.Attempt)
+	body = strings.TrimRight(body, "\n") + "\n"
+	body += fmt.Sprintf("- [View full analysis](https://github.com/%s/actions/runs/%d/attempts/%d)\n", run.Repository, run.RunID, run.Attempt)
 	return body
 }
 
 func renderCommentMigration(migration commentMigration) string {
-	body := "### " + commentCode(migration.Name) + "\n\n"
-	body += "**Recommendation:** " + commentText(commentRecommendation(migration)) + "\n\n"
+	recommendation := commentRecommendation(migration)
+	classes := commentClasses{}
+	if migration.Problem == "" && migration.Runtime != nil {
+		classes = commentPerformance(migration.Runtime.Statements)
+	}
+	emoji := "⚠️"
+	switch {
+	case classes.Observed == models.TableRewrite:
+		emoji = "🚨"
+	case classes.Observed == models.MetadataOnly && recommendation.NoConcerns:
+		emoji = "✅"
+	}
+	body := "## " + emoji + " Migration runtime analysis - " + commentCode(migration.Name) + "\n\n"
+	body += "- " + commentText(recommendation.Message) + "\n"
 	if migration.Problem != "" || migration.Runtime == nil {
-		return body + "**Result unavailable:** " + commentText(migration.Problem) + "\n\n"
+		return body + "- **Result unavailable:** " + commentText(migration.Problem) + "\n"
 	}
 	runtime := migration.Runtime
-	var duration int64
-	for _, statement := range runtime.Statements {
-		duration += statement.DurationMs
-	}
-	classes := commentPerformance(runtime.Statements)
-	body += "**Predicted class:** " + renderCommentClass(classes.Predicted, classes.PredictedComplete) +
-		" · **Observed class:** " + renderCommentClass(classes.Observed, classes.ObservedComplete) + "\n\n"
-	body += fmt.Sprintf("**Execution:** %d ms\n\n", duration)
+	body += "- Performance class: " + renderCommentClass(classes.Observed, classes.ObservedComplete) + "\n"
 	if runtime.Verdict != models.RuntimeCompleted && runtime.Message != "" {
-		body += commentText(runtime.Message) + "\n\n"
+		body += "- " + commentText(runtime.Message) + "\n"
 	}
-	if len(runtime.Findings) > 0 {
-		body += fmt.Sprintf("**Runtime findings (%d)**\n\n", len(runtime.Findings))
-		for i, finding := range runtime.Findings {
-			if i == 10 {
-				body += "- More findings are listed in the workflow artifacts.\n"
-				break
-			}
-			body += "- " + commentCode(finding.Type) + ": " + commentText(finding.Message) + "\n"
+	for i, finding := range runtime.Findings {
+		if i == 10 {
+			body += "- More findings are listed in the workflow artifacts.\n"
+			break
 		}
-		body += "\n"
+		body += "- " + commentCode(finding.Type) + ": " + commentText(finding.Message) + "\n"
 	}
 	// Seeding failures are normally findings. Retain diagnostics if an incomplete
 	// result contains a failed seed without its corresponding finding.
@@ -88,10 +99,10 @@ func renderCommentMigration(migration commentMigration) string {
 			continue
 		}
 		if shown == 10 {
-			body += "More seeding failures are listed in the workflow artifacts.\n\n"
+			body += "- More seeding failures are listed in the workflow artifacts.\n"
 			break
 		}
-		body += "**Seeding failed:** " + commentCode(table.Table) + " — " + commentText(table.Error) + "\n\n"
+		body += "- **Seeding failed:** " + commentCode(table.Table) + " — " + commentText(table.Error) + "\n"
 		shown++
 	}
 	return body

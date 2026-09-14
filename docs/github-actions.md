@@ -79,45 +79,32 @@ Go and npm dependencies are cached; databases are recreated for each target.
 
 ## PR summary
 
-The **PR summary** job creates a comment authored by `github-actions[bot]` containing:
+The job maintains one `github-actions[bot]` comment per PR, with a section for each migration:
 
-- A review recommendation for each selected migration and its measured execution time.
-- Predicted and observed performance classes: the most expensive class across measured statements.
-- Runtime findings and their explanations.
-- A link to the workflow run and its complete results and diagnostics.
+```markdown
+## ✅ Migration runtime analysis - `V2__add_account_status.sql`
 
-Recommendations distinguish execution failures from runtime risks:
+- No runtime concerns found.
+- **Performance class:** `METADATA_ONLY`
+- [View full analysis](https://github.com/<owner>/<repo>/actions/runs/<run-id>/attempts/<attempt>)
+```
 
-- **Do not merge:** execution failed, exceeded the runtime limit, or left a retry failure.
-- **Analysis incomplete — rerun before merging:** results are missing, the CLI failed without a
-  usable failure verdict, or table seeding failed or produced no rows.
-- **Review before merging:** a scan or rewrite, a reader-blocking lock held during work that scales
-  with table size, another risk finding, or incomplete performance observations need attention.
-  A short execution time does not suppress these risks.
-- **No runtime concerns found:** execution completed with fully observed metadata-only statements
-  and no risk findings. A pessimistic prediction (`CLASS_OVERSTATED`) alone is informational.
+An observed `TABLE_REWRITE` uses 🚨 in the heading; `DATA_SCANNING` and other results needing
+attention use ⚠️. Their first bullet explains the recommendation:
 
-These recommendations summarize runtime evidence; they do not change the check's exit policy or
-assess application compatibility. Missing classifications display as **Unavailable**; classifications
-covering only some measured statements are marked **partial**. Unexecuted statements have no runtime
-classification. Seeding failures remain visible; routine row counts, deadlines, and successful
-execution messages are omitted. Execution time sums measured statements, excluding setup and seeding.
-Long reports show a bounded summary and link to the complete artifacts.
+| Recommendation            | When                                                                   |
+|---------------------------|------------------------------------------------------------------------|
+| Review before merging — … | Scans, rewrites, runtime risks, or incomplete performance observations |
+| Do not merge — …          | Execution failure, exceeded deadline, or retry failure                 |
+| Analysis incomplete — …   | Missing results, analysis failure, or inadequate seeding               |
 
-The publisher finds its existing comment using a hidden marker and verified bot author, then
-updates it. It searches all comment pages and leaves human comments untouched. Publishers are
-serialized per PR, and results for an outdated PR head or older run/attempt are skipped. Use one
-migration-directory configuration per PR; the comment represents the latest analysis run.
+Findings and diagnostics appear as additional bullets. **Performance class** is the most expensive
+observed class; missing observations show **Unavailable**, and incomplete coverage is marked **partial**.
+The final link opens the workflow run with complete results and diagnostics.
 
-Ordinary analysis failures still publish a summary, including when only partial results or no
-artifacts were collected. A PR that no longer adds migrations updates the comment to say analysis
-was skipped. Forced cancellation and job timeouts can prevent publication; use the run link to
-check the analyzed commit and run status. A GitHub API error fails the publishing job with a diagnostic.
-
-The analysis job keeps `contents: read`. A separate publishing job receives `pull-requests: write`,
-checks out only the analyzer's source, and reads the analysis artifacts. Manual runs, fork PRs, and
-Dependabot-triggered PRs do not post comments; their analysis checks and downloadable artifacts
-remain available. Fork PRs follow GitHub's normal workflow approval rules and use read-only tokens.
+Comments update after subsequent runs, including failures or removal of all added migrations.
+Use one migration-directory configuration per PR. Manual runs, fork PRs, and Dependabot PRs retain
+checks and artifacts without comments; cancellation and job timeouts can prevent comment updates.
 
 ## Inspect a run
 
