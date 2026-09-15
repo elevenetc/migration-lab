@@ -87,7 +87,7 @@ func renderCommentMigration(migration commentMigration) string {
 			body += "- More findings are listed in the workflow artifacts.\n"
 			break
 		}
-		body += "- " + commentCode(finding.Type) + ": " + commentText(finding.Message) + "\n"
+		body += renderCommentFinding(finding, runtime)
 	}
 	// Seeding failures are normally findings. Retain diagnostics if an incomplete
 	// result contains a failed seed without its corresponding finding.
