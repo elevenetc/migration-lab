@@ -1,4 +1,4 @@
-package main
+package prcomment
 
 import (
 	"fmt"
@@ -24,7 +24,7 @@ func TestCommentShowsTheMeasuredSQLForTheFinding(t *testing.T) {
 			Message:     "statement 0 held AccessExclusiveLock on accounts for 54 ms, and its cost scales with table size, so the hold grows with the table",
 		}},
 	}
-	body := renderPRComment(commentSummary{Migrations: []commentMigration{{Name: target, Runtime: result}}}, testCommentRun())
+	body := RenderPRComment(Summary{Migrations: []Migration{{Name: target, Runtime: result}}}, testCommentRun())
 	want := "- ` EXCLUSIVE_LOCK_HELD `: This statement held AccessExclusiveLock on accounts for 54 ms, and its cost scales with table size, so the hold grows with the table\n\n" +
 		"  ```sql\n  ALTER TABLE accounts\n      ADD CONSTRAINT nonnegative_balance CHECK (balance >= 0);\n  ```\n"
 	if !strings.Contains(body, want) {
@@ -89,7 +89,7 @@ func TestCommentBoundsSQLWithoutDroppingTheOtherFindings(t *testing.T) {
 			OperationID: models.OperationID{MigrationID: "V2.sql", StatementIndex: 0},
 		})
 	}
-	body := renderPRComment(commentSummary{Migrations: []commentMigration{{Name: "V2.sql", Runtime: result}}}, testCommentRun())
+	body := RenderPRComment(Summary{Migrations: []Migration{{Name: "V2.sql", Runtime: result}}}, testCommentRun())
 	if !utf8.ValidString(body) || len(body) > 55_000 || strings.Contains(body, "END_OF_SQL") {
 		t.Fatalf("SQL must be bounded without corrupting Unicode: %d bytes", len(body))
 	}

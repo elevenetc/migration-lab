@@ -71,6 +71,10 @@ directory.
 The workflow sets up Go and builds `backend/cmd/ci` before selecting targets. Its `plan` command
 uses the shared migration loader for numeric Flyway ordering; its `run` command invokes the CLI
 and collects results. Its `comment` command publishes the PR summary from the collected results.
+The command reads the environment and calls `internal/ci`, which owns workflow orchestration,
+migration selection, CLI execution, and artifact loading. `internal/ci/prcomment` owns comment
+rendering and GitHub publishing; it receives summary and run values without reading artifact
+files or environment variables.
 No Python interpreter or packages are required.
 
 The first version builds the CLI from source when targets are found. That also builds the frontend
@@ -144,9 +148,10 @@ just test
 go run github.com/rhysd/actionlint/cmd/actionlint@latest -shellcheck= .github/workflows/runtime-analysis.yml
 ```
 
-Automation tests live alongside `backend/cmd/ci` and run as part of `go test ./...`. They use
-temporary Git repositories and a Go test subprocess as a stub CLI to check whole-PR diffs, numeric
-ordering from the shared loader, manual selection, and artifact retention after failures.
+Automation tests live alongside `backend/internal/ci` and its `prcomment` package and run as part
+of `go test ./...`. They use temporary Git repositories and a Go test subprocess as a stub CLI
+to check whole-PR diffs, numeric ordering from the shared loader, manual selection, and artifact
+retention after failures.
 Comment tests cover runtime summaries, missing and partial results, bounded and escaped output,
 and a local fake GitHub API for create/update, pagination, stale runs, and API failures.
 The Go CLI tests cover selecting a real migration and replaying its predecessors against PostgreSQL.

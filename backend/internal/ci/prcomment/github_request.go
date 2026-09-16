@@ -1,4 +1,4 @@
-package main
+package prcomment
 
 import (
 	"bytes"
@@ -10,13 +10,14 @@ import (
 	"net/http"
 )
 
-type githubAPI struct {
+// GitHubAPI supplies the endpoint, credentials, and HTTP client used to publish.
+type GitHubAPI struct {
 	URL    string
 	Token  string
 	Client *http.Client
 }
 
-func githubRequest(ctx context.Context, api githubAPI, method, path string, payload, result any) (err error) {
+func githubRequest(ctx context.Context, api GitHubAPI, method, path string, payload, result any) (err error) {
 	var body []byte
 	if payload != nil {
 		body, err = json.Marshal(payload)

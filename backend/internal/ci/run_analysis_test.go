@@ -1,4 +1,4 @@
-package main
+package ci
 
 import (
 	"context"
@@ -137,7 +137,7 @@ func TestRunCommandReadsSavedPlan(t *testing.T) {
 	if err := writeJSON(filepath.Join(output, "plan.json"), migrationPlan{Directory: "db", Targets: []string{"V10__last.sql"}}); err != nil {
 		t.Fatal(err)
 	}
-	code, err := runCommand(context.Background(), []string{"run"}, configuration{repository: t.TempDir(), source: source, output: output})
+	code, err := RunCommand(context.Background(), []string{"run"}, Config{Repository: t.TempDir(), Source: source, Output: output})
 	if err != nil || code != 0 {
 		t.Fatalf("run command failed: code %d, %v", code, err)
 	}

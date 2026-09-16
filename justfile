@@ -7,7 +7,7 @@ test: generate-contracts test-backend typecheck-frontend test-frontend
 
 # Test GitHub migration selection and result collection without GitHub or Docker
 test-automation:
-    cd backend && go test ./cmd/ci
+    cd backend && go test ./cmd/ci ./internal/ci/...
 
 # Generate API contract fixtures from backend models
 generate-contracts:

@@ -1,4 +1,4 @@
-package main
+package prcomment
 
 import (
 	"fmt"
@@ -11,7 +11,8 @@ import (
 
 const commentMarker = "<!-- migration-lab:runtime-analysis -->"
 
-type commentRun struct {
+// Run identifies the pull request and workflow attempt associated with a comment.
+type Run struct {
 	Repository string
 	Number     int
 	Head       string
@@ -20,7 +21,8 @@ type commentRun struct {
 	Status     string
 }
 
-func renderPRComment(summary commentSummary, run commentRun) string {
+// RenderPRComment formats a bounded Markdown summary with publisher metadata.
+func RenderPRComment(summary Summary, run Run) string {
 	body := commentMarker + fmt.Sprintf("\n<!-- migration-lab-run: %d %d -->\n", run.RunID, run.Attempt)
 	if len(summary.Migrations) == 0 {
 		emoji := "ℹ️"
@@ -59,7 +61,7 @@ func renderPRComment(summary commentSummary, run commentRun) string {
 	return body
 }
 
-func renderCommentMigration(migration commentMigration) string {
+func renderCommentMigration(migration Migration) string {
 	recommendation := commentRecommendation(migration)
 	classes := commentClasses{}
 	if migration.Problem == "" && migration.Runtime != nil {
