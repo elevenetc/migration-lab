@@ -1,6 +1,7 @@
 package prcomment
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"html"
 	"slices"
@@ -24,13 +25,7 @@ type Run struct {
 // RenderPRComment formats a bounded Markdown summary with publisher metadata.
 func RenderPRComment(summary Summary, run Run) string {
 	body := commentMarker + fmt.Sprintf("\n<!-- migration-lab-run: %d %d -->\n", run.RunID, run.Attempt)
-	if len(summary.Migrations) == 0 {
-		emoji := "ℹ️"
-		if run.Status != "success" || summary.Problem != "" {
-			emoji = "⚠️"
-		}
-		body += "## " + emoji + " Migration runtime analysis\n\n"
-	}
+	body += "## Migration runtime analysis\n\n"
 	if run.Status != "success" {
 		body += "- **Analysis did not finish successfully.** See the workflow for diagnostics.\n"
 	}
@@ -47,7 +42,7 @@ func RenderPRComment(summary Summary, run Run) string {
 		body += "\n"
 	}
 	for _, migration := range summary.Migrations {
-		section := renderCommentMigration(migration)
+		section := renderCommentMigration(migration, run)
 		// GitHub limits comment bodies to 65,536 characters. Bound bytes as well
 		// and keep whole sections so truncation never breaks Markdown formatting.
 		if len(body)+len(section) > 55_000 {
@@ -61,7 +56,7 @@ func RenderPRComment(summary Summary, run Run) string {
 	return body
 }
 
-func renderCommentMigration(migration Migration) string {
+func renderCommentMigration(migration Migration, run Run) string {
 	recommendation := commentRecommendation(migration)
 	classes := commentClasses{}
 	if migration.Problem == "" && migration.Runtime != nil {
@@ -74,7 +69,14 @@ func renderCommentMigration(migration Migration) string {
 	case classes.Observed == models.MetadataOnly && recommendation.NoConcerns:
 		emoji = "✅"
 	}
-	body := "## " + emoji + " Migration runtime analysis - " + commentCode(migration.Name) + "\n\n"
+	title := emoji + commentCode(migration.Name)
+	if migration.Path != "" && run.Repository != "" && run.Number > 0 {
+		// GitHub's Files changed view anchors each file by its repository-relative
+		// path's SHA-256, including the directory and original filename bytes.
+		diffURL := fmt.Sprintf("https://github.com/%s/pull/%d/files#diff-%x", run.Repository, run.Number, sha256.Sum256([]byte(migration.Path)))
+		title = "[" + title + "](" + diffURL + ")"
+	}
+	body := "### " + title + "\n\n"
 	body += "- " + commentText(recommendation.Message) + "\n"
 	if migration.Problem != "" || migration.Runtime == nil {
 		return body + "- **Result unavailable:** " + commentText(migration.Problem) + "\n"

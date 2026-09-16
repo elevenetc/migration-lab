@@ -14,7 +14,7 @@ func TestCommentShowsConciseReviewSummary(t *testing.T) {
 	run := testCommentRun()
 	output := t.TempDir()
 	target := "V2__add_account_status.sql"
-	saveCommentFixture(t, output, "plan.json", migrationPlan{Head: run.Head, Targets: []string{target}})
+	saveCommentFixture(t, output, "plan.json", migrationPlan{Head: run.Head, Directory: "db/migrations", Targets: []string{target}})
 	saveCommentFixture(t, output, "results.json", []migrationResult{{Migration: target, Result: target + ".json"}})
 	saveCommentFixture(t, output, target+".json", map[string]any{"runtimeResult": models.RuntimeAnalysisResult{
 		MigrationID: target, Verdict: models.RuntimeCompleted, DeadlineMs: 5000,
@@ -26,7 +26,8 @@ func TestCommentShowsConciseReviewSummary(t *testing.T) {
 		Message: "all 2 statements completed in 15 ms",
 	}})
 	body := prcomment.RenderPRComment(loadCommentSummary(output, run.Head), run)
-	want := "## ✅ Migration runtime analysis - ` " + target + " `\n\n" +
+	want := "## Migration runtime analysis\n\n" +
+		"### [✅` " + target + " `](https://github.com/owner/repo/pull/7/files#diff-f71ba626fed0ac9e5c7e61d9722162e06e8cabcbc644d8250c35e21e06361207)\n\n" +
 		"- No runtime concerns found.\n" +
 		"- Performance class: ` METADATA_ONLY `\n" +
 		"- [View full analysis](https://github.com/owner/repo/actions/runs/100/attempts/1)\n"
@@ -36,11 +37,30 @@ func TestCommentShowsConciseReviewSummary(t *testing.T) {
 	for _, unwanted := range []string{
 		"Commit:", run.Head, "Directory:", "db/migrations", "Deadline:", "5000", "1000000", "**Seeding**",
 		"all 2 statements", "Execution time is the sum", "findings alone do not fail", "**Verdict:**", "COMPLETED",
-		"Recommendation:", "Execution:", "Predicted class:", "Observed class:", "TABLE_REWRITE", "### ",
+		"Recommendation:", "Execution:", "Predicted class:", "Observed class:", "TABLE_REWRITE",
 	} {
 		if strings.Contains(body, unwanted) {
 			t.Errorf("unwanted detail %q in comment:\n%s", unwanted, body)
 		}
+	}
+}
+
+func TestCommentSummaryPreservesGitPathsWithoutRuntimeResults(t *testing.T) {
+	for _, tc := range []struct{ directory, target, want string }{
+		{".", "V2__root.sql", "V2__root.sql"},
+		{"db/with space", "V2__`quoted``name [x] @someone 世.sql", "db/with space/V2__`quoted``name [x] @someone 世.sql"},
+		{"", "V2__missing_directory.sql", ""},
+		{"db", "../V2__invalid.sql", ""},
+	} {
+		t.Run(tc.target, func(t *testing.T) {
+			output := t.TempDir()
+			run := testCommentRun()
+			saveCommentFixture(t, output, "plan.json", migrationPlan{Head: run.Head, Directory: tc.directory, Targets: []string{tc.target}})
+			summary := loadCommentSummary(output, run.Head)
+			if len(summary.Migrations) != 1 || summary.Migrations[0].Path != tc.want {
+				t.Fatalf("wanted Git path %q, got %+v", tc.want, summary.Migrations)
+			}
+		})
 	}
 }
 
@@ -79,7 +99,7 @@ func TestCommentHandlesFailuresAndPartialArtifacts(t *testing.T) {
 				tc.setup(t, output, run)
 			}
 			body := prcomment.RenderPRComment(loadCommentSummary(output, run.Head), run)
-			if !strings.Contains(body, tc.want) || !strings.Contains(body, "## ⚠️ Migration runtime analysis") || strings.Contains(body, "✅") || strings.Contains(body, "No runtime concerns found") {
+			if !strings.Contains(body, tc.want) || !strings.Contains(body, "## Migration runtime analysis\n") || strings.Contains(body, "✅") || strings.Contains(body, "No runtime concerns found") {
 				t.Fatalf("misleading failure summary:\n%s", body)
 			}
 		})
@@ -103,7 +123,7 @@ func TestCommentIncludesAllTargetsAfterRuntimeFailure(t *testing.T) {
 		}
 	}
 	for _, target := range targets {
-		if !strings.Contains(body, "## ⚠️ Migration runtime analysis - ` "+target+" `\n") {
+		if !strings.Contains(body, "### ⚠️` "+target+" `\n") {
 			t.Errorf("missing migration heading for %s:\n%s", target, body)
 		}
 	}
@@ -117,7 +137,7 @@ func TestCommentUpdatesWhenAddedMigrationIsRemoved(t *testing.T) {
 	run := testCommentRun()
 	saveCommentFixture(t, output, "plan.json", migrationPlan{Head: run.Head, Targets: []string{}, ExistingChanges: []migrationChange{{}}})
 	body := prcomment.RenderPRComment(loadCommentSummary(output, run.Head), run)
-	for _, want := range []string{"<!-- migration-lab:runtime-analysis -->", "## ℹ️ Migration runtime analysis", "- No new migrations", "runtime analysis was skipped", "- 1 existing migration change(s)", "- [View full analysis]"} {
+	for _, want := range []string{"<!-- migration-lab:runtime-analysis -->", "## Migration runtime analysis\n", "- No new migrations", "runtime analysis was skipped", "- 1 existing migration change(s)", "- [View full analysis]"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing %q:\n%s", want, body)
 		}

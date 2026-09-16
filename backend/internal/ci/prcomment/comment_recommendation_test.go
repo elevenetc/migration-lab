@@ -115,7 +115,7 @@ func TestCommentRecommendationUsesRiskAndEvidence(t *testing.T) {
 			if emoji == "" {
 				emoji = "⚠️"
 			}
-			if body := renderCommentMigration(migration); !strings.HasPrefix(body, "## "+emoji+" Migration runtime analysis - ") {
+			if body := renderCommentMigration(migration, testCommentRun()); !strings.HasPrefix(body, "### "+emoji+"`") {
 				t.Fatalf("heading must reflect observed performance and runtime concerns:\n%s", body)
 			}
 		})
@@ -147,7 +147,7 @@ func TestCommentPerformanceReportsWorstClassesAndMissingCoverage(t *testing.T) {
 func TestCommentPreservesMigrationFailureMessage(t *testing.T) {
 	body := renderCommentMigration(Migration{Name: "V2__fail.sql", ExitCode: 1, Runtime: &models.RuntimeAnalysisResult{
 		Verdict: models.RuntimeFailed, Message: "statement 0 failed: duplicate column",
-	}})
+	}}, testCommentRun())
 	if !strings.Contains(body, "Do not merge") || !strings.Contains(body, "duplicate column") || strings.Contains(body, "Deadline:") {
 		t.Fatalf("failure advice must retain its explanation:\n%s", body)
 	}
