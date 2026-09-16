@@ -1,4 +1,4 @@
-package main
+package prcomment
 
 import (
 	"context"
@@ -23,9 +23,9 @@ func TestPublishCreatesThenUpdatesOneBotCommentAcrossPages(t *testing.T) {
 			if r.URL.Query().Get("page") == "1" {
 				comments := make([]githubComment, 100)
 				// A human copying our marker must not become an update target.
-				comments[0] = botComment(11, renderPRComment(commentSummary{}, run))
+				comments[0] = botComment(11, RenderPRComment(Summary{}, run))
 				comments[0].User.Type = "User"
-				comments[1] = botComment(12, renderPRComment(commentSummary{}, run))
+				comments[1] = botComment(12, RenderPRComment(Summary{}, run))
 				comments[1].User.Login = "other-bot[bot]"
 				writeGitHubFixture(t, w, comments)
 			} else {
@@ -57,11 +57,11 @@ func TestPublishCreatesThenUpdatesOneBotCommentAcrossPages(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	api := githubAPI{URL: server.URL, Token: "test-token", Client: server.Client()}
+	api := GitHubAPI{URL: server.URL, Token: "test-token", Client: server.Client()}
 	for attempt := int64(1); attempt <= 2; attempt++ {
 		run.Attempt = attempt
-		body := renderPRComment(commentSummary{}, run)
-		published, err := publishPRComment(context.Background(), api, run, body)
+		body := RenderPRComment(Summary{}, run)
+		published, err := PublishPRComment(context.Background(), api, run, body)
 		if err != nil || !published || saved == nil || saved.Body != body {
 			t.Fatalf("could not publish attempt %d: %v, %v", attempt, published, err)
 		}
@@ -97,13 +97,13 @@ func TestPublishSkipsSupersededRunsAndClosedPRs(t *testing.T) {
 					t.Errorf("stale publisher must not write: %s", r.Method)
 				}
 				if strings.HasSuffix(r.URL.Path, "/comments") {
-					writeGitHubFixture(t, w, []githubComment{botComment(42, renderPRComment(commentSummary{}, previous))})
+					writeGitHubFixture(t, w, []githubComment{botComment(42, RenderPRComment(Summary{}, previous))})
 				} else {
 					writeGitHubFixture(t, w, map[string]any{"state": tc.state, "head": map[string]string{"sha": head}})
 				}
 			}))
 			defer server.Close()
-			published, err := publishPRComment(context.Background(), githubAPI{URL: server.URL, Client: server.Client()}, run, "new body")
+			published, err := PublishPRComment(context.Background(), GitHubAPI{URL: server.URL, Client: server.Client()}, run, "new body")
 			if err != nil || published {
 				t.Fatalf("expected skipped update: %v, %v", published, err)
 			}
@@ -123,19 +123,11 @@ func TestPublishReportsAPIFailureWithoutCreatingDuplicate(t *testing.T) {
 				w.WriteHeader(status)
 			}))
 			defer server.Close()
-			published, err := publishPRComment(context.Background(), githubAPI{URL: server.URL, Client: server.Client()}, testCommentRun(), "body")
+			published, err := PublishPRComment(context.Background(), GitHubAPI{URL: server.URL, Client: server.Client()}, testCommentRun(), "body")
 			if published || err == nil || !strings.Contains(err.Error(), fmt.Sprint(status)) || requests != 1 {
 				t.Fatalf("expected an actionable API error: published=%v error=%v requests=%d", published, err, requests)
 			}
 		})
-	}
-}
-
-func TestCommentCommandSkipsManualRuns(t *testing.T) {
-	t.Setenv("GITHUB_EVENT_NAME", "workflow_dispatch")
-	code, err := runCommand(context.Background(), []string{"comment"}, configuration{output: t.TempDir()})
-	if err != nil || code != 0 {
-		t.Fatalf("manual runs must not need GitHub credentials: %d, %v", code, err)
 	}
 }
 

@@ -1,4 +1,4 @@
-package main
+package ci
 
 import (
 	"context"
@@ -140,10 +140,7 @@ func TestPlanCommandWritesGitHubOutputAndProvenance(t *testing.T) {
 				t.Fatal(err)
 			}
 			githubOutput := filepath.Join(output, "github-output")
-			t.Setenv("GITHUB_EVENT_NAME", "pull_request")
-			t.Setenv("GITHUB_EVENT_PATH", eventFile)
-			t.Setenv("GITHUB_OUTPUT", githubOutput)
-			code, err := runCommand(context.Background(), []string{"plan"}, configuration{repository: repo, source: repo, directory: "db", output: output})
+			code, err := RunCommand(context.Background(), []string{"plan"}, Config{Repository: repo, Source: repo, Directory: "db", Output: output, EventName: "pull_request", EventPath: eventFile, GitHubOutput: githubOutput})
 			if err != nil || code != 0 {
 				t.Fatalf("plan command failed: code %d, %v", code, err)
 			}

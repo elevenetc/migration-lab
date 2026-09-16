@@ -1,4 +1,4 @@
-package main
+package prcomment
 
 import "migration-lab/backend/internal/models"
 

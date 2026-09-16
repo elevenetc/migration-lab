@@ -1,4 +1,4 @@
-package main
+package ci
 
 import (
 	"context"
@@ -9,22 +9,24 @@ import (
 	"regexp"
 	"strconv"
 	"time"
+
+	"migration-lab/backend/internal/ci/prcomment"
 )
 
-func commentOnPR(ctx context.Context, config configuration) error {
-	if os.Getenv("GITHUB_EVENT_NAME") != "pull_request" {
+func commentOnPR(ctx context.Context, config Config) error {
+	if config.EventName != "pull_request" {
 		return nil
 	}
 	var event workflowEvent
-	if err := readJSON(os.Getenv("GITHUB_EVENT_PATH"), &event); err != nil {
+	if err := readJSON(config.EventPath, &event); err != nil {
 		return err
 	}
-	runID, runErr := strconv.ParseInt(os.Getenv("GITHUB_RUN_ID"), 10, 64)
-	attempt, attemptErr := strconv.ParseInt(os.Getenv("GITHUB_RUN_ATTEMPT"), 10, 64)
-	run := commentRun{
-		Repository: os.Getenv("GITHUB_REPOSITORY"), Number: event.Number,
+	runID, runErr := strconv.ParseInt(config.GitHubRunID, 10, 64)
+	attempt, attemptErr := strconv.ParseInt(config.GitHubRunAttempt, 10, 64)
+	run := prcomment.Run{
+		Repository: config.GitHubRepository, Number: event.Number,
 		Head:  event.PullRequest.Head.SHA,
-		RunID: runID, Attempt: attempt, Status: os.Getenv("ANALYSIS_STATUS"),
+		RunID: runID, Attempt: attempt, Status: config.AnalysisStatus,
 	}
 	if runErr != nil || attemptErr != nil || runID < 1 || attempt < 1 || run.Number < 1 ||
 		!regexp.MustCompile(`^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$`).MatchString(run.Repository) ||
@@ -36,15 +38,15 @@ func commentOnPR(ctx context.Context, config configuration) error {
 	default:
 		return fmt.Errorf("ANALYSIS_STATUS must be a GitHub job result")
 	}
-	token := os.Getenv("GH_TOKEN")
+	token := config.GitHubToken
 	if token == "" {
 		return fmt.Errorf("GH_TOKEN with pull-requests: write permission is required")
 	}
-	body := renderPRComment(loadCommentSummary(config.output, run.Head), run)
-	if err := os.WriteFile(filepath.Join(config.output, "comment.md"), []byte(body), 0o644); err != nil {
+	body := prcomment.RenderPRComment(loadCommentSummary(config.Output, run.Head), run)
+	if err := os.WriteFile(filepath.Join(config.Output, "comment.md"), []byte(body), 0o644); err != nil {
 		return err
 	}
-	api := githubAPI{
+	api := prcomment.GitHubAPI{
 		URL: "https://api.github.com", Token: token,
 		Client: &http.Client{
 			Timeout: 30 * time.Second,
@@ -53,6 +55,6 @@ func commentOnPR(ctx context.Context, config configuration) error {
 			},
 		},
 	}
-	_, err := publishPRComment(ctx, api, run, body)
+	_, err := prcomment.PublishPRComment(ctx, api, run, body)
 	return err
 }

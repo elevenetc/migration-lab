@@ -1,37 +1,25 @@
-package main
+package ci
 
 import (
 	"fmt"
 	"os"
 	"path/filepath"
 
+	"migration-lab/backend/internal/ci/prcomment"
 	"migration-lab/backend/internal/models"
 )
 
-type commentSummary struct {
-	Problem         string
-	ExistingChanges int
-	Migrations      []commentMigration
-}
-
-type commentMigration struct {
-	Name     string
-	Problem  string
-	ExitCode int
-	Runtime  *models.RuntimeAnalysisResult
-}
-
 // Missing or partial artifacts become visible diagnostics instead of leaving an
 // earlier successful comment on the PR after a failed run.
-func loadCommentSummary(output, head string) commentSummary {
+func loadCommentSummary(output, head string) prcomment.Summary {
 	var plan migrationPlan
 	if err := readJSON(filepath.Join(output, "plan.json"), &plan); err != nil {
-		return commentSummary{Problem: "The migration selection plan is unavailable. Check the workflow logs."}
+		return prcomment.Summary{Problem: "The migration selection plan is unavailable. Check the workflow logs."}
 	}
 	if plan.Head != head {
-		return commentSummary{Problem: "The selection plan does not match the analyzed commit."}
+		return prcomment.Summary{Problem: "The selection plan does not match the analyzed commit."}
 	}
-	summary := commentSummary{ExistingChanges: len(plan.ExistingChanges)}
+	summary := prcomment.Summary{ExistingChanges: len(plan.ExistingChanges)}
 	if data, err := os.ReadFile(filepath.Join(output, "automation-error.txt")); err == nil {
 		summary.Problem = string(data)
 	}
@@ -45,7 +33,7 @@ func loadCommentSummary(output, head string) commentSummary {
 		byName[result.Migration] = result
 	}
 	for _, target := range plan.Targets {
-		migration := commentMigration{Name: target}
+		migration := prcomment.Migration{Name: target}
 		result, found := byName[target]
 		switch {
 		case resultsErr != nil || !found:

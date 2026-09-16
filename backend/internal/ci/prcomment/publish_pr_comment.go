@@ -1,4 +1,4 @@
-package main
+package prcomment
 
 import (
 	"context"
@@ -16,9 +16,10 @@ type githubComment struct {
 	} `json:"user"`
 }
 
+// PublishPRComment creates or updates the bot comment, returning false if skipped.
 // The workflow serializes publishers for a PR. The head and run checks also
 // prevent superseded runs and reruns from replacing a newer result.
-func publishPRComment(ctx context.Context, api githubAPI, run commentRun, body string) (bool, error) {
+func PublishPRComment(ctx context.Context, api GitHubAPI, run Run, body string) (bool, error) {
 	root := "/repos/" + run.Repository
 	commentsPath := fmt.Sprintf("%s/issues/%d/comments", root, run.Number)
 	var existing *githubComment

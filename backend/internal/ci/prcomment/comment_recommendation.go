@@ -1,4 +1,4 @@
-package main
+package prcomment
 
 import "migration-lab/backend/internal/models"
 
@@ -10,7 +10,7 @@ type commentAdvice struct {
 // This is review advice for the measured migration, not a new CI failure policy.
 // Missing evidence cannot produce a clean recommendation, and timing alone does
 // not establish safety: even a fast scan or rewrite scales with table size.
-func commentRecommendation(migration commentMigration) commentAdvice {
+func commentRecommendation(migration Migration) commentAdvice {
 	result := migration.Runtime
 	if migration.Problem != "" || result == nil {
 		return commentAdvice{Message: "Analysis incomplete — rerun before merging."}
