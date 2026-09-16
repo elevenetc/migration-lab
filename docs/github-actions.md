@@ -83,17 +83,24 @@ Go and npm dependencies are cached; databases are recreated for each target.
 
 ## PR summary
 
-The job maintains one `github-actions[bot]` comment per PR, with a section for each migration:
+The job maintains one `github-actions[bot]` comment per PR, with one main title and a linked
+subtitle for each migration:
 
 ```markdown
-## ✅ Migration runtime analysis - `V2__add_account_status.sql`
+## Migration runtime analysis
+
+### [✅`V2__add_account_status.sql`](https://github.com/<owner>/<repo>/pull/<pr-number>/files#diff-<file-path-sha256>)
 
 - No runtime concerns found.
-- **Performance class:** `METADATA_ONLY`
+- Performance class: `METADATA_ONLY`
 - [View full analysis](https://github.com/<owner>/<repo>/actions/runs/<run-id>/attempts/<attempt>)
 ```
 
-An observed `TABLE_REWRITE` uses 🚨 in the heading; `DATA_SCANNING` and other results needing
+Each migration subtitle opens that file in the PR's **Files changed** view. Links use the
+repository-relative path from the selection plan; if that path is unavailable, the subtitle
+remains plain text.
+
+An observed `TABLE_REWRITE` uses 🚨 in the subtitle; `DATA_SCANNING` and other results needing
 attention use ⚠️. Their first bullet explains the recommendation:
 
 | Recommendation            | When                                                                   |

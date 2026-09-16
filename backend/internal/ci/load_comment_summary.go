@@ -3,6 +3,7 @@ package ci
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 
 	"migration-lab/backend/internal/ci/prcomment"
@@ -34,6 +35,9 @@ func loadCommentSummary(output, head string) prcomment.Summary {
 	}
 	for _, target := range plan.Targets {
 		migration := prcomment.Migration{Name: target}
+		if plan.Directory != "" && filepath.Base(target) == target && filepath.Ext(target) == ".sql" {
+			migration.Path = path.Join(plan.Directory, target)
+		}
 		result, found := byName[target]
 		switch {
 		case resultsErr != nil || !found:
