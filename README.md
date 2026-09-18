@@ -29,6 +29,9 @@ just build-cli
 This builds the frontend, embeds its assets, and produces `build/migration-lab`. Build the CLI before
 running the full test suite on a fresh checkout: the report package requires those generated assets.
 
+To build the frontend, backend server, and CLI together, run `just build`. The outputs are
+`frontend/dist/`, `build/server`, and `build/migration-lab`.
+
 ### Static analysis
 
 Analyze the included example migrations or a SQL string:
@@ -96,8 +99,8 @@ See [GitHub setup and debugging](docs/github-actions.md) for the caller workflow
 
 ## Web timeline
 
-The Compose setup requires Docker with the Compose plugin and `just`. Go and Node.js run inside the
-containers for this setup.
+The development environment requires Docker with the Compose plugin and `just`. Go and Node.js run
+inside the containers for this setup.
 
 **Use the web application only in a trusted local environment.** The API has no authentication, and
 the supplied configuration publishes ports 3000 and 8080 on all host interfaces. The backend can read
@@ -107,7 +110,7 @@ ports and run only trusted migrations.
 Start with the bundled sample files mounted as the migration root:
 
 ```bash
-MIGRATIONS_ROOT="$PWD/backend/testdata" just compose-up
+MIGRATIONS_ROOT="$PWD/backend/testdata" just dev-run
 ```
 
 Open [localhost:3000/?migrationId=ecommerce](http://localhost:3000/?migrationId=ecommerce).
@@ -123,7 +126,7 @@ measures that cell's migration.
 Choose a narrow directory to mount read-only:
 
 ```bash
-MIGRATIONS_ROOT=/absolute/path/to/migrations just compose-up
+MIGRATIONS_ROOT=/absolute/path/to/migrations just dev-run
 ```
 
 Then open:
@@ -139,7 +142,7 @@ working with a narrower directory. It can also be set in a local `.env` file.
 Stop the services with:
 
 ```bash
-just compose-down
+just dev-stop
 ```
 
 ## Development
@@ -158,10 +161,11 @@ tests. Docker is required for container-backed tests.
 The Go tests include the GitHub automation tests, which also require Git. Run those separately with
 `just test-automation`.
 
-To run the services directly, use `just run-backend` and `just run-frontend` in separate terminals.
-The frontend listens on port 3000 and proxies API requests to port 8080. With Compose, frontend edits
-reload automatically; use `just compose-apply` for backend changes, retaining your `MIGRATIONS_ROOT`
-setting. That recipe also requires the local Go toolchain.
+Use `just dev-run` to build and start the development environment in the background, waiting until
+the services are healthy. The frontend listens on port 3000 and proxies API requests to port 8080.
+Frontend edits reload automatically; use `just dev-apply` for backend changes, retaining your
+`MIGRATIONS_ROOT` setting. That recipe also requires the local Go toolchain. Stop the environment
+with `just dev-stop`, or use `just dev-stop clear` to also remove its volumes.
 
 ## Documentation
 

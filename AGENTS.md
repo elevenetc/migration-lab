@@ -283,18 +283,18 @@ When adding new Operation types:
   the id comes from the page URL (`?migrationId=`). Dataset ids are the keys of `datasets.Datasets()`
   (e.g. `ecommerce`, `simple-partition`). A missing/unknown id returns 404.
 - Alternatively, `?migrationsPath=<abs-dir>` loads, parses and analyzes the `*.sql` files from a
-  local directory (takes precedence over `migrationId`; a bad path returns 400). With `compose-up`
+  local directory (takes precedence over `migrationId`; a bad path returns 400). With `dev-run`
   the backend runs in a container, so `docker-compose.override.yml` bind-mounts a narrow root
   (`MIGRATIONS_ROOT`, default `~/dev`) read-only at the same path — pass an absolute path under that
   root so it resolves in-container. Set `MIGRATIONS_ROOT` (e.g. in `.env`) if migrations live elsewhere.
-- `just compose-up` runs the frontend as a Vite dev server with HMR (see `docker-compose.override.yml`), so
-  frontend source edits reload live — no `compose-apply` needed for frontend changes
-- `just compose-apply` is only needed to pick up backend changes (rebuilds and restarts the backend)
-- After editing `internal/datasets/`, run `just compose-apply` to see the updated data at `localhost:3000`
+- `just dev-run` runs the frontend as a Vite dev server with HMR (see `docker-compose.override.yml`), so
+  frontend source edits reload live — no `dev-apply` needed for frontend changes
+- `just dev-apply` is only needed to pick up backend changes (rebuilds and restarts the backend)
+- After editing `internal/datasets/`, run `just dev-apply` to see the updated data at `localhost:3000`
 - Pass `/.playwright-mcp` to `playwright`, so it stores logs and screenshots there instead of root
 - The `runtime` button of a cell starts a PostgreSQL container from inside the backend container;
   `docker-compose.yml` already mounts the Docker socket and sets `TESTCONTAINERS_HOST_OVERRIDE`, so it
-  works under `compose-up`. Seeding 1M rows takes a few seconds — the popup shows progress
+  works under `dev-run`. Seeding 1M rows takes a few seconds — the popup shows progress
 - Footer buttons only draw while the cell is hovered, so drive the pointer with `page.mouse.move`
   before clicking one
 
