@@ -11,6 +11,9 @@ services:
       - TESTCONTAINERS_RYUK_DISABLED=true
       - TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal
       - DOCKER_HOST=unix:///var/run/docker.sock
+      - SENTRY_DSN=${SENTRY_DSN:-}
+      - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-}
+      - SENTRY_RELEASE=${SENTRY_RELEASE:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
@@ -25,6 +28,10 @@ services:
   frontend:
     build:
       context: ./frontend
+      args:
+        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
+        VITE_SENTRY_ENVIRONMENT: ${VITE_SENTRY_ENVIRONMENT:-}
+        VITE_SENTRY_RELEASE: ${SENTRY_RELEASE:-}
     ports:
       - "3000:3000"
     depends_on:
