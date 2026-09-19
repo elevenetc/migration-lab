@@ -1,3 +1,5 @@
+import { ApiError } from './apiError'
+
 declare global {
   interface Window {
     __MIGRATION_DATA__?: MigrationTimelineResponse
@@ -173,7 +175,7 @@ export async function fetchMigrations(migrationId: string | null, migrationsPath
   }
   const response = await fetch(withParams('/api/migrations', { migrationId, migrationsPath }))
   if (!response.ok) {
-    throw new Error('Failed to fetch migrations')
+    throw new ApiError('Failed to fetch migrations', response.status, response.headers.get('X-Request-ID'))
   }
   return response.json()
 }
@@ -185,7 +187,7 @@ export interface DatasetsResponse {
 export async function fetchDatasets(): Promise<string[]> {
   const response = await fetch('/api/datasets')
   if (!response.ok) {
-    throw new Error('Failed to fetch datasets')
+    throw new ApiError('Failed to fetch datasets', response.status, response.headers.get('X-Request-ID'))
   }
   const body: DatasetsResponse = await response.json()
   return body.datasets
@@ -200,7 +202,7 @@ export interface RunMigrationsResult {
 export async function runMigrations(migrationId: string | null): Promise<RunMigrationsResult> {
   const response = await fetch(withParams('/api/migrations/run', { migrationId }), { method: 'POST' })
   if (!response.ok) {
-    throw new Error('Failed to run migrations')
+    throw new ApiError('Failed to run migrations', response.status, response.headers.get('X-Request-ID'))
   }
   return response.json()
 }
@@ -270,7 +272,7 @@ export async function runRuntimeAnalysis(
   const target = withParams('/api/migrations/runtime-analysis', { migrationId, migrationsPath, migration })
   const response = await fetch(target, { method: 'POST' })
   if (!response.ok) {
-    throw new Error(`Runtime analysis failed: ${response.status}`)
+    throw new ApiError(`Runtime analysis failed: ${response.status}`, response.status, response.headers.get('X-Request-ID'))
   }
   return response.json()
 }

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"migration-lab/backend/internal/models"
+	"migration-lab/backend/internal/monitoring"
 	"migration-lab/backend/internal/parser"
 	"migration-lab/backend/internal/pg"
 
@@ -83,6 +84,7 @@ func Analyse(ctx context.Context, request Request) (models.RuntimeAnalysisResult
 
 	conn, err := pgx.Connect(ctx, connString)
 	if err != nil {
+		monitoring.CaptureError(ctx, err)
 		return failed(result, fmt.Sprintf("failed to connect to the database: %v", err)), nil
 	}
 	defer func() {
@@ -97,12 +99,14 @@ func Analyse(ctx context.Context, request Request) (models.RuntimeAnalysisResult
 
 	catalog, err := ReadCatalog(ctx, conn)
 	if err != nil {
+		monitoring.CaptureError(ctx, err)
 		return failed(result, err.Error()), nil
 	}
 	result.Seeded = Seed(ctx, conn, SeedPlans(catalog, TouchedTables(migration)), rowsOf(request))
 
 	sampler, err := pgx.Connect(ctx, connString)
 	if err != nil {
+		monitoring.CaptureError(ctx, err)
 		return failed(result, fmt.Sprintf("failed to open a sampling connection: %v", err)), nil
 	}
 	defer func() {

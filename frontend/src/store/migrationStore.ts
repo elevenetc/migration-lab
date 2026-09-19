@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { reportError } from '../monitoring/reportError'
 import { CreateTableMapEntry, Migration, RunMigrationsResult, RuntimeAnalysisResult, StaticAnalysisResult, fetchDatasets, fetchMigrations, runMigrations, runRuntimeAnalysis } from '../api/migrationApi'
 
 interface MigrationState {
@@ -53,7 +54,8 @@ export const useMigrationStore = create<MigrationState>((set, get) => ({
     if (isStaticReport()) return
     try {
       set({ datasets: await fetchDatasets() })
-    } catch {
+    } catch (error) {
+      reportError(error, 'loadDatasets')
       set({ datasets: [] })
     }
   },
@@ -79,6 +81,7 @@ export const useMigrationStore = create<MigrationState>((set, get) => ({
         loading: false
       })
     } catch (error) {
+      reportError(error, 'loadMigrations', get().migrationId)
       set({
         error: (error as Error).message,
         loading: false,
@@ -95,6 +98,7 @@ export const useMigrationStore = create<MigrationState>((set, get) => ({
       const result = await runRuntimeAnalysis(get().migrationId, get().migrationsPath, migrationId)
       set({ runtimeTarget: null, runtimeAnalysis: result })
     } catch (error) {
+      reportError(error, 'runRuntime', get().migrationId, migrationId)
       set({ runtimeTarget: null, runtimeError: (error as Error).message })
     }
   },
@@ -105,6 +109,7 @@ export const useMigrationStore = create<MigrationState>((set, get) => ({
       const result = await runMigrations(get().migrationId)
       set({ running: false, runResult: result })
     } catch (error) {
+      reportError(error, 'runMigrations', get().migrationId)
       set({
         running: false,
         runResult: {

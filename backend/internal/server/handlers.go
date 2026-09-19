@@ -32,9 +32,7 @@ func migrationsHandler(store MigrationStore) echo.HandlerFunc {
 			return notFound(c)
 		}
 		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]string{
-				"error": err.Error(),
-			})
+			return internalServerError(c, err)
 		}
 		return c.JSON(http.StatusOK, toResponse(pointers(migrations)))
 	}
@@ -63,9 +61,7 @@ func runMigrationsHandler(runner MigrationRunner) echo.HandlerFunc {
 			return notFound(c)
 		}
 		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]string{
-				"error": err.Error(),
-			})
+			return internalServerError(c, err)
 		}
 		return c.JSON(http.StatusOK, result)
 	}

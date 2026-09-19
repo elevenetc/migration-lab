@@ -6,6 +6,8 @@ import (
 	"log"
 	"time"
 
+	"migration-lab/backend/internal/monitoring"
+
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -30,17 +32,20 @@ func Start(ctx context.Context) (string, func(), error) {
 		),
 	)
 	if err != nil {
+		monitoring.CaptureError(ctx, err)
 		return "", func() {}, fmt.Errorf("failed to start PostgreSQL container: %w", err)
 	}
 
 	terminate := func() {
 		if err := container.Terminate(context.WithoutCancel(ctx)); err != nil {
+			monitoring.CaptureError(ctx, err)
 			log.Printf("Failed to terminate container: %v", err)
 		}
 	}
 
 	connStr, err := container.ConnectionString(ctx, "sslmode=disable")
 	if err != nil {
+		monitoring.CaptureError(ctx, err)
 		terminate()
 		return "", func() {}, fmt.Errorf("failed to get connection string: %w", err)
 	}

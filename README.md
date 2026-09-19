@@ -174,6 +174,7 @@ with `just dev-stop`, or use `just dev-stop clear` to also remove its volumes.
 - [Predicted performance classes](docs/supported-performance-classes.md)
 - [Runtime analysis and findings](docs/supported-runtime-analysis.md)
 - [GitHub Actions setup and debugging](docs/github-actions.md)
+- [Monitoring](docs/monitoring.md)
 
 ## License
 

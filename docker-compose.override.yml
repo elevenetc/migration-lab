@@ -18,6 +18,9 @@ services:
       - CHOKIDAR_USEPOLLING=true
       # inside the compose network the backend is reachable by service name
       - VITE_API_TARGET=http://backend:8080
+      - VITE_SENTRY_DSN=${VITE_SENTRY_DSN:-}
+      - VITE_SENTRY_ENVIRONMENT=${VITE_SENTRY_ENVIRONMENT:-}
+      - VITE_SENTRY_RELEASE=${SENTRY_RELEASE:-}
     volumes:
       - ./frontend:/app
       - /app/node_modules # anonymous volume shadows host node_modules (arch mismatch)

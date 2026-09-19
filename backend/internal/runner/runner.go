@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"migration-lab/backend/internal/models"
+	"migration-lab/backend/internal/monitoring"
 	"migration-lab/backend/internal/pg"
 
 	"github.com/jackc/pgx/v5"
@@ -24,10 +25,11 @@ func RunMigrations(ctx context.Context, migrations []models.MigrationInfo) model
 	}
 	defer terminate()
 
-	log.Printf("PostgreSQL container started: %s", connStr)
+	log.Printf("PostgreSQL container started")
 
 	conn, err := pgx.Connect(ctx, connStr)
 	if err != nil {
+		monitoring.CaptureError(ctx, err)
 		return models.RunMigrationsResult{
 			Success:           false,
 			Message:           fmt.Sprintf("Failed to connect to database: %v", err),
