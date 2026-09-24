@@ -2,11 +2,11 @@ package runtime
 
 import (
 	"context"
-	"log"
 	"strings"
 	"time"
 
 	"migration-lab/backend/internal/models"
+	"migration-lab/backend/internal/monitoring"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -67,10 +67,10 @@ func runStatements(ctx context.Context, conn, sampler *pgx.Conn, statements []st
 	// transaction it is a session setting the later checks must not inherit.
 	if wrap {
 		if _, err := conn.Exec(context.WithoutCancel(ctx), "ROLLBACK"); err != nil {
-			log.Printf("Failed to roll back the measured migration: %v", err)
+			monitoring.Errorf(ctx, "Failed to roll back the measured migration: %v", err)
 		}
 	} else if _, err := conn.Exec(context.WithoutCancel(ctx), "SET statement_timeout = 0"); err != nil {
-		log.Printf("Failed to clear statement_timeout: %v", err)
+		monitoring.Errorf(ctx, "Failed to clear statement_timeout: %v", err)
 	}
 
 	return measurements

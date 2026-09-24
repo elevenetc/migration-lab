@@ -1,6 +1,7 @@
 package monitoring
 
 import (
+	"context"
 	"time"
 
 	"github.com/getsentry/sentry-go"
@@ -16,12 +17,16 @@ func RunWithSentry(dsn, environment, release string, run func(*sentry.Hub) error
 	defer func() {
 		value := recover()
 		if hub != nil {
+			ctx := sentry.SetHubOnContext(context.Background(), hub)
 			if value != nil {
+				Errorf(ctx, "Server panicked: %v", value)
 				hub.Recover(value)
 			} else if err != nil {
+				Errorf(ctx, "Server failed: %v", err)
 				hub.CaptureException(err)
 			}
 			hub.Flush(2 * time.Second)
+			hub.Client().Close()
 		}
 		if value != nil {
 			panic(value)

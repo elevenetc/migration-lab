@@ -2,7 +2,12 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import * as Sentry from '@sentry/react'
 import { initSentry } from './initSentry'
 
-vi.mock('@sentry/react', () => ({ init: vi.fn(), breadcrumbsIntegration: vi.fn() }))
+vi.mock('@sentry/react', () => ({
+  init: vi.fn(),
+  breadcrumbsIntegration: vi.fn(),
+  consoleLoggingIntegration: vi.fn(),
+  logger: { info: vi.fn() },
+}))
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -17,10 +22,12 @@ it('disables reporting without a DSN and for offline reports', () => {
   vi.stubEnv('VITE_SENTRY_DSN', '')
   initSentry()
   expect(Sentry.init).not.toHaveBeenCalled()
+  expect(Sentry.logger.info).not.toHaveBeenCalled()
   vi.stubEnv('VITE_SENTRY_DSN', 'https://public@example.invalid/1')
   vi.stubGlobal('window', { __MIGRATION_DATA__: {} })
   initSentry()
   expect(Sentry.init).not.toHaveBeenCalled()
+  expect(Sentry.logger.info).not.toHaveBeenCalled()
 })
 
 it.each([undefined, '', ' \t '])('rejects a missing or blank environment (%s) when enabled', (environment) => {
@@ -33,6 +40,54 @@ it('uses the configured environment', () => {
   vi.stubEnv('VITE_SENTRY_ENVIRONMENT', 'staging')
   initSentry()
   expect(Sentry.init).toHaveBeenCalledWith(expect.objectContaining({ environment: 'staging' }))
+})
+
+it('sends console messages as logs with their level and service', async () => {
+  initSentry()
+  expect(Sentry.consoleLoggingIntegration).toHaveBeenCalledOnce()
+  expect(Sentry.logger.info).toHaveBeenCalledWith('Migration Lab frontend started')
+  const options = vi.mocked(Sentry.init).mock.calls[0][0]!
+  const sdk = await vi.importActual<typeof Sentry>('@sentry/react')
+  const envelopes: unknown[] = []
+  const client = new sdk.BrowserClient({
+    ...options,
+    integrations: [sdk.consoleLoggingIntegration()],
+    stackParser: () => [],
+    transport: () => ({
+      send: async (envelope) => { envelopes.push(envelope); return {} },
+      flush: async () => true,
+    }),
+  })
+  const scope = new sdk.Scope()
+  scope.setClient(client)
+  scope.update(options.initialScope)
+  try {
+    sdk.withScope(scope, () => {
+      client.init()
+      console.info('frontend info log')
+      console.warn('frontend warning log')
+      console.error('frontend error log')
+    })
+    await client.flush()
+    expect(envelopes).toEqual(expect.arrayContaining([
+      [expect.anything(), expect.arrayContaining([
+        [expect.objectContaining({ type: 'log' }), expect.objectContaining({
+          items: expect.arrayContaining(
+            [['info', 'frontend info log'], ['warn', 'frontend warning log'], ['error', 'frontend error log']]
+              .map(([level, body]) => expect.objectContaining({
+                level, body,
+                attributes: expect.objectContaining({
+                  service: { value: 'frontend', type: 'string' },
+                  'sentry.environment': { value: 'local', type: 'string' },
+                }),
+              })),
+          ),
+        })],
+      ])],
+    ]))
+  } finally {
+    await client.close()
+  }
 })
 
 it('keeps sensitive data collection disabled after the SDK resolves its defaults', async () => {

@@ -1,7 +1,25 @@
 # Monitoring
 
-Hosted Sentry captures frontend errors, backend panics and infrastructure failures. Reporting is
-disabled without a DSN. The CLI and exported HTML reports do not send events.
+Hosted Sentry captures frontend errors, backend panics, infrastructure failures and application
+logs from both services. Reporting is disabled without a DSN. The CLI and exported HTML reports
+do not send events or logs.
+
+## Logs
+
+Open **Logs** in Sentry and filter by environment and `service` (`frontend` or `backend`).
+The existing DSNs and environment/release settings apply to logs too; no extra credentials are needed.
+
+- Frontend: console messages are forwarded at their original level (`console.log` becomes `info`).
+  A `Migration Lab frontend started` log is sent on initialization. For structured application logs,
+  use `Sentry.logger.info('message', { key: 'value' })` (and the other severity methods).
+- Backend: startup, HTTP requests, migration execution, seeding and cleanup logs are sent to Sentry
+  and retained in local process output. Use `monitoring.Infof(ctx, ...)` or `monitoring.Errorf(ctx, ...)`
+  for new application logs. Request logs and logs emitted inside a handler share the error event's
+  `request_id`, `dataset_id` and `migration_id`. Request URLs use route templates without query strings.
+
+Logs are batched, so allow a few seconds for delivery; the server flushes on shutdown. Plain Go
+`log.Printf` calls and third-party container logs are not automatically forwarded. Console messages
+and explicitly logged values are sent as written: keep SQL, local paths and credentials out of them.
 
 ## Local setup
 
@@ -16,7 +34,7 @@ VITE_SENTRY_ENVIRONMENT=local
 ```
 
 ```bash
-just compose-up
+just dev-run
 ```
 
 An environment is required when its app's DSN is set; missing values cause an initialization
@@ -32,7 +50,16 @@ setTimeout(() => { throw new Error('Migration Lab Sentry test') }, 0)
 ```
 
 Use the `request_id` tag to correlate frontend and backend HTTP failures. Expected migration
-failures and HTTP 400/404 responses are not reported.
+failures and HTTP 400/404 responses are not reported as Issues, but remain visible in logs.
+
+For logs, reload the app and check **Logs** for `Migration Lab frontend started` and backend HTTP
+request entries. You can also send a frontend test log from the browser console:
+
+```javascript
+console.info('Migration Lab Sentry log test')
+```
+
+After backend code changes, run `just dev-apply`; frontend source changes reload through Vite.
 
 ## Production
 

@@ -3,7 +3,6 @@ package pg
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"migration-lab/backend/internal/monitoring"
@@ -39,7 +38,7 @@ func Start(ctx context.Context) (string, func(), error) {
 	terminate := func() {
 		if err := container.Terminate(context.WithoutCancel(ctx)); err != nil {
 			monitoring.CaptureError(ctx, err)
-			log.Printf("Failed to terminate container: %v", err)
+			monitoring.Errorf(ctx, "Failed to terminate container: %v", err)
 		}
 	}
 
