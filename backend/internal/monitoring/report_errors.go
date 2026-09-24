@@ -7,6 +7,7 @@ import (
 	"runtime/debug"
 
 	"github.com/getsentry/sentry-go"
+	"github.com/getsentry/sentry-go/attribute"
 	"github.com/labstack/echo/v4"
 )
 
@@ -18,10 +19,15 @@ func ReportErrors(baseHub *sentry.Hub) echo.MiddlewareFunc {
 			if baseHub != nil {
 				hub = baseHub.Clone()
 				hub.Scope().SetRequest(c.Request())
-				hub.Scope().SetTag("request_id", c.Response().Header().Get(echo.HeaderXRequestID))
-				hub.Scope().SetTag("dataset_id", c.QueryParam("migrationId"))
-				hub.Scope().SetTag("migration_id", c.QueryParam("migration"))
-				hub.Scope().SetTag("route", c.Request().Method+" "+c.Path())
+				for key, value := range map[string]string{
+					"request_id":   c.Response().Header().Get(echo.HeaderXRequestID),
+					"dataset_id":   c.QueryParam("migrationId"),
+					"migration_id": c.QueryParam("migration"),
+					"route":        c.Request().Method + " " + c.Path(),
+				} {
+					hub.Scope().SetTag(key, value)
+					hub.Scope().SetAttributes(attribute.String(key, value))
+				}
 				c.SetRequest(c.Request().WithContext(sentry.SetHubOnContext(c.Request().Context(), hub)))
 			}
 			defer func() {
@@ -29,7 +35,7 @@ func ReportErrors(baseHub *sentry.Hub) echo.MiddlewareFunc {
 					if hub != nil {
 						hub.Recover(value)
 					}
-					c.Logger().Errorf("panic: %v\n%s", value, debug.Stack())
+					Errorf(c.Request().Context(), "panic: %v\n%s", value, debug.Stack())
 					err = echo.NewHTTPError(http.StatusInternalServerError).SetInternal(fmt.Errorf("panic: %v", value))
 				}
 			}()

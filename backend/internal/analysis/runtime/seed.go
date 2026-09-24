@@ -3,9 +3,9 @@ package runtime
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"migration-lab/backend/internal/models"
+	"migration-lab/backend/internal/monitoring"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -26,7 +26,7 @@ func Seed(ctx context.Context, conn *pgx.Conn, plans []SeedPlan, rows int64) []m
 			continue
 		}
 
-		log.Printf("Seeding %s with %d rows", plan.Table, rows)
+		monitoring.Infof(ctx, "Seeding %s with %d rows", plan.Table, rows)
 		if _, err := conn.Exec(ctx, statement); err != nil {
 			seeded = append(seeded, models.SeededTable{Table: plan.Table, Error: err.Error()})
 			continue

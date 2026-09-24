@@ -12,6 +12,7 @@ export function initSentry() {
     dsn: import.meta.env.VITE_SENTRY_DSN,
     environment,
     release: import.meta.env.VITE_SENTRY_RELEASE || undefined,
+    enableLogs: true,
     dataCollection: {
       userInfo: false,
       cookies: false,
@@ -21,10 +22,12 @@ export function initSentry() {
       genAI: { inputs: false, outputs: false },
       databaseQueryData: false,
     },
-    initialScope: { tags: { service: 'frontend' } },
-    // Keep useful request/navigation breadcrumbs without collecting console
-    // messages or DOM text, which may contain migration SQL and local paths.
-    integrations: [Sentry.breadcrumbsIntegration({ console: false, dom: false })],
+    initialScope: { tags: { service: 'frontend' }, attributes: { service: 'frontend' } },
+    // Console messages go to Logs; keep error breadcrumbs focused on requests/navigation.
+    integrations: [
+      Sentry.breadcrumbsIntegration({ console: false, dom: false }),
+      Sentry.consoleLoggingIntegration(),
+    ],
     beforeBreadcrumb(breadcrumb) {
       if (breadcrumb.data) {
         for (const key of ['url', 'from', 'to']) {
@@ -41,4 +44,5 @@ export function initSentry() {
       return event
     },
   })
+  Sentry.logger.info('Migration Lab frontend started')
 }

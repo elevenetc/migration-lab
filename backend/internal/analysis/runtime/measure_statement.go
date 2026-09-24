@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"migration-lab/backend/internal/models"
+	"migration-lab/backend/internal/monitoring"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -37,7 +37,7 @@ func measureStatement(ctx context.Context, conn, sampler *pgx.Conn, index int, s
 
 	before, err := readRelations(ctx, conn)
 	if err != nil {
-		log.Printf("Failed to snapshot the schema before statement %d: %v", index, err)
+		monitoring.Errorf(ctx, "Failed to snapshot the schema before statement %d: %v", index, err)
 	}
 
 	if _, err := conn.Exec(ctx, fmt.Sprintf("SET statement_timeout = %d", budget.Milliseconds())); err != nil {
@@ -73,13 +73,13 @@ func measureStatement(ctx context.Context, conn, sampler *pgx.Conn, index int, s
 func observeAfter(ctx context.Context, conn *pgx.Conn, index int, before map[uint32]relationSnapshot, countersUsable bool) observation {
 	// The budget is spent; the snapshot must not inherit it and be cancelled itself.
 	if _, err := conn.Exec(ctx, "SET statement_timeout = 0"); err != nil {
-		log.Printf("Failed to clear statement_timeout after statement %d: %v", index, err)
+		monitoring.Errorf(ctx, "Failed to clear statement_timeout after statement %d: %v", index, err)
 		return observation{Rewritten: []string{}}
 	}
 
 	after, err := readRelations(ctx, conn)
 	if err != nil {
-		log.Printf("Failed to snapshot the schema after statement %d: %v", index, err)
+		monitoring.Errorf(ctx, "Failed to snapshot the schema after statement %d: %v", index, err)
 		return observation{Rewritten: []string{}}
 	}
 	return observe(before, after, countersUsable)

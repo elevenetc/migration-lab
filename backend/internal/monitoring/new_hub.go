@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/getsentry/sentry-go"
+	"github.com/getsentry/sentry-go/attribute"
 )
 
 // NewHub leaves reporting disabled unless a DSN was explicitly configured.
@@ -36,5 +37,7 @@ func NewHub(dsn, environment, release string) (*sentry.Hub, error) {
 	}
 	scope := sentry.NewScope()
 	scope.SetTag("service", "backend")
+	// sentry-go v0.49 enables logs by default; log attributes are separate from event tags.
+	scope.SetAttributes(attribute.String("service", "backend"))
 	return sentry.NewHub(client, scope), nil
 }

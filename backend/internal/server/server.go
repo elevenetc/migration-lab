@@ -45,7 +45,7 @@ type RuntimeAnalyse func(ctx context.Context, request runtime.Request) (models.R
 func New(cfg Config) *echo.Echo {
 	e := echo.New()
 
-	e.Use(middleware.RequestLogger())
+	e.Use(monitoring.LogRequests())
 	e.Use(middleware.RequestID())
 	e.Use(monitoring.ReportErrors(cfg.Sentry))
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{

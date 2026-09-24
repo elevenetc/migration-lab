@@ -1,8 +1,10 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -15,9 +17,18 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type eventTransport struct{ events []*sentry.Event }
+type eventTransport struct {
+	events []*sentry.Event
+	logs   []sentry.Log
+}
 
-func (t *eventTransport) SendEvent(event *sentry.Event)       { t.events = append(t.events, event) }
+func (t *eventTransport) SendEvent(event *sentry.Event) {
+	if len(event.Logs) > 0 {
+		t.logs = append(t.logs, event.Logs...)
+		return
+	}
+	t.events = append(t.events, event)
+}
 func (*eventTransport) Configure(sentry.ClientOptions)        {}
 func (*eventTransport) Flush(time.Duration) bool              { return true }
 func (*eventTransport) FlushWithContext(context.Context) bool { return true }
@@ -126,5 +137,50 @@ func TestPanicRecoveryWithoutSentry(t *testing.T) {
 	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/panic", nil))
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status %d", rec.Code)
+	}
+}
+
+func TestLogsAreDeliveredWithRequestContextAndKeptLocally(t *testing.T) {
+	hub, transport := testHub(t)
+	var local bytes.Buffer
+	previous := log.Writer()
+	log.SetOutput(&local)
+	t.Cleanup(func() { log.SetOutput(previous) })
+	e := New(Config{Sentry: hub})
+	e.GET("/logged", func(c echo.Context) error {
+		monitoring.Infof(c.Request().Context(), "Applying migration %s", "V2")
+		monitoring.Errorf(c.Request().Context(), "Cleanup failed: %s", "test failure")
+		return errors.New("handler failed")
+	})
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/logged?migrationId=demo&migration=V2&migrationsPath=/private/sql", nil))
+	e.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/health", nil))
+	monitoring.Infof(context.Background(), "CLI stays local")
+	if !hub.Flush(time.Second) {
+		t.Fatal("logs did not flush")
+	}
+	if len(transport.logs) != 4 {
+		t.Fatalf("expected 4 server logs, got %+v", transport.logs)
+	}
+	for i, entry := range transport.logs {
+		if entry.Attributes["service"].AsString() != "backend" || entry.Attributes["sentry.environment"].AsString() != "test" || entry.Attributes["sentry.release"].AsString() != "test-release" {
+			t.Fatalf("missing service/environment/release: %+v", entry.Attributes)
+		}
+		if i < 3 {
+			if entry.Attributes["request_id"].AsString() != rec.Header().Get(echo.HeaderXRequestID) || entry.Attributes["dataset_id"].AsString() != "demo" || entry.Attributes["migration_id"].AsString() != "V2" {
+				t.Fatalf("missing request context: %+v", entry.Attributes)
+			}
+		} else if entry.Attributes["dataset_id"].AsString() != "" || entry.Attributes["migration_id"].AsString() != "" {
+			t.Fatalf("leaked request context: %+v", entry.Attributes)
+		}
+		if strings.Contains(entry.Body, "private") || !strings.Contains(local.String(), entry.Body) {
+			t.Fatalf("unexpected log body or missing local copy: %q", entry.Body)
+		}
+	}
+	if transport.logs[0].Level != sentry.LogLevelInfo || transport.logs[1].Level != sentry.LogLevelError || transport.logs[2].Level != sentry.LogLevelError || !strings.Contains(transport.logs[2].Body, "status=500") {
+		t.Fatalf("incorrect severity or HTTP status: %+v", transport.logs)
+	}
+	if !strings.Contains(local.String(), "CLI stays local") {
+		t.Fatal("missing local CLI log")
 	}
 }

@@ -3,7 +3,6 @@ package runtime
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"migration-lab/backend/internal/models"
@@ -89,7 +88,7 @@ func Analyse(ctx context.Context, request Request) (models.RuntimeAnalysisResult
 	}
 	defer func() {
 		if err := conn.Close(context.WithoutCancel(ctx)); err != nil {
-			log.Printf("Failed to close runtime connection: %v", err)
+			monitoring.Errorf(ctx, "Failed to close runtime connection: %v", err)
 		}
 	}()
 
@@ -111,11 +110,11 @@ func Analyse(ctx context.Context, request Request) (models.RuntimeAnalysisResult
 	}
 	defer func() {
 		if err := sampler.Close(context.WithoutCancel(ctx)); err != nil {
-			log.Printf("Failed to close lock sampler connection: %v", err)
+			monitoring.Errorf(ctx, "Failed to close lock sampler connection: %v", err)
 		}
 	}()
 
-	log.Printf("Measuring %s: %d statements, %d ms deadline", info.ID, len(statements), deadline.Milliseconds())
+	monitoring.Infof(ctx, "Measuring %s: %d statements, %d ms deadline", info.ID, len(statements), deadline.Milliseconds())
 	measurements := runStatements(ctx, conn, sampler, statements, deadline)
 	result.Statements = withClasses(migration, result.Seeded, measurements)
 

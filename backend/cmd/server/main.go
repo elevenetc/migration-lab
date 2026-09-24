@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 	"os"
@@ -37,7 +38,11 @@ func run(hub *sentry.Hub) error {
 	}
 	cfg.Sentry = hub
 
-	log.Printf("Starting server on port %d", *port)
+	ctx := context.Background()
+	if hub != nil {
+		ctx = sentry.SetHubOnContext(ctx, hub)
+	}
+	monitoring.Infof(ctx, "Starting server on port %d", *port)
 	return server.Start(cfg)
 }
 
