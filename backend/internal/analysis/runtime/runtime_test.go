@@ -92,12 +92,10 @@ func TestSeedStatement(t *testing.T) {
 	}
 }
 
-func TestSeedStatementIsEmptyWithoutFillableColumns(t *testing.T) {
-	if got := SeedStatement(SeedPlan{Table: "t"}, 1000); got != "" {
-		t.Errorf("expected no statement for a table with no fillable columns, got %q", got)
-	}
-	if got := SeedStatement(SeedPlan{Table: "t", Columns: []SeedColumn{{Name: "a", Expr: "g.i"}}}, 0); got != "" {
-		t.Errorf("expected no statement for zero rows, got %q", got)
+func TestSeedStatementLeavesEveryColumnToItsDefaultWithoutFillableColumns(t *testing.T) {
+	want := `INSERT INTO "accounts" SELECT FROM generate_series(1, 1000) AS g(i)`
+	if got := SeedStatement(SeedPlan{Table: "accounts"}, 1000); got != want {
+		t.Errorf("SeedStatement =\n%s\nwant\n%s", got, want)
 	}
 }
 

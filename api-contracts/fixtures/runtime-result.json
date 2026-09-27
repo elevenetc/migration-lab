@@ -10,7 +10,7 @@
         {
             "table": "events_2027",
             "rows": 0,
-            "error": "no column of the table can be filled generically"
+            "error": "ERROR: null value in column \"status\" of relation \"events_2027\" violates not-null constraint (SQLSTATE 23502)"
         }
     ],
     "statements": [
