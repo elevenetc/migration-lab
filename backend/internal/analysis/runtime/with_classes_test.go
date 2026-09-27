@@ -55,7 +55,7 @@ func TestWithClassesLeavesAnUnmodelledStatementUnpredicted(t *testing.T) {
 // is the same shape a genuinely cheap statement produces. Blind must not read as
 // clean.
 func TestWithClassesDiscardsACheapObservationOfAnEmptyTable(t *testing.T) {
-	seeded := []models.SeededTable{{Table: "accounts", Error: "no column of the table can be filled generically"}}
+	seeded := []models.SeededTable{{Table: "accounts", Error: `ERROR: null value in column "status" of relation "accounts" violates not-null constraint (SQLSTATE 23502)`}}
 	measurements := []models.StatementMeasurement{{
 		SQL:           "ALTER TABLE accounts ADD COLUMN created_at TIMESTAMP DEFAULT now()",
 		ObservedClass: models.MetadataOnly,

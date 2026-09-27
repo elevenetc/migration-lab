@@ -94,7 +94,8 @@ Which tables:
 - `DEFAULT` partitions and ranges open at the bottom (`FROM (MINVALUE)`) are skipped
 - No expansion for foreign keys: `ADD FOREIGN KEY` scans the child, which the operation already names
 
-How: `generate_series`, skipping columns the database fills itself (identity, generated, `serial`).
+How: `generate_series`, skipping columns the database fills itself (identity, generated, `serial`). A table with only
+such columns is still seeded, every column taking its default.
 
 | Type                                                         | Value                             |
 |--------------------------------------------------------------|-----------------------------------|

@@ -6,13 +6,10 @@ import (
 )
 
 // SeedStatement builds the INSERT that fills the planned table from
-// generate_series. It returns "" when no column of the table can be given a
-// value, since there is then nothing to insert.
+// generate_series. A plan with no columns — every column filled by the
+// database itself — inserts zero-column rows, leaving each column to its
+// default.
 func SeedStatement(plan SeedPlan, rows int64) string {
-	if len(plan.Columns) == 0 || rows <= 0 {
-		return ""
-	}
-
 	names := make([]string, len(plan.Columns))
 	exprs := make([]string, len(plan.Columns))
 	for i, column := range plan.Columns {
@@ -20,8 +17,13 @@ func SeedStatement(plan SeedPlan, rows int64) string {
 		exprs[i] = column.Expr
 	}
 
-	return fmt.Sprintf("INSERT INTO %s (%s) SELECT %s FROM generate_series(1, %d) AS g(i)",
-		quoteIdentifier(plan.Table), strings.Join(names, ", "), strings.Join(exprs, ", "), rows)
+	target, values := quoteIdentifier(plan.Table), ""
+	if len(names) > 0 {
+		target += " (" + strings.Join(names, ", ") + ")"
+		values = strings.Join(exprs, ", ") + " "
+	}
+
+	return fmt.Sprintf("INSERT INTO %s SELECT %sFROM generate_series(1, %d) AS g(i)", target, values, rows)
 }
 
 // quoteIdentifier is shared by every statement this package builds by hand.

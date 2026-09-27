@@ -325,7 +325,7 @@ func TestGenerateRuntimeResultFixture(t *testing.T) {
 		DeadlineMs:  5000,
 		Seeded: []models.SeededTable{
 			{Table: "events_2026", Rows: 1000000},
-			{Table: "events_2027", Error: "no column of the table can be filled generically"},
+			{Table: "events_2027", Error: `ERROR: null value in column "status" of relation "events_2027" violates not-null constraint (SQLSTATE 23502)`},
 		},
 		Statements: []models.StatementMeasurement{
 			{
