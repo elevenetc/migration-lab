@@ -38,7 +38,7 @@ func TestMain(m *testing.M) {
 				os.Exit(1)
 			}
 		} else {
-			if _, err := fmt.Println(`{"analysisResult":{"migrations":[]}}`); err != nil {
+			if _, err := fmt.Println(`{"staticResult":{"migrations":[]}}`); err != nil {
 				os.Exit(3)
 			}
 		}

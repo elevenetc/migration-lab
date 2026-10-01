@@ -12,7 +12,7 @@ import (
 func TestCommentShowsTheMeasuredSQLForTheFinding(t *testing.T) {
 	const target = "V2__add_nonnegative_balance_check.sql"
 	const sql = "ALTER TABLE accounts\n    ADD CONSTRAINT nonnegative_balance CHECK (balance >= 0);"
-	result := &models.RuntimeAnalysisResult{
+	result := &models.RuntimeMigrationResult{
 		MigrationID: target, Verdict: models.RuntimeCompleted,
 		Statements: []models.StatementMeasurement{
 			{StatementIndex: 7, SQL: "SELECT 'unrelated statement';", ObservedClass: models.MetadataOnly},
@@ -54,7 +54,7 @@ func TestCommentOmitsSQLWhenTheFindingHasNoMatchingStatement(t *testing.T) {
 				Type: "FINDING", Message: "Original diagnostic",
 				OperationID: models.OperationID{MigrationID: tc.migration, StatementIndex: tc.index},
 			}
-			body := renderCommentFinding(finding, &models.RuntimeAnalysisResult{
+			body := renderCommentFinding(finding, &models.RuntimeMigrationResult{
 				MigrationID: "V2.sql", Statements: []models.StatementMeasurement{{StatementIndex: 0, SQL: tc.sql}},
 			})
 			if body != "- ` FINDING `: Original diagnostic\n" {
@@ -69,7 +69,7 @@ func TestCommentKeepsUnmodelledSQLLiteralInsideItsFence(t *testing.T) {
 	body := renderCommentFinding(models.RuntimeFinding{
 		Type: models.FindingStatementFailed, Message: "statement 3 failed: invalid value",
 		OperationID: models.OperationID{MigrationID: "V2.sql", StatementIndex: 3},
-	}, &models.RuntimeAnalysisResult{
+	}, &models.RuntimeMigrationResult{
 		MigrationID: "V2.sql", Statements: []models.StatementMeasurement{{StatementIndex: 3, SQL: sql}},
 	})
 	want := "\n  ````sql\n  " + strings.ReplaceAll(sql, "\n", "\n  ") + "\n  ````\n"
@@ -79,7 +79,7 @@ func TestCommentKeepsUnmodelledSQLLiteralInsideItsFence(t *testing.T) {
 }
 
 func TestCommentBoundsSQLWithoutDroppingTheOtherFindings(t *testing.T) {
-	result := &models.RuntimeAnalysisResult{
+	result := &models.RuntimeMigrationResult{
 		MigrationID: "V2.sql", Verdict: models.RuntimeCompleted,
 		Statements: []models.StatementMeasurement{{StatementIndex: 0, SQL: strings.Repeat("界", 2000) + "END_OF_SQL"}},
 	}

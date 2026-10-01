@@ -10,7 +10,7 @@ import (
 // Findings turns the measurements of a run into warning-shaped findings: first
 // statement failures, performance and locks, then what could not be measured
 // because a table stayed empty, and finally any leftovers that prevent retrying.
-func Findings(migration *models.Migration, result models.RuntimeAnalysisResult) []models.RuntimeFinding {
+func Findings(migration *models.Migration, result models.RuntimeMigrationResult) []models.RuntimeFinding {
 	// Empty rather than nil: a clean run must marshal as [] for the frontend's
 	// RuntimeFinding[], and a clean run is the common case.
 	findings := make([]models.RuntimeFinding, 0)
@@ -44,7 +44,7 @@ func Findings(migration *models.Migration, result models.RuntimeAnalysisResult) 
 	return findings
 }
 
-func statementFindings(migration *models.Migration, result models.RuntimeAnalysisResult, measurement models.StatementMeasurement) []models.RuntimeFinding {
+func statementFindings(migration *models.Migration, result models.RuntimeMigrationResult, measurement models.StatementMeasurement) []models.RuntimeFinding {
 	table := tableOfSQL(migration, measurement.SQL)
 	id := statementID(migration, measurement.StatementIndex)
 

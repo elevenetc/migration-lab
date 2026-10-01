@@ -169,11 +169,11 @@ function withParams(path: string, params: Record<string, string | null>): string
   return search ? `${path}?${search}` : path
 }
 
-export async function fetchMigrations(migrationId: string | null, migrationsPath: string | null): Promise<MigrationTimelineResponse> {
+export async function fetchMigrations(datasetId: string | null, migrationsPath: string | null): Promise<MigrationTimelineResponse> {
   if (window.__MIGRATION_DATA__) {
     return window.__MIGRATION_DATA__
   }
-  const response = await fetch(withParams('/api/migrations', { migrationId, migrationsPath }))
+  const response = await fetch(withParams('/api/migrations', { datasetId, migrationsPath }))
   if (!response.ok) {
     throw new ApiError('Failed to fetch migrations', response.status, response.headers.get('X-Request-ID'))
   }
@@ -199,8 +199,8 @@ export interface RunMigrationsResult {
   migrationsApplied: number
 }
 
-export async function runMigrations(migrationId: string | null): Promise<RunMigrationsResult> {
-  const response = await fetch(withParams('/api/migrations/run', { migrationId }), { method: 'POST' })
+export async function runMigrations(datasetId: string | null): Promise<RunMigrationsResult> {
+  const response = await fetch(withParams('/api/migrations/run', { datasetId }), { method: 'POST' })
   if (!response.ok) {
     throw new ApiError('Failed to run migrations', response.status, response.headers.get('X-Request-ID'))
   }
@@ -251,7 +251,8 @@ export interface RuntimeFinding {
   message: string
 }
 
-export interface RuntimeAnalysisResult {
+/** One migration executed against a seeded container. */
+export interface RuntimeMigrationResult {
   migrationId: string
   version: string
   deadlineMs: number
@@ -263,13 +264,23 @@ export interface RuntimeAnalysisResult {
   message: string
 }
 
-/** Runs one migration of the loaded timeline against a seeded container. */
+/** The migrations a runtime analysis measured in one container: the targeted one, or every one. */
+export interface RuntimeAnalysisResult {
+  deadlineMs: number
+  rows: number
+  migrations: RuntimeMigrationResult[]
+  // The migration the run could not get past; the ones after it were not measured.
+  stopped?: string
+  message: string
+}
+
+/** Measures one migration of the loaded timeline, or every migration when none is named. */
 export async function runRuntimeAnalysis(
-  migrationId: string | null,
+  datasetId: string | null,
   migrationsPath: string | null,
-  migration: string,
+  migration: string | null,
 ): Promise<RuntimeAnalysisResult> {
-  const target = withParams('/api/migrations/runtime-analysis', { migrationId, migrationsPath, migration })
+  const target = withParams('/api/migrations/runtime-analysis', { datasetId, migrationsPath, migration })
   const response = await fetch(target, { method: 'POST' })
   if (!response.ok) {
     throw new ApiError(`Runtime analysis failed: ${response.status}`, response.status, response.headers.get('X-Request-ID'))

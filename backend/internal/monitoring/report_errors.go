@@ -21,7 +21,7 @@ func ReportErrors(baseHub *sentry.Hub) echo.MiddlewareFunc {
 				hub.Scope().SetRequest(c.Request())
 				for key, value := range map[string]string{
 					"request_id":   c.Response().Header().Get(echo.HeaderXRequestID),
-					"dataset_id":   c.QueryParam("migrationId"),
+					"dataset_id":   c.QueryParam("datasetId"),
 					"migration_id": c.QueryParam("migration"),
 					"route":        c.Request().Method + " " + c.Path(),
 				} {

@@ -52,13 +52,31 @@ func loadCommentSummary(output, head string) prcomment.Summary {
 			// Derive the path from the validated target, never from an artifact's
 			// result field. The publisher only reads files in its results directory.
 			err := readJSON(filepath.Join(output, target+".json"), &data)
-			if err != nil || data.RuntimeResult == nil || data.RuntimeResult.MigrationID != target || data.RuntimeResult.Verdict == "" {
+			measured := targetResult(data.RuntimeResult, target)
+			switch {
+			case err == nil && measured != nil:
+				migration.Runtime = measured
+			case err == nil && data.RuntimeResult != nil && data.RuntimeResult.Message != "":
+				migration.Problem = fmt.Sprintf("Runtime analysis did not measure the migration: %s (CLI exit code %d).", data.RuntimeResult.Message, result.ExitCode)
+			default:
 				migration.Problem = fmt.Sprintf("Runtime output is missing or invalid (CLI exit code %d). Check the diagnostic logs.", result.ExitCode)
-			} else {
-				migration.Runtime = data.RuntimeResult
 			}
 		}
 		summary.Migrations = append(summary.Migrations, migration)
 	}
 	return summary
+}
+
+// targetResult is the measurement of target in a runtime result, nil when the
+// run did not measure it.
+func targetResult(result *models.RuntimeAnalysisResult, target string) *models.RuntimeMigrationResult {
+	if result == nil {
+		return nil
+	}
+	for i, migration := range result.Migrations {
+		if migration.MigrationID == target && migration.Verdict != "" {
+			return &result.Migrations[i]
+		}
+	}
+	return nil
 }

@@ -1,5 +1,7 @@
-import type {RetryVerdict, RuntimeAnalysisResult, RuntimeVerdict, StatementMeasurement} from '../api/migrationApi'
+import {Fragment, useState} from 'react'
+import type {RetryVerdict, RuntimeAnalysisResult, RuntimeMigrationResult, RuntimeVerdict, StatementMeasurement} from '../api/migrationApi'
 import {useMigrationStore} from '../store/migrationStore'
+import {summarizeRuntime} from './summarizeRuntime'
 import './runtimePopup.css'
 
 const VERDICT_COLOR: Record<RuntimeVerdict, string> = {
@@ -36,7 +38,7 @@ function Classes({statement}: {statement: StatementMeasurement}) {
   )
 }
 
-function Result({result}: {result: RuntimeAnalysisResult}) {
+function Result({result}: {result: RuntimeMigrationResult}) {
   return (
     <>
       <div className="runtime-verdicts">
@@ -91,26 +93,94 @@ function Result({result}: {result: RuntimeAnalysisResult}) {
   )
 }
 
-/** Result of a runtime analysis, shown over the timeline while it runs and once it is done. */
-export function RuntimePopup() {
-  const target = useMigrationStore((state) => state.runtimeTarget)
-  const result = useMigrationStore((state) => state.runtimeAnalysis)
-  const error = useMigrationStore((state) => state.runtimeError)
-  const closeRuntime = useMigrationStore((state) => state.closeRuntime)
-
-  if (!target && !result && !error) return null
+/** Every measured migration, one row each; a row expands into its full result. */
+function MigrationTable({migrations}: {migrations: RuntimeMigrationResult[]}) {
+  const [expanded, setExpanded] = useState<string | null>(null)
 
   return (
-    <div className="runtime-backdrop" onClick={target ? undefined : closeRuntime}>
+    <table className="runtime-timeline">
+      <thead>
+        <tr>
+          <th>migration</th>
+          <th>verdict</th>
+          <th>ms</th>
+          <th>lock</th>
+          <th>class</th>
+        </tr>
+      </thead>
+      <tbody>
+        {migrations.map((migration) => {
+          const summary = summarizeRuntime(migration)
+          const open = expanded === migration.migrationId
+          return (
+            <Fragment key={migration.migrationId}>
+              <tr
+                className={open ? 'runtime-timeline-row runtime-timeline-row-open' : 'runtime-timeline-row'}
+                onClick={() => setExpanded(open ? null : migration.migrationId)}
+              >
+                <td>{migration.version}</td>
+                <td><Badge label={migration.verdict} color={VERDICT_COLOR[migration.verdict]} /></td>
+                <td>{summary.durationMs}</td>
+                <td>{summary.strongestLock ?? '—'}</td>
+                <td>{summary.worstClass ?? '—'}</td>
+              </tr>
+              {open && (
+                <tr>
+                  <td colSpan={5} className="runtime-timeline-detail">
+                    <Result result={migration} />
+                  </td>
+                </tr>
+              )}
+            </Fragment>
+          )
+        })}
+      </tbody>
+    </table>
+  )
+}
+
+/** One measured migration reads as its full result; several as a table, so a regression stands out. */
+function Analysis({analysis}: {analysis: RuntimeAnalysisResult}) {
+  if (analysis.migrations.length === 0) {
+    return <p className="runtime-error">{analysis.message}</p>
+  }
+  if (analysis.migrations.length === 1 && !analysis.stopped) {
+    return <Result result={analysis.migrations[0]} />
+  }
+  return (
+    <>
+      <div className="runtime-verdicts">
+        <Badge label={`deadline ${analysis.deadlineMs} ms`} color="#98c1d9" />
+        <Badge label={`${analysis.rows.toLocaleString()} rows`} color="#98c1d9" />
+      </div>
+      <p className={analysis.stopped ? 'runtime-error' : 'runtime-message'}>{analysis.message}</p>
+      <MigrationTable migrations={analysis.migrations} />
+    </>
+  )
+}
+
+/** Result of a runtime analysis, shown over the timeline while it runs and once it is done. */
+export function RuntimePopup() {
+  const running = useMigrationStore((state) => state.runtimeRunning)
+  const target = useMigrationStore((state) => state.runtimeTarget)
+  const analysis = useMigrationStore((state) => state.runtimeAnalysis)
+  const error = useMigrationStore((state) => state.runtimeError)
+  const migrationCount = useMigrationStore((state) => state.migrations.length)
+  const closeRuntime = useMigrationStore((state) => state.closeRuntime)
+
+  if (!running && !analysis && !error) return null
+
+  return (
+    <div className="runtime-backdrop" onClick={running ? undefined : closeRuntime}>
       <article className="runtime-panel" onClick={(event) => event.stopPropagation()}>
         <div className="runtime-head">
-          <h2>runtime · {result?.migrationId ?? target}</h2>
-          {!target && <button className="runtime-close" onClick={closeRuntime}>close</button>}
+          <h2>runtime · {target ?? 'all migrations'}</h2>
+          {!running && <button className="runtime-close" onClick={closeRuntime}>close</button>}
         </div>
 
-        {target && <p className="runtime-message">Seeding a container and measuring {target}…</p>}
+        {running && <p className="runtime-message">Seeding a container and measuring {target ?? `${migrationCount} migrations`}…</p>}
         {error && <p className="runtime-error">{error}</p>}
-        {result && <Result result={result} />}
+        {analysis && <Analysis analysis={analysis} />}
       </article>
     </div>
   )

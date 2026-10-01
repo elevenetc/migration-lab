@@ -87,9 +87,8 @@ type RuntimeFinding struct {
 	Message     string      `json:"message"`
 }
 
-// RuntimeAnalysisResult is what runtime analysis returns: one migration executed
-// against a seeded container. Its static counterpart is StaticAnalysisResult.
-type RuntimeAnalysisResult struct {
+// RuntimeMigrationResult is one migration executed against a seeded container.
+type RuntimeMigrationResult struct {
 	MigrationID string                 `json:"migrationId"`
 	Version     string                 `json:"version"`
 	DeadlineMs  int64                  `json:"deadlineMs"`
@@ -99,4 +98,18 @@ type RuntimeAnalysisResult struct {
 	Retry       RetryVerdict           `json:"retry"`
 	Findings    []RuntimeFinding       `json:"findings"`
 	Message     string                 `json:"message"`
+}
+
+// RuntimeAnalysisResult is what runtime analysis returns: the migrations it
+// measured in one container, each against the database its predecessors left
+// behind. Its static counterpart is StaticAnalysisResult.
+type RuntimeAnalysisResult struct {
+	DeadlineMs int64                    `json:"deadlineMs"`
+	Rows       int64                    `json:"rows"`
+	Migrations []RuntimeMigrationResult `json:"migrations"`
+	// Stopped is the migration the run could not get past, even without a
+	// deadline; the migrations after it are not measured. Empty when the run
+	// reached the end.
+	Stopped string `json:"stopped,omitempty"`
+	Message string `json:"message"`
 }

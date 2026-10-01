@@ -7,9 +7,9 @@ import (
 	"migration-lab/backend/internal/models"
 )
 
-func mismatchResult(measurement models.StatementMeasurement) models.RuntimeAnalysisResult {
+func mismatchResult(measurement models.StatementMeasurement) models.RuntimeMigrationResult {
 	measurement.Verdict = models.RuntimeCompleted
-	return models.RuntimeAnalysisResult{
+	return models.RuntimeMigrationResult{
 		Seeded:     []models.SeededTable{{Table: "accounts", Rows: 1_000_000}},
 		Statements: []models.StatementMeasurement{measurement},
 		Retry:      models.RetryNotApplicable,

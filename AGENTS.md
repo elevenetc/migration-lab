@@ -23,8 +23,9 @@ Analysis comes in two groups, one package each under `internal/analysis`, and th
 after them:
 
 - **static analysis** (`internal/analysis/static`) reads the AST and raises warnings. No database
-- **runtime analysis** (`internal/analysis/runtime`) executes one migration against a seeded
-  PostgreSQL container and raises findings from what it measured. See
+- **runtime analysis** (`internal/analysis/runtime`) executes one migration, or every migration of
+  a timeline in turn, against a seeded PostgreSQL container and raises findings from what it
+  measured. See
   [docs/supported-runtime-analysis.md](docs/supported-runtime-analysis.md)
 
 Where a rule lives follows from that split: derivable from the migration text -> `static`,
@@ -71,7 +72,8 @@ operations. See [docs/supported-performance-classes.md](docs/supported-performan
 
 A `RuntimeFinding` carries the same fields as a static `Warning` (`type`, `operationId`, `tableName`,
 `message`), so both analysis groups stay renderable through one path. Runtime measurements
-(`StatementMeasurement`, `SeededTable`) ride alongside in `RuntimeAnalysisResult`.
+(`StatementMeasurement`, `SeededTable`) ride alongside in each `RuntimeMigrationResult`, and a
+`RuntimeAnalysisResult` holds the migrations one run measured — one, or every one.
 
 #### Data Flow
 
@@ -105,6 +107,8 @@ datasets and CLI assign timestamps. `timestamp` is therefore an ordinal rank, no
 - A hovered cell shows two stacked footer buttons: `focus-in`, then `runtime` below it, which measures
   the cell's migration and shows the result in `RuntimePopup`. Both are drawn by `cellButton.ts`,
   which owns the geometry and hands each drawer a slot
+- `Runtime all` in the header measures every migration in one container; `RuntimePopup` shows one
+  measured migration as its full result, and several as a table whose rows expand into it
 
 #### Rendering
 
@@ -124,9 +128,11 @@ The CLI (`backend/cmd/cli`) outputs static analysis JSON by default:
 
 - Default - Parse migrations and output static analysis as JSON
 - `--run` - Also run migrations against a PostgreSQL container
-- `--runtime` - Also measure the last migration against a seeded container;
-  select a target with `--migration <filename>`, tune with `--rows` / `--deadline-ms`;
-  exits non-zero unless the verdict is `COMPLETED`
+- `--runtime` - Also measure every migration in turn against one seeded container (`runtimeResult`);
+  tune with `--rows` / `--deadline-ms`; verdicts are reported, not raised
+- `--runtime --migration <filename>` - Measure only that migration; exits non-zero
+  unless the verdict is `COMPLETED`. CI runs this once per migration a PR adds
+- Inline SQL is split with `pg_query`; each statement becomes a migration of its own
 - `--report` - Generate self-contained HTML report instead of JSON
 
 ### Building CLI with Report Support
@@ -153,8 +159,11 @@ This builds the frontend, embeds assets into `backend/internal/report/dist/`, an
 ### Runtime Analysis
 
 ```bash
-# Measure the last migration against tables seeded to 1M rows
+# Measure every migration in turn, tables topped up to 1M rows
 ./build/migration-lab --runtime /path/to/migrations
+
+# Measure only one migration
+./build/migration-lab --runtime --migration V42__add_index.sql /path/to/migrations
 
 # Smaller and quicker, with a 30 s pod grace period
 ./build/migration-lab --runtime --rows 50000 --deadline-ms 30000 /path/to/migrations
@@ -264,12 +273,13 @@ When adding new Operation types:
    leftover. Anything derivable from the AST belongs in static analysis instead
 2. Keep the new logic pure where it can be — parsing, planning and classification should take plain
    values and be unit-testable without Docker
-3. Put anything that talks to the database in a file of its own, and wire it into `Analyse`
-   (`analyse.go`), which is the package's only entry point
+3. Put anything that talks to the database in a file of its own, and wire it into
+   `measureMigration` (`measure_migration.go`), which `Analyse` (`analyse.go`), the package's only
+   entry point, runs for every measured migration
 4. Add a finding type to `internal/models/runtime.go` and raise it in `findings.go`
 5. Add unit tests to `internal/analysis/runtime/runtime_test.go`; add a container-backed test to
    `internal/analysis/runtime/analyse_test.go` only for behaviour a real PostgreSQL has to confirm
-6. Keep every collection in `RuntimeAnalysisResult` an empty slice rather than nil — the frontend types are
+6. Keep every collection in `RuntimeAnalysisResult` and `RuntimeMigrationResult` an empty slice rather than nil — the frontend types are
    arrays, and Go marshals nil as `null`
 7. Extend the fixture in `internal/contracts/generate_test.go` and the validator in
    `validate-api-contracts.test.ts`
@@ -279,11 +289,11 @@ When adding new Operation types:
 ## Debugging
 
 - Use `playwright mcp` and `localhost:3000` to verify frontend implementation
-- `localhost:3000` makes single request which returns content of `/api/migrations?migrationId=<id>`;
-  the id comes from the page URL (`?migrationId=`). Dataset ids are the keys of `datasets.Datasets()`
+- `localhost:3000` makes single request which returns content of `/api/migrations?datasetId=<id>`;
+  the id comes from the page URL (`?datasetId=`). Dataset ids are the keys of `datasets.Datasets()`
   (e.g. `ecommerce`, `simple-partition`). A missing/unknown id returns 404.
 - Alternatively, `?migrationsPath=<abs-dir>` loads, parses and analyzes the `*.sql` files from a
-  local directory (takes precedence over `migrationId`; a bad path returns 400). With `dev-run`
+  local directory (takes precedence over `datasetId`; a bad path returns 400). With `dev-run`
   the backend runs in a container, so `docker-compose.override.yml` bind-mounts a narrow root
   (`MIGRATIONS_ROOT`, default `~/dev`) read-only at the same path — pass an absolute path under that
   root so it resolves in-container. Set `MIGRATIONS_ROOT` (e.g. in `.env`) if migrations live elsewhere.

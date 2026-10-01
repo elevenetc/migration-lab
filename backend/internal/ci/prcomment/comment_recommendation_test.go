@@ -98,7 +98,7 @@ func TestCommentRecommendationUsesRiskAndEvidence(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			migration := Migration{Runtime: &models.RuntimeAnalysisResult{
+			migration := Migration{Runtime: &models.RuntimeMigrationResult{
 				Verdict: models.RuntimeCompleted,
 				Seeded:  []models.SeededTable{{Table: "accounts", Rows: 1_000_000}},
 				Statements: []models.StatementMeasurement{{
@@ -145,7 +145,7 @@ func TestCommentPerformanceReportsWorstClassesAndMissingCoverage(t *testing.T) {
 }
 
 func TestCommentPreservesMigrationFailureMessage(t *testing.T) {
-	body := renderCommentMigration(Migration{Name: "V2__fail.sql", ExitCode: 1, Runtime: &models.RuntimeAnalysisResult{
+	body := renderCommentMigration(Migration{Name: "V2__fail.sql", ExitCode: 1, Runtime: &models.RuntimeMigrationResult{
 		Verdict: models.RuntimeFailed, Message: "statement 0 failed: duplicate column",
 	}}, testCommentRun())
 	if !strings.Contains(body, "Do not merge") || !strings.Contains(body, "duplicate column") || strings.Contains(body, "Deadline:") {

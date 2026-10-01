@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"time"
 
 	"migration-lab/backend/internal/analysis/runtime"
@@ -23,7 +22,7 @@ import (
 var runFlag bool
 var reportFlag string
 var runtimeFlag bool
-var migrationTargetFlag string
+var targetMigrationIDFlag string
 var rowsFlag int64
 var deadlineFlag int64
 
@@ -33,15 +32,17 @@ var rootCmd = &cobra.Command{
 	Long: `Migration Lab analyzes PostgreSQL migration performance and impact.
 
 By default, outputs static analysis as JSON.
-Use --runtime to measure execution, locking, and retry behavior against a seeded PostgreSQL container.
+Use --runtime to measure execution, locking, and retry behavior of every migration against a seeded
+PostgreSQL container, or --runtime --migration <filename> to measure a single one.
 If argument is a directory, processes all *.sql files in it.
-If argument is a SQL string, processes it as a single migration.
+If argument is a SQL string, processes each of its statements as a migration of its own.
 
 Examples:
   migration-lab /path/to/migrations
   migration-lab "CREATE TABLE users (id INT);"
   migration-lab --run /path/to/migrations
   migration-lab --runtime /path/to/migrations
+  migration-lab --runtime --migration V42__add_index.sql /path/to/migrations
   migration-lab --runtime --rows 1000000 --deadline-ms 30000 /path/to/migrations
   migration-lab --report /path/to/migrations
   migration-lab --report=output.html /path/to/migrations`,
@@ -69,10 +70,10 @@ Examples:
 func init() {
 	rootCmd.Flags().BoolVar(&runFlag, "run", false, "Run migrations against a PostgreSQL container (requires Docker)")
 	rootCmd.Flags().StringVar(&reportFlag, "report", "", "Generate self-contained HTML report (default: report.html)")
-	rootCmd.Flags().BoolVar(&runtimeFlag, "runtime", false, "Measure the last migration against a seeded PostgreSQL container (requires Docker); exits non-zero unless it completes")
-	rootCmd.Flags().StringVar(&migrationTargetFlag, "migration", "", "Migration filename to measure with --runtime (default: last migration)")
+	rootCmd.Flags().BoolVar(&runtimeFlag, "runtime", false, "Measure every migration in turn against a seeded PostgreSQL container (requires Docker)")
+	rootCmd.Flags().StringVar(&targetMigrationIDFlag, "migration", "", "Measure only this migration with --runtime, and exit non-zero unless it completes")
 	rootCmd.MarkFlagsMutuallyExclusive("runtime", "report")
-	rootCmd.Flags().Int64Var(&rowsFlag, "rows", 0, "Rows to seed every touched table to (default 1000000)")
+	rootCmd.Flags().Int64Var(&rowsFlag, "rows", 0, "Rows to top every touched table up to (default 1000000)")
 	rootCmd.Flags().Int64Var(&deadlineFlag, "deadline-ms", 0, "Deadline standing for the pod grace period (default 5000)")
 }
 
@@ -85,33 +86,25 @@ func processDirectory(dir string) error {
 }
 
 func processSQL(sql string) error {
-	statements := splitStatements(sql)
-	var infos []models.MigrationInfo
-	for i, stmt := range statements {
-		infos = append(infos, models.MigrationInfo{
+	statements, err := parser.SplitStatements(sql)
+	if err != nil {
+		return err
+	}
+	infos := make([]models.MigrationInfo, len(statements))
+	for i, statement := range statements {
+		infos[i] = models.MigrationInfo{
 			ID:        fmt.Sprintf("statement_%d", i+1),
-			SQL:       stmt,
+			SQL:       statement,
 			Timestamp: int64(i + 1),
-		})
+		}
 	}
 	return processMigrationInfos(infos)
 }
 
-func splitStatements(sql string) []string {
-	var statements []string
-	for stmt := range strings.SplitSeq(sql, ";") {
-		stmt = strings.TrimSpace(stmt)
-		if stmt != "" {
-			statements = append(statements, stmt+";")
-		}
-	}
-	return statements
-}
-
 func processMigrationInfos(infos []models.MigrationInfo) error {
-	if migrationTargetFlag != "" {
+	if targetMigrationIDFlag != "" {
 		var err error
-		infos, err = selectRuntimeMigrations(infos, migrationTargetFlag)
+		infos, err = selectRuntimeMigrations(infos, targetMigrationIDFlag)
 		if err != nil {
 			return err
 		}
@@ -128,7 +121,7 @@ func processMigrationInfos(infos []models.MigrationInfo) error {
 	}
 
 	if runtimeFlag {
-		runtimeResult, err := analyseRuntime(infos)
+		runtimeResult, err := analyseRuntime(infos, targetMigrationIDFlag)
 		if err != nil {
 			return err
 		}
@@ -139,32 +132,27 @@ func processMigrationInfos(infos []models.MigrationInfo) error {
 	if err != nil {
 		return err
 	}
-	result.AnalysisResult = static.Analyse(migrations)
+	result.StaticResult = static.Analyse(migrations)
 
 	if err := printJSON(result); err != nil {
 		return err
 	}
 
-	// A migration that does not complete inside the deadline fails the CI job it
-	// runs in, which is the point of the runtime pass.
-	if result.RuntimeResult != nil && result.RuntimeResult.Verdict != models.RuntimeCompleted {
-		return fmt.Errorf("runtime analysis of %s: %s (%s)",
-			result.RuntimeResult.MigrationID, result.RuntimeResult.Verdict, result.RuntimeResult.Message)
-	}
-	return nil
+	return runtimeFailure(result.RuntimeResult, targetMigrationIDFlag)
 }
 
-// analyseRuntime measures the selected migration, or the last when none is named.
-func analyseRuntime(infos []models.MigrationInfo) (*models.RuntimeAnalysisResult, error) {
+// analyseRuntime measures the target migration, or every migration when targetMigrationID
+// is empty.
+func analyseRuntime(infos []models.MigrationInfo, targetMigrationID string) (*models.RuntimeAnalysisResult, error) {
 	if len(infos) == 0 {
 		return nil, fmt.Errorf("no migrations to analyze")
 	}
 
 	result, err := runtime.Analyse(context.Background(), runtime.Request{
-		Migrations: infos,
-		Target:     migrationTargetFlag,
-		Rows:       rowsFlag,
-		Deadline:   time.Duration(deadlineFlag) * time.Millisecond,
+		Migrations:        infos,
+		TargetMigrationID: targetMigrationID,
+		Rows:              rowsFlag,
+		Deadline:          time.Duration(deadlineFlag) * time.Millisecond,
 	})
 	if err != nil {
 		return nil, err
@@ -227,9 +215,9 @@ func toTimelineResponse(migrations []*models.Migration) *models.MigrationTimelin
 }
 
 type cliResult struct {
-	AnalysisResult *models.StaticAnalysisResult  `json:"analysisResult,omitempty"`
-	RunResult      *models.RunMigrationsResult   `json:"runResult,omitempty"`
-	RuntimeResult  *models.RuntimeAnalysisResult `json:"runtimeResult,omitempty"`
+	StaticResult  *models.StaticAnalysisResult  `json:"staticResult,omitempty"`
+	RunResult     *models.RunMigrationsResult   `json:"runResult,omitempty"`
+	RuntimeResult *models.RuntimeAnalysisResult `json:"runtimeResult,omitempty"`
 }
 
 func printJSON(v interface{}) error {
