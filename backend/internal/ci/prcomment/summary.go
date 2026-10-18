@@ -15,5 +15,5 @@ type Migration struct {
 	Path     string // Repository-relative Git path; empty when unavailable.
 	Problem  string
 	ExitCode int
-	Runtime  *models.RuntimeAnalysisResult
+	Runtime  *models.RuntimeMigrationResult
 }

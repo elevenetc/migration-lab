@@ -4,6 +4,7 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
 
 	"migration-lab/backend/internal/models"
 )
@@ -87,14 +88,36 @@ func TestSeedStatement(t *testing.T) {
 	}}
 
 	want := `INSERT INTO "events_2026" ("year", "note") SELECT 2026, ('row_' || g.i) FROM generate_series(1, 1000) AS g(i)`
-	if got := SeedStatement(plan, 1000); got != want {
+	if got := SeedStatement(plan, 1, 1000); got != want {
 		t.Errorf("SeedStatement =\n%s\nwant\n%s", got, want)
+	}
+}
+
+func TestSeedStatementContinuesPastTheRowsATableHolds(t *testing.T) {
+	plan := SeedPlan{Table: "accounts", Columns: []SeedColumn{{Name: "id", Expr: "g.i"}}}
+	want := `INSERT INTO "accounts" ("id") SELECT g.i FROM generate_series(4, 1000) AS g(i)`
+	if got := SeedStatement(plan, 4, 1000); got != want {
+		t.Errorf("SeedStatement =\n%s\nwant\n%s", got, want)
+	}
+}
+
+func TestMissingRowsTopsATableUpWithoutEverShrinkingIt(t *testing.T) {
+	cases := []struct{ existing, target, want int64 }{
+		{0, 1000, 1000},
+		{3, 1000, 997},
+		{1000, 1000, 0},
+		{1500, 1000, 0},
+	}
+	for _, c := range cases {
+		if got := missingRows(c.existing, c.target); got != c.want {
+			t.Errorf("missingRows(%d, %d) = %d, want %d", c.existing, c.target, got, c.want)
+		}
 	}
 }
 
 func TestSeedStatementLeavesEveryColumnToItsDefaultWithoutFillableColumns(t *testing.T) {
 	want := `INSERT INTO "accounts" SELECT FROM generate_series(1, 1000) AS g(i)`
-	if got := SeedStatement(SeedPlan{Table: "accounts"}, 1000); got != want {
+	if got := SeedStatement(SeedPlan{Table: "accounts"}, 1, 1000); got != want {
 		t.Errorf("SeedStatement =\n%s\nwant\n%s", got, want)
 	}
 }
@@ -257,7 +280,7 @@ func TestFindingsReportWhatStoppedTheRunAndWhichLocksItHeld(t *testing.T) {
 			Operations: []models.Operation{models.AlterColumnType{TableName: "events"}},
 		}},
 	}
-	result := models.RuntimeAnalysisResult{
+	result := models.RuntimeMigrationResult{
 		DeadlineMs: 5000,
 		Seeded:     []models.SeededTable{{Table: "events_2026", Rows: 1000}},
 		Statements: []models.StatementMeasurement{{
@@ -304,7 +327,7 @@ func TestFindingsStaySilentForAMetadataOnlyAlter(t *testing.T) {
 	}
 	// Every ALTER TABLE takes ACCESS EXCLUSIVE, but a metadata-only one holds it for
 	// work that does not grow with the table.
-	result := models.RuntimeAnalysisResult{
+	result := models.RuntimeMigrationResult{
 		DeadlineMs: 5000,
 		Seeded:     []models.SeededTable{{Table: "accounts", Rows: 1_000_000}},
 		Statements: []models.StatementMeasurement{{
@@ -336,7 +359,7 @@ func TestFindingsReportAScanningLockHoweverFastThisMachineWas(t *testing.T) {
 			Operations: []models.Operation{models.SetNotNull{TableName: "accounts", ColumnName: "note"}},
 		}},
 	}
-	result := models.RuntimeAnalysisResult{
+	result := models.RuntimeMigrationResult{
 		Statements: []models.StatementMeasurement{{
 			StatementIndex: 0,
 			SQL:            "ALTER TABLE accounts ALTER COLUMN note SET NOT NULL",
@@ -359,7 +382,7 @@ func TestFindingsReportAScanningLockHoweverFastThisMachineWas(t *testing.T) {
 
 func TestFindingsReportALockOfAStatementStaticAnalysisDoesNotModel(t *testing.T) {
 	migration := &models.Migration{ID: "V9__vacuum", Statements: []models.Statement{}}
-	result := models.RuntimeAnalysisResult{
+	result := models.RuntimeMigrationResult{
 		Statements: []models.StatementMeasurement{{
 			StatementIndex: 0,
 			SQL:            "VACUUM FULL accounts",
@@ -379,7 +402,7 @@ func TestFindingsReportALockOfAStatementStaticAnalysisDoesNotModel(t *testing.T)
 
 func TestFindingsReportATableThatCouldNotBeSeeded(t *testing.T) {
 	migration := &models.Migration{ID: "V2__alter"}
-	result := models.RuntimeAnalysisResult{
+	result := models.RuntimeMigrationResult{
 		Seeded: []models.SeededTable{{Table: "orders", Error: "invalid input syntax"}},
 		Retry:  models.RetryNotApplicable,
 	}
@@ -394,37 +417,84 @@ func TestFindingsReportATableThatCouldNotBeSeeded(t *testing.T) {
 	}
 }
 
-func TestTargetIndexDefaultsToTheMigrationThatJustArrived(t *testing.T) {
-	timeline := []models.MigrationInfo{{ID: "v1"}, {ID: "v2"}, {ID: "v3"}}
+func TestResumeIndexRestartsARolledBackMigrationAndResumesAnyOther(t *testing.T) {
+	stoppedAtSecond := models.RuntimeMigrationResult{Statements: []models.StatementMeasurement{
+		{StatementIndex: 0, Verdict: models.RuntimeCompleted},
+		{StatementIndex: 1, Verdict: models.RuntimeExceedsDeadline},
+	}}
+	transactional := []string{"ALTER TABLE a ADD COLUMN b INT", "ALTER TABLE a ADD COLUMN c INT"}
+	concurrent := []string{"CREATE INDEX CONCURRENTLY a_b ON a (b)", "CREATE INDEX CONCURRENTLY a_c ON a (c)"}
 
-	if got, err := targetIndex(timeline, ""); err != nil || got != 2 {
-		t.Errorf("TargetIndex with no target = %d (%v), want 2", got, err)
+	if got := resumeIndex(transactional, stoppedAtSecond); got != 0 {
+		t.Errorf("rolled-back migration resumes at %d, want 0", got)
 	}
-	if got, err := targetIndex(timeline, "v2"); err != nil || got != 1 {
-		t.Errorf("TargetIndex(v2) = %d (%v), want 1", got, err)
+	if got := resumeIndex(concurrent, stoppedAtSecond); got != 1 {
+		t.Errorf("non-transactional migration resumes at %d, want 1", got)
+	}
+	if got := resumeIndex(concurrent, models.RuntimeMigrationResult{}); got != 0 {
+		t.Errorf("unmeasured migration resumes at %d, want 0", got)
 	}
 }
 
-func TestTargetIndexRejectsAnEmptyOrMismatchedTimeline(t *testing.T) {
-	if _, err := targetIndex(nil, ""); !errors.Is(err, models.ErrNotFound) {
+func TestSplitMeasuresTheTargetAloneOrTheWholeTimeline(t *testing.T) {
+	v1, v2, v3 := models.MigrationInfo{ID: "v1"}, models.MigrationInfo{ID: "v2"}, models.MigrationInfo{ID: "v3"}
+	timeline := []models.MigrationInfo{v1, v2, v3}
+
+	prior, toMeasure, err := split(timeline, "")
+	if err != nil || len(prior) != 0 || !reflect.DeepEqual(toMeasure, timeline) {
+		t.Errorf("split with no target = %v, %v (%v), want none prior and every one measured", prior, toMeasure, err)
+	}
+	prior, toMeasure, err = split(timeline, "v2")
+	if err != nil || !reflect.DeepEqual(prior, []models.MigrationInfo{v1}) || !reflect.DeepEqual(toMeasure, []models.MigrationInfo{v2}) {
+		t.Errorf("split(v2) = %v, %v (%v), want v1 prior and v2 measured", prior, toMeasure, err)
+	}
+}
+
+func TestSplitRejectsAnEmptyOrMismatchedTimeline(t *testing.T) {
+	if _, _, err := split(nil, ""); !errors.Is(err, models.ErrNotFound) {
 		t.Errorf("expected ErrNotFound for an empty timeline, got %v", err)
 	}
-	if _, err := targetIndex([]models.MigrationInfo{{ID: "v1"}}, "v9"); !errors.Is(err, models.ErrNotFound) {
+	if _, _, err := split([]models.MigrationInfo{{ID: "v1"}}, "v9"); !errors.Is(err, models.ErrNotFound) {
 		t.Errorf("expected ErrNotFound for a migration outside the timeline, got %v", err)
 	}
 }
 
 func TestRowsOfFallsBackToTheDefault(t *testing.T) {
-	if got := rowsOf(Request{}); got != DefaultRows {
+	if got := rowsOf(0); got != DefaultRows {
 		t.Errorf("rows without a request = %d, want %d", got, DefaultRows)
 	}
-	if got := rowsOf(Request{Rows: 250}); got != 250 {
+	if got := rowsOf(250); got != 250 {
 		t.Errorf("rows with a request = %d, want 250", got)
 	}
 }
 
+func TestDeadlineOfFallsBackToTheDefault(t *testing.T) {
+	if got := deadlineOf(0); got != DefaultDeadline {
+		t.Errorf("deadline without a request = %v, want %v", got, DefaultDeadline)
+	}
+	if got := deadlineOf(time.Second); got != time.Second {
+		t.Errorf("deadline with a request = %v, want 1s", got)
+	}
+}
+
+func TestAnalysisMessageCountsTheMigrationsThatDidNotComplete(t *testing.T) {
+	completed := models.RuntimeMigrationResult{Verdict: models.RuntimeCompleted, Statements: []models.StatementMeasurement{
+		{DurationMs: 120, Verdict: models.RuntimeCompleted},
+	}}
+	cancelled := models.RuntimeMigrationResult{Verdict: models.RuntimeExceedsDeadline, Statements: []models.StatementMeasurement{
+		{DurationMs: 5000, Verdict: models.RuntimeExceedsDeadline},
+	}}
+
+	if got := analysisMessage([]models.RuntimeMigrationResult{completed, completed}); got != "all 2 migrations completed in 240 ms" {
+		t.Errorf("message = %q", got)
+	}
+	if got := analysisMessage([]models.RuntimeMigrationResult{completed, cancelled}); got != "1 of 2 migrations did not complete" {
+		t.Errorf("message = %q", got)
+	}
+}
+
 func TestMessageNamesTheStatementThatEndedTheRun(t *testing.T) {
-	completed := models.RuntimeAnalysisResult{Statements: []models.StatementMeasurement{
+	completed := models.RuntimeMigrationResult{Statements: []models.StatementMeasurement{
 		{StatementIndex: 0, DurationMs: 120, Verdict: models.RuntimeCompleted},
 		{StatementIndex: 1, DurationMs: 80, Verdict: models.RuntimeCompleted},
 	}}
@@ -432,14 +502,14 @@ func TestMessageNamesTheStatementThatEndedTheRun(t *testing.T) {
 		t.Errorf("message = %q", got)
 	}
 
-	cancelled := models.RuntimeAnalysisResult{DeadlineMs: 5000, Statements: []models.StatementMeasurement{
+	cancelled := models.RuntimeMigrationResult{DeadlineMs: 5000, Statements: []models.StatementMeasurement{
 		{StatementIndex: 1, Verdict: models.RuntimeExceedsDeadline},
 	}}
 	if got := message(cancelled); got != "statement 1 was cancelled after the 5000 ms deadline" {
 		t.Errorf("message = %q", got)
 	}
 
-	if got := message(models.RuntimeAnalysisResult{}); got != "the migration has no statements to run" {
+	if got := message(models.RuntimeMigrationResult{}); got != "the migration has no statements to run" {
 		t.Errorf("message = %q", got)
 	}
 }

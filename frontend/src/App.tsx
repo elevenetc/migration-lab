@@ -8,11 +8,13 @@ function App() {
   const selectDataset = useMigrationStore((state) => state.selectDataset)
   const syncFromUrl = useMigrationStore((state) => state.syncFromUrl)
   const datasets = useMigrationStore((state) => state.datasets)
-  const migrationId = useMigrationStore((state) => state.migrationId)
+  const datasetId = useMigrationStore((state) => state.datasetId)
   const migrationsPath = useMigrationStore((state) => state.migrationsPath)
   const runMigrations = useMigrationStore((state) => state.runMigrations)
   const running = useMigrationStore((state) => state.running)
   const runResult = useMigrationStore((state) => state.runResult)
+  const runRuntime = useMigrationStore((state) => state.runRuntime)
+  const runtimeRunning = useMigrationStore((state) => state.runtimeRunning)
 
   useEffect(() => {
     loadMigrations()
@@ -31,7 +33,7 @@ function App() {
         <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
           {datasets.length > 0 && (
             <select
-              value={migrationsPath ? '' : migrationId ?? ''}
+              value={migrationsPath ? '' : datasetId ?? ''}
               onChange={(event) => selectDataset(event.target.value)}
               style={{
                 padding: '8px 12px',
@@ -66,6 +68,21 @@ function App() {
             }}
           >
             {running ? 'Running...' : 'Run migrations'}
+          </button>
+          <button
+            onClick={() => runRuntime(null)}
+            disabled={runtimeRunning}
+            title="Measure every migration in turn against a seeded PostgreSQL container"
+            style={{
+              padding: '8px 16px',
+              background: runtimeRunning ? '#4a5568' : '#4caf82',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: runtimeRunning ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {runtimeRunning ? 'Measuring...' : 'Runtime all'}
           </button>
           {runResult && (
             <span style={{ color: runResult.success ? '#22c55e' : '#ef4444', fontSize: '14px' }}>

@@ -7,7 +7,7 @@ import (
 )
 
 // message is the one-line summary a report leads with: what ended the run.
-func message(result models.RuntimeAnalysisResult) string {
+func message(result models.RuntimeMigrationResult) string {
 	if len(result.Statements) == 0 {
 		return "the migration has no statements to run"
 	}
@@ -32,4 +32,20 @@ func totalDurationMs(measurements []models.StatementMeasurement) int64 {
 		total += measurement.DurationMs
 	}
 	return total
+}
+
+// analysisMessage is the one-line summary of every measured migration.
+func analysisMessage(migrations []models.RuntimeMigrationResult) string {
+	var total int64
+	incomplete := 0
+	for _, migration := range migrations {
+		total += totalDurationMs(migration.Statements)
+		if migration.Verdict != models.RuntimeCompleted {
+			incomplete++
+		}
+	}
+	if incomplete == 0 {
+		return fmt.Sprintf("all %d migrations completed in %d ms", len(migrations), total)
+	}
+	return fmt.Sprintf("%d of %d migrations did not complete", incomplete, len(migrations))
 }

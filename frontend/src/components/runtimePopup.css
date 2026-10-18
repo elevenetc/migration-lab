@@ -117,3 +117,40 @@
   color: #e8a33d;
   opacity: 1;
 }
+
+.runtime-timeline {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.runtime-timeline th {
+  padding: 4px 8px 6px 0;
+  font-size: 11px;
+  font-weight: normal;
+  letter-spacing: 0.08em;
+  text-align: left;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+.runtime-timeline td {
+  padding: 6px 8px 6px 0;
+  border-top: 1px solid rgba(224, 251, 252, 0.08);
+}
+
+.runtime-timeline-row {
+  cursor: pointer;
+}
+
+.runtime-timeline-row:hover,
+.runtime-timeline-row-open {
+  background: rgba(152, 193, 217, 0.08);
+}
+
+.runtime-timeline-detail {
+  padding: 12px 0 16px 16px;
+}
+
+.runtime-timeline-detail > * + * {
+  margin-top: 14px;
+}

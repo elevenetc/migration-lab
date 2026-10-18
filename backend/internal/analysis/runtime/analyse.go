@@ -3,12 +3,11 @@ package runtime
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"migration-lab/backend/internal/models"
-	"migration-lab/backend/internal/monitoring"
 	"migration-lab/backend/internal/parser"
-	"migration-lab/backend/internal/pg"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -21,108 +20,81 @@ const DefaultDeadline = 5 * time.Second
 const DefaultRows int64 = 1_000_000
 
 // Request is one runtime analysis: the migration timeline that builds the schema
-// up, which of its migrations to measure, how big to seed, and how long the
+// up, which of its migrations to measure, how big to seed, and how long a
 // migration is allowed to take before it counts as killed.
 type Request struct {
 	Migrations []models.MigrationInfo
-	// Target is the migration to measure; the last of the timeline when empty,
-	// which is the one that just arrived on a branch.
-	Target string
-	// Rows every touched table is seeded to; DefaultRows when zero.
+	// TargetMigrationID is the only migration to measure, its predecessors applied without
+	// measurement; every migration is measured when empty.
+	TargetMigrationID string
+	// Rows every touched table is topped up to; DefaultRows when zero.
 	Rows     int64
 	Deadline time.Duration
 }
 
-// Analyse executes one migration of a timeline against a container seeded to
-// production-like size, and reports how long it took, which locks it held,
-// and what a killed attempt would leave behind.
+// Analyse executes migrations of a timeline in one container, topping the tables
+// each touches up to production-like size first, and reports how long each took,
+// which locks it held, and what a killed attempt would leave behind.
+//
+// Measuring every migration keeps a completed one rather than rolling it back, so
+// each is measured against what its predecessors left. One that does not complete
+// is forced through without a deadline so the run can go on; one that fails even
+// then stops it, and the migrations after it are not measured.
 //
 // It returns models.ErrNotFound when the timeline is empty or holds no such
-// migration. A failure of the run itself is part of the result rather than an
-// error, since that is the answer the caller asked for.
+// target. A failure of the run itself is part of the result rather than an error,
+// since that is the answer the caller asked for.
 func Analyse(ctx context.Context, request Request) (models.RuntimeAnalysisResult, error) {
-	index, err := targetIndex(request.Migrations, request.Target)
+	prior, toMeasure, err := split(request.Migrations, request.TargetMigrationID)
 	if err != nil {
 		return models.RuntimeAnalysisResult{}, err
 	}
+	// The timeline is parsed from the start, not just the measured migrations: an
+	// operation such as ALTER COLUMN TYPE is only classifiable against the schema
+	// its predecessors built.
+	timeline, err := parser.ParseTimeline(slices.Concat(prior, toMeasure))
+	if err != nil {
+		return models.RuntimeAnalysisResult{}, err
+	}
+	parsed := timeline[len(prior):]
 
-	info := request.Migrations[index]
-	// The whole timeline is parsed, not just the analyzed migration: an operation
-	// such as ALTER COLUMN TYPE is only classifiable against the schema its
-	// predecessors built.
-	timeline, err := parser.ParseTimeline(request.Migrations[:index+1])
-	if err != nil {
-		return models.RuntimeAnalysisResult{}, err
-	}
-	migration := timeline[index]
-	statements, err := parser.SplitStatements(info.SQL)
-	if err != nil {
-		return models.RuntimeAnalysisResult{}, err
-	}
-
-	deadline := request.Deadline
-	if deadline <= 0 {
-		deadline = DefaultDeadline
-	}
-	// The collections start empty rather than nil so every field of the response
-	// is an array, whichever step the run stops at.
+	rows, deadline := rowsOf(request.Rows), deadlineOf(request.Deadline)
 	result := models.RuntimeAnalysisResult{
-		MigrationID: info.ID,
-		Version:     migration.Version,
-		DeadlineMs:  deadline.Milliseconds(),
-		Seeded:      []models.SeededTable{},
-		Statements:  []models.StatementMeasurement{},
-		Findings:    []models.RuntimeFinding{},
+		DeadlineMs: deadline.Milliseconds(),
+		Rows:       rows,
+		Migrations: []models.RuntimeMigrationResult{},
 	}
 
-	connString, terminate, err := pg.Start(ctx)
+	conn, sampler, stop, err := startSession(ctx)
 	if err != nil {
-		return failed(result, err.Error()), nil
+		result.Message = err.Error()
+		return result, nil
 	}
-	defer terminate()
+	defer stop()
 
-	conn, err := pgx.Connect(ctx, connString)
-	if err != nil {
-		monitoring.CaptureError(ctx, err)
-		return failed(result, fmt.Sprintf("failed to connect to the database: %v", err)), nil
+	if err := applyPrior(ctx, conn, prior); err != nil {
+		result.Message = err.Error()
+		return result, nil
 	}
-	defer func() {
-		if err := conn.Close(context.WithoutCancel(ctx)); err != nil {
-			monitoring.Errorf(ctx, "Failed to close runtime connection: %v", err)
+
+	for index, info := range toMeasure {
+		// The last migration is rolled back: nothing is measured after it, and a
+		// rolled-back database is what a retry would find.
+		last := index == len(toMeasure)-1
+		migration := measureMigration(ctx, conn, sampler, info, parsed[index], rows, deadline, !last)
+		result.Migrations = append(result.Migrations, migration)
+		if migration.Verdict == models.RuntimeCompleted || last {
+			continue
 		}
-	}()
 
-	if err := applyPrior(ctx, conn, request.Migrations[:index]); err != nil {
-		return failed(result, err.Error()), nil
-	}
-
-	catalog, err := ReadCatalog(ctx, conn)
-	if err != nil {
-		monitoring.CaptureError(ctx, err)
-		return failed(result, err.Error()), nil
-	}
-	result.Seeded = Seed(ctx, conn, SeedPlans(catalog, TouchedTables(migration)), rowsOf(request))
-
-	sampler, err := pgx.Connect(ctx, connString)
-	if err != nil {
-		monitoring.CaptureError(ctx, err)
-		return failed(result, fmt.Sprintf("failed to open a sampling connection: %v", err)), nil
-	}
-	defer func() {
-		if err := sampler.Close(context.WithoutCancel(ctx)); err != nil {
-			monitoring.Errorf(ctx, "Failed to close lock sampler connection: %v", err)
+		if err := finishMigration(ctx, conn, info, migration); err != nil {
+			result.Stopped = info.ID
+			result.Message = fmt.Sprintf("stopped at %s: %v", info.ID, err)
+			return result, nil
 		}
-	}()
+	}
 
-	monitoring.Infof(ctx, "Measuring %s: %d statements, %d ms deadline", info.ID, len(statements), deadline.Milliseconds())
-	measurements := runStatements(ctx, conn, sampler, statements, deadline)
-	result.Statements = withClasses(migration, result.Seeded, measurements)
-
-	result.Verdict = verdictOfRun(result.Statements)
-	result.Retry = retryVerdict(ctx, conn, result.Verdict)
-	result.Findings = Findings(migration, result)
-	result.Message = message(result)
-
+	result.Message = analysisMessage(result.Migrations)
 	return result, nil
 }
 
@@ -146,32 +118,54 @@ func applyPrior(ctx context.Context, conn *pgx.Conn, migrations []models.Migrati
 	return nil
 }
 
-func rowsOf(request Request) int64 {
-	if request.Rows <= 0 {
+func rowsOf(rows int64) int64 {
+	if rows <= 0 {
 		return DefaultRows
 	}
-	return request.Rows
+	return rows
 }
 
-// targetIndex is the position of the migration to measure: the named one, or the
-// last of the timeline when the caller names none. It returns models.ErrNotFound
-// for an empty timeline or a name it does not hold.
-func targetIndex(migrations []models.MigrationInfo, target string) (int, error) {
-	if len(migrations) == 0 {
-		return 0, models.ErrNotFound
+func deadlineOf(deadline time.Duration) time.Duration {
+	if deadline <= 0 {
+		return DefaultDeadline
 	}
-	if target == "" {
-		return len(migrations) - 1, nil
+	return deadline
+}
+
+// unmeasured is a result before any measurement. The collections start empty
+// rather than nil so every field of the response is an array, whichever step
+// the run stops at.
+func unmeasured(info models.MigrationInfo, migration *models.Migration, deadline time.Duration) models.RuntimeMigrationResult {
+	return models.RuntimeMigrationResult{
+		MigrationID: info.ID,
+		Version:     migration.Version,
+		DeadlineMs:  deadline.Milliseconds(),
+		Seeded:      []models.SeededTable{},
+		Statements:  []models.StatementMeasurement{},
+		Findings:    []models.RuntimeFinding{},
+	}
+}
+
+// split is the migrations applied unmeasured to build the schema up, and the
+// ones measured after them: the named one alone, or the whole timeline when the
+// caller names none. It returns models.ErrNotFound for an empty timeline or a
+// name it does not hold.
+func split(migrations []models.MigrationInfo, targetMigrationID string) (prior, toMeasure []models.MigrationInfo, err error) {
+	if len(migrations) == 0 {
+		return nil, nil, models.ErrNotFound
+	}
+	if targetMigrationID == "" {
+		return nil, migrations, nil
 	}
 	for i, migration := range migrations {
-		if migration.ID == target {
-			return i, nil
+		if migration.ID == targetMigrationID {
+			return migrations[:i], migrations[i : i+1], nil
 		}
 	}
-	return 0, models.ErrNotFound
+	return nil, nil, models.ErrNotFound
 }
 
-func failed(result models.RuntimeAnalysisResult, message string) models.RuntimeAnalysisResult {
+func failed(result models.RuntimeMigrationResult, message string) models.RuntimeMigrationResult {
 	result.Verdict = models.RuntimeFailed
 	result.Retry = models.RetryNotApplicable
 	result.Message = message

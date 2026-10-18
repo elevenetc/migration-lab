@@ -28,25 +28,22 @@ type rawResponse struct {
 }
 
 type fakeStore struct {
-	migrations []models.Migration
-	err        error
+	infos []models.MigrationInfo
+	err   error
 }
 
-func (f fakeStore) Migrations(string) ([]models.Migration, error) {
-	return f.migrations, f.err
+func (f fakeStore) MigrationInfos(string) ([]models.MigrationInfo, error) {
+	return f.infos, f.err
 }
 
 func (f fakeStore) DatasetIds() []string {
 	return nil
 }
 
-type fakeRunner struct {
-	result models.RunMigrationsResult
-	err    error
-}
-
-func (f fakeRunner) Run(context.Context, string) (models.RunMigrationsResult, error) {
-	return f.result, f.err
+func fakeRun(result models.RunMigrationsResult, err error) RunDatasetMigrations {
+	return func(context.Context, string) (models.RunMigrationsResult, error) {
+		return result, err
+	}
 }
 
 // captureAnalyse stands in for runtime.Analyse, recording the request the handler
@@ -65,7 +62,7 @@ func datasetsDB() *database.Database {
 func TestMigrationsEndpoint(t *testing.T) {
 	e := New(Config{Port: 8081, Store: datasetsDB()})
 
-	req := httptest.NewRequest(http.MethodGet, "/api/migrations?migrationId=ecommerce", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/migrations?datasetId=ecommerce", nil)
 	rec := httptest.NewRecorder()
 
 	e.ServeHTTP(rec, req)
@@ -103,32 +100,13 @@ func TestMigrationsEndpoint(t *testing.T) {
 }
 
 func TestResponseStructure(t *testing.T) {
-	store := fakeStore{migrations: []models.Migration{
-		{
-			ID:        "v1",
-			Version:   "1",
-			Timestamp: 1,
-			Statements: []models.Statement{
-				{
-					Index: 0,
-					Kind:  "CREATE_TABLE",
-					SQL:   "CREATE TABLE test (id serial PRIMARY KEY)",
-					Operations: []models.Operation{
-						models.CreateTable{
-							TableName: "test",
-							Columns: []models.Column{
-								{Name: "id", Type: models.NewSQLType("serial"), Constraints: []string{"PRIMARY KEY"}},
-							},
-						},
-					},
-				},
-			},
-		},
+	store := fakeStore{infos: []models.MigrationInfo{
+		{ID: "v1", SQL: "CREATE TABLE test (id serial PRIMARY KEY)", Timestamp: 1},
 	}}
 
 	e := New(Config{Port: 8081, Store: store})
 
-	req := httptest.NewRequest(http.MethodGet, "/api/migrations?migrationId=test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/migrations?datasetId=test", nil)
 	rec := httptest.NewRecorder()
 
 	e.ServeHTTP(rec, req)
@@ -185,19 +163,19 @@ func TestMissingMigrationIdReturns404(t *testing.T) {
 	e.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusNotFound {
-		t.Errorf("expected status %d for missing migrationId, got %d", http.StatusNotFound, rec.Code)
+		t.Errorf("expected status %d for missing datasetId, got %d", http.StatusNotFound, rec.Code)
 	}
 }
 
 func TestUnknownMigrationIdReturns404(t *testing.T) {
 	e := New(Config{Port: 8081, Store: datasetsDB()})
 
-	req := httptest.NewRequest(http.MethodGet, "/api/migrations?migrationId=bogus", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/migrations?datasetId=bogus", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusNotFound {
-		t.Errorf("expected status %d for unknown migrationId, got %d", http.StatusNotFound, rec.Code)
+		t.Errorf("expected status %d for unknown datasetId, got %d", http.StatusNotFound, rec.Code)
 	}
 }
 
@@ -275,13 +253,13 @@ func TestRuntimeUnknownIdReturns404(t *testing.T) {
 		Analyse: captureAnalyse(models.RuntimeAnalysisResult{}, nil, &seen),
 	})
 
-	req := httptest.NewRequest(http.MethodPost, "/api/migrations/runtime-analysis?migrationId=bogus", nil)
+	req := httptest.NewRequest(http.MethodPost, "/api/migrations/runtime-analysis?datasetId=bogus", nil)
 	rec := httptest.NewRecorder()
 
 	e.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusNotFound {
-		t.Errorf("expected status %d for unknown migrationId, got %d", http.StatusNotFound, rec.Code)
+		t.Errorf("expected status %d for unknown datasetId, got %d", http.StatusNotFound, rec.Code)
 	}
 	if seen.Migrations != nil {
 		t.Error("expected the analysis never to be reached for an unknown dataset")
@@ -290,21 +268,21 @@ func TestRuntimeUnknownIdReturns404(t *testing.T) {
 
 func TestRuntimePassesTheQueryThroughAndReturnsTheResult(t *testing.T) {
 	var seen runtime.Request
-	store := fakeStore{migrations: []models.Migration{
+	store := fakeStore{infos: []models.MigrationInfo{
 		{ID: "v1", SQL: "CREATE TABLE t (id int);", Timestamp: 1},
 		{ID: "v3", SQL: "ALTER TABLE t ADD COLUMN a int;", Timestamp: 3},
 	}}
 	e := New(Config{
 		Port:  8081,
 		Store: store,
-		Analyse: captureAnalyse(models.RuntimeAnalysisResult{
+		Analyse: captureAnalyse(models.RuntimeAnalysisResult{Migrations: []models.RuntimeMigrationResult{{
 			MigrationID: "v3",
 			Verdict:     models.RuntimeExceedsDeadline,
 			Retry:       models.RetryFailureLoop,
-		}, nil, &seen),
+		}}}, nil, &seen),
 	})
 
-	target := "/api/migrations/runtime-analysis?migrationId=events&migration=v3&rows=5000&deadlineMs=1500"
+	target := "/api/migrations/runtime-analysis?datasetId=events&migration=v3&rows=5000&deadlineMs=1500"
 	req := httptest.NewRequest(http.MethodPost, target, nil)
 	rec := httptest.NewRecorder()
 
@@ -314,18 +292,21 @@ func TestRuntimePassesTheQueryThroughAndReturnsTheResult(t *testing.T) {
 		t.Fatalf("expected status %d, got %d (%s)", http.StatusOK, rec.Code, rec.Body.String())
 	}
 
-	if seen.Target != "v3" || seen.Rows != 5000 || seen.Deadline != 1500*time.Millisecond {
-		t.Errorf("analysis received target %q, rows %d, deadline %s", seen.Target, seen.Rows, seen.Deadline)
+	if seen.TargetMigrationID != "v3" || seen.Rows != 5000 || seen.Deadline != 1500*time.Millisecond {
+		t.Errorf("analysis received target %q, rows %d, deadline %s", seen.TargetMigrationID, seen.Rows, seen.Deadline)
 	}
 	if len(seen.Migrations) != 2 || seen.Migrations[1].SQL != "ALTER TABLE t ADD COLUMN a int;" {
 		t.Errorf("expected the dataset's raw migrations to be handed over, got %+v", seen.Migrations)
 	}
 
-	var result models.RuntimeAnalysisResult
-	if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil {
+	var analysis models.RuntimeAnalysisResult
+	if err := json.Unmarshal(rec.Body.Bytes(), &analysis); err != nil {
 		t.Fatalf("failed to unmarshal result: %v", err)
 	}
-	if result.Verdict != models.RuntimeExceedsDeadline || result.Retry != models.RetryFailureLoop {
+	if len(analysis.Migrations) != 1 {
+		t.Fatalf("expected the target's measurement, got %+v", analysis)
+	}
+	if result := analysis.Migrations[0]; result.Verdict != models.RuntimeExceedsDeadline || result.Retry != models.RetryFailureLoop {
 		t.Errorf("expected the measured verdicts to be returned, got %+v", result)
 	}
 }
@@ -338,11 +319,11 @@ func TestRuntimeRejectsANonNumericParameter(t *testing.T) {
 		var seen runtime.Request
 		e := New(Config{
 			Port:    8081,
-			Store:   fakeStore{migrations: []models.Migration{{ID: "v1", SQL: "CREATE TABLE t (id int);"}}},
+			Store:   fakeStore{infos: []models.MigrationInfo{{ID: "v1", SQL: "CREATE TABLE t (id int);"}}},
 			Analyse: captureAnalyse(models.RuntimeAnalysisResult{}, nil, &seen),
 		})
 
-		req := httptest.NewRequest(http.MethodPost, "/api/migrations/runtime-analysis?migrationId=x&"+query, nil)
+		req := httptest.NewRequest(http.MethodPost, "/api/migrations/runtime-analysis?datasetId=x&"+query, nil)
 		rec := httptest.NewRecorder()
 
 		e.ServeHTTP(rec, req)
@@ -381,20 +362,56 @@ func TestRuntimeFromAPathResolvesTheDirectory(t *testing.T) {
 		t.Errorf("expected the directory's migrations to be handed over, got %+v", seen.Migrations)
 	}
 	// No `migration` parameter: the analysis defaults to the newest.
-	if seen.Target != "" {
-		t.Errorf("expected no explicit target, got %q", seen.Target)
+	if seen.TargetMigrationID != "" {
+		t.Errorf("expected no explicit target, got %q", seen.TargetMigrationID)
 	}
 }
 
 func TestRunMigrationsUnknownIdReturns404(t *testing.T) {
-	e := New(Config{Port: 8081, Runner: fakeRunner{err: models.ErrNotFound}})
+	e := New(Config{Port: 8081, Run: fakeRun(models.RunMigrationsResult{}, models.ErrNotFound)})
 
-	req := httptest.NewRequest(http.MethodPost, "/api/migrations/run?migrationId=bogus", nil)
+	req := httptest.NewRequest(http.MethodPost, "/api/migrations/run?datasetId=bogus", nil)
 	rec := httptest.NewRecorder()
 
 	e.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusNotFound {
-		t.Errorf("expected status %d for unknown migrationId, got %d", http.StatusNotFound, rec.Code)
+		t.Errorf("expected status %d for unknown datasetId, got %d", http.StatusNotFound, rec.Code)
+	}
+}
+
+func TestRuntimeWithoutAMigrationMeasuresEveryMigration(t *testing.T) {
+	var seen runtime.Request
+	store := fakeStore{infos: []models.MigrationInfo{
+		{ID: "v1", SQL: "CREATE TABLE t (id int);", Timestamp: 1},
+		{ID: "v2", SQL: "ALTER TABLE t ADD COLUMN a int;", Timestamp: 2},
+	}}
+	e := New(Config{
+		Port:  8081,
+		Store: store,
+		Analyse: captureAnalyse(models.RuntimeAnalysisResult{
+			Migrations: []models.RuntimeMigrationResult{{MigrationID: "v1"}, {MigrationID: "v2"}},
+			Message:    "all 2 migrations completed in 3 ms",
+		}, nil, &seen),
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/migrations/runtime-analysis?datasetId=events", nil)
+	rec := httptest.NewRecorder()
+
+	e.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d (%s)", http.StatusOK, rec.Code, rec.Body.String())
+	}
+	if seen.TargetMigrationID != "" || len(seen.Migrations) != 2 {
+		t.Errorf("expected no target and every migration handed over, got target %q and %d migrations", seen.TargetMigrationID, len(seen.Migrations))
+	}
+
+	var result models.RuntimeAnalysisResult
+	if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil {
+		t.Fatalf("failed to unmarshal result: %v", err)
+	}
+	if len(result.Migrations) != 2 {
+		t.Errorf("expected both measurements returned, got %+v", result)
 	}
 }

@@ -5,7 +5,7 @@ vi.mock('@sentry/react', () => ({ captureException: vi.fn(), isInitialized: () =
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.stubGlobal('window', { location: { search: '?migrationId=demo' } })
+  vi.stubGlobal('window', { location: { search: '?datasetId=demo' } })
 })
 afterEach(() => vi.unstubAllGlobals())
 
@@ -54,5 +54,44 @@ describe('reporting caught API errors', () => {
     await useMigrationStore.getState().runMigrations()
     expect(Sentry.captureException).not.toHaveBeenCalled()
     expect(useMigrationStore.getState().runResult?.success).toBe(false)
+  })
+})
+
+describe('runtime analysis', () => {
+  it('measures every migration when none is named and keeps the result', async () => {
+    const analysis = { deadlineMs: 5000, rows: 1000, migrations: [], message: 'all 0 migrations completed in 0 ms' }
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(analysis)))
+    vi.stubGlobal('fetch', fetchMock)
+    const { useMigrationStore } = await import('./migrationStore')
+
+    await useMigrationStore.getState().runRuntime(null)
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/migrations/runtime-analysis?datasetId=demo', { method: 'POST' })
+    expect(useMigrationStore.getState().runtimeRunning).toBe(false)
+    expect(useMigrationStore.getState().runtimeTarget).toBeNull()
+    expect(useMigrationStore.getState().runtimeAnalysis).toEqual(analysis)
+  })
+
+  it('names the migration when measuring one', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ migrations: [] })))
+    vi.stubGlobal('fetch', fetchMock)
+    const { useMigrationStore } = await import('./migrationStore')
+
+    await useMigrationStore.getState().runRuntime('V2')
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/migrations/runtime-analysis?datasetId=demo&migration=V2', { method: 'POST' })
+    expect(useMigrationStore.getState().runtimeTarget).toBe('V2')
+  })
+
+  it('starts no run while another is in flight', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const { useMigrationStore } = await import('./migrationStore')
+
+    useMigrationStore.setState({ runtimeRunning: true })
+    await useMigrationStore.getState().runRuntime(null)
+
+    expect(fetchMock).not.toHaveBeenCalled()
+    useMigrationStore.setState({ runtimeRunning: false })
   })
 })

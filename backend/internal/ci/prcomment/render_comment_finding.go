@@ -9,7 +9,7 @@ import (
 
 // The finding's operation ID links to the measured SQL even when static
 // analysis did not model that statement. Do not treat its index as a slice offset.
-func renderCommentFinding(finding models.RuntimeFinding, result *models.RuntimeAnalysisResult) string {
+func renderCommentFinding(finding models.RuntimeFinding, result *models.RuntimeMigrationResult) string {
 	var sql string
 	id := finding.OperationID
 	if id.MigrationID == result.MigrationID && id.StatementIndex >= 0 {

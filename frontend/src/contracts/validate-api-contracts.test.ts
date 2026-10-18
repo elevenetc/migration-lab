@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { MigrationTimelineResponse, PerformanceClass, RetryVerdict, RunMigrationsResult, RuntimeAnalysisResult, RuntimeVerdict, Warning } from '../api/migrationApi'
+import type { MigrationTimelineResponse, PerformanceClass, RetryVerdict, RunMigrationsResult, RuntimeAnalysisResult, RuntimeMigrationResult, RuntimeVerdict, Warning } from '../api/migrationApi'
 import migrationFixture from '../../../api-contracts/fixtures/migration-response.json' with { type: 'json' }
 import runMigrationsFixture from '../../../api-contracts/fixtures/run-migrations-result.json' with { type: 'json' }
 import runtimeFixture from '../../../api-contracts/fixtures/runtime-result.json' with { type: 'json' }
@@ -170,12 +170,12 @@ describe('API contract: run-migrations result fixture', () => {
 const RUNTIME_VERDICTS: RuntimeVerdict[] = ['COMPLETED', 'EXCEEDS_DEADLINE', 'FAILED']
 const RETRY_VERDICTS: RetryVerdict[] = ['SAFE_TO_RETRY', 'NEEDS_MANUAL_CLEANUP', 'FAILURE_LOOP', 'NOT_APPLICABLE']
 
-function validateRuntimeAnalysisResult(result: RuntimeAnalysisResult): void {
+function validateRuntimeMigrationResult(result: RuntimeMigrationResult): void {
   if (!RUNTIME_VERDICTS.includes(result.verdict)) {
-    throw new Error(`RuntimeAnalysisResult has unknown verdict: ${result.verdict}`)
+    throw new Error(`RuntimeMigrationResult has unknown verdict: ${result.verdict}`)
   }
   if (!RETRY_VERDICTS.includes(result.retry)) {
-    throw new Error(`RuntimeAnalysisResult has unknown retry verdict: ${result.retry}`)
+    throw new Error(`RuntimeMigrationResult has unknown retry verdict: ${result.retry}`)
   }
   for (const statement of result.statements) {
     if (!RUNTIME_VERDICTS.includes(statement.verdict)) {
@@ -196,26 +196,34 @@ function validateRuntimeAnalysisResult(result: RuntimeAnalysisResult): void {
 
 describe('API contract: runtime result fixture', () => {
   it('has known verdicts and well-formed findings', () => {
-    expect(() => validateRuntimeAnalysisResult(runtimeResult)).not.toThrow()
+    expect(runtimeResult.migrations.length).toBeGreaterThan(1)
+    for (const migration of runtimeResult.migrations) {
+      expect(() => validateRuntimeMigrationResult(migration)).not.toThrow()
+    }
   })
 
   // Go marshals a nil slice as null, which every consumer here would have to guard.
   it('carries arrays rather than nulls for its collections', () => {
-    expect(Array.isArray(runtimeResult.seeded)).toBe(true)
-    expect(Array.isArray(runtimeResult.statements)).toBe(true)
-    expect(Array.isArray(runtimeResult.findings)).toBe(true)
-    expect(runtimeResult.statements.every(statement => Array.isArray(statement.locks))).toBe(true)
-    expect(runtimeResult.statements.every(statement => Array.isArray(statement.rewrittenRelations))).toBe(true)
+    expect(Array.isArray(runtimeResult.migrations)).toBe(true)
+    for (const migration of runtimeResult.migrations) {
+      expect(Array.isArray(migration.seeded)).toBe(true)
+      expect(Array.isArray(migration.statements)).toBe(true)
+      expect(Array.isArray(migration.findings)).toBe(true)
+      expect(migration.statements.every(statement => Array.isArray(statement.locks))).toBe(true)
+      expect(migration.statements.every(statement => Array.isArray(statement.rewrittenRelations))).toBe(true)
+    }
   })
 
   // Phase 1 of the migration to runtime analysis: the prediction is carried beside the
   // measurement so a disagreement is visible rather than assumed away.
   it('scores the static prediction against the measurement', () => {
-    const understated = runtimeResult.statements.find(
+    const statements = runtimeResult.migrations.flatMap(migration => migration.statements)
+    const understated = statements.find(
       statement => statement.observedClass === 'TABLE_REWRITE' && statement.predictedClass === 'METADATA_ONLY',
     )
     expect(understated).toBeDefined()
     expect(understated!.rewrittenRelations.length).toBeGreaterThan(0)
-    expect(runtimeResult.findings.some(finding => finding.type === 'CLASS_UNDERSTATED')).toBe(true)
+    const findings = runtimeResult.migrations.flatMap(migration => migration.findings)
+    expect(findings.some(finding => finding.type === 'CLASS_UNDERSTATED')).toBe(true)
   })
 })

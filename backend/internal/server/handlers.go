@@ -27,14 +27,19 @@ func migrationsHandler(store MigrationStore) echo.HandlerFunc {
 			return migrationsFromPath(c, path)
 		}
 
-		migrations, err := store.Migrations(c.QueryParam("migrationId"))
+		infos, err := store.MigrationInfos(c.QueryParam("datasetId"))
 		if errors.Is(err, models.ErrNotFound) {
 			return notFound(c)
 		}
 		if err != nil {
 			return internalServerError(c, err)
 		}
-		return c.JSON(http.StatusOK, toResponse(pointers(migrations)))
+
+		migrations, err := parser.ParseTimeline(infos)
+		if err != nil {
+			return internalServerError(c, err)
+		}
+		return c.JSON(http.StatusOK, toResponse(migrations))
 	}
 }
 
@@ -54,9 +59,9 @@ func migrationsFromPath(c echo.Context, path string) error {
 	return c.JSON(http.StatusOK, toResponse(migrations))
 }
 
-func runMigrationsHandler(runner MigrationRunner) echo.HandlerFunc {
+func runMigrationsHandler(run RunDatasetMigrations) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		result, err := runner.Run(c.Request().Context(), c.QueryParam("migrationId"))
+		result, err := run(c.Request().Context(), c.QueryParam("datasetId"))
 		if errors.Is(err, models.ErrNotFound) {
 			return notFound(c)
 		}
@@ -67,8 +72,9 @@ func runMigrationsHandler(runner MigrationRunner) echo.HandlerFunc {
 	}
 }
 
-// runtimeHandler measures one migration of the timeline against a seeded
-// container. It is a POST because it starts a container and writes to it.
+// runtimeHandler measures the migration named by the migration parameter, or
+// every migration of the timeline when it is absent, against a seeded container.
+// It is a POST because it starts a container and writes to it.
 func runtimeHandler(store MigrationStore, analyse RuntimeAnalyse) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		rows, err := queryInt64(c, "rows")
@@ -80,7 +86,7 @@ func runtimeHandler(store MigrationStore, analyse RuntimeAnalyse) echo.HandlerFu
 			return badRequest(c, err)
 		}
 
-		migrations, err := migrationSources(store, c.QueryParam("migrationId"), c.QueryParam("migrationsPath"))
+		migrations, err := migrationSources(store, c.QueryParam("datasetId"), c.QueryParam("migrationsPath"))
 		if errors.Is(err, models.ErrNotFound) {
 			return notFound(c)
 		}
@@ -89,10 +95,10 @@ func runtimeHandler(store MigrationStore, analyse RuntimeAnalyse) echo.HandlerFu
 		}
 
 		result, err := analyse(c.Request().Context(), runtime.Request{
-			Migrations: migrations,
-			Target:     c.QueryParam("migration"),
-			Rows:       rows,
-			Deadline:   time.Duration(deadlineMs) * time.Millisecond,
+			Migrations:        migrations,
+			TargetMigrationID: c.QueryParam("migration"),
+			Rows:              rows,
+			Deadline:          time.Duration(deadlineMs) * time.Millisecond,
 		})
 		if errors.Is(err, models.ErrNotFound) {
 			return notFound(c)
@@ -106,21 +112,11 @@ func runtimeHandler(store MigrationStore, analyse RuntimeAnalyse) echo.HandlerFu
 
 // migrationSources resolves the request parameters to the raw migrations to
 // analyse: a local directory when migrationsPath is given, else the dataset.
-func migrationSources(store MigrationStore, migrationId, migrationsPath string) ([]models.MigrationInfo, error) {
+func migrationSources(store MigrationStore, datasetId, migrationsPath string) ([]models.MigrationInfo, error) {
 	if migrationsPath != "" {
 		return loader.LoadMigrationInfosFromDir(migrationsPath)
 	}
-
-	migrations, err := store.Migrations(migrationId)
-	if err != nil {
-		return nil, err
-	}
-
-	infos := make([]models.MigrationInfo, len(migrations))
-	for i, migration := range migrations {
-		infos[i] = models.MigrationInfo{ID: migration.ID, SQL: migration.SQL, Timestamp: migration.Timestamp}
-	}
-	return infos, nil
+	return store.MigrationInfos(datasetId)
 }
 
 // queryInt64 reads an optional numeric query parameter. Absent means zero, which
@@ -142,18 +138,10 @@ func queryInt64(c echo.Context, name string) (int64, error) {
 
 func notFound(c echo.Context) error {
 	return c.JSON(http.StatusNotFound, map[string]string{
-		"error": "unknown migrationId",
+		"error": "unknown datasetId",
 	})
 }
 
 func badRequest(c echo.Context, err error) error {
 	return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
-}
-
-func pointers(migrations []models.Migration) []*models.Migration {
-	ptrs := make([]*models.Migration, len(migrations))
-	for i := range migrations {
-		ptrs[i] = &migrations[i]
-	}
-	return ptrs
 }

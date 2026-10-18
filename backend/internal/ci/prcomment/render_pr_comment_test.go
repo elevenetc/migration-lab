@@ -16,7 +16,7 @@ func TestCommentHasOneTitleAndLinkedMigrationSubtitles(t *testing.T) {
 	}
 	classes := []models.PerformanceClass{models.MetadataOnly, models.DataScanning, models.TableRewrite}
 	for i := range migrations {
-		migrations[i].Runtime = &models.RuntimeAnalysisResult{
+		migrations[i].Runtime = &models.RuntimeMigrationResult{
 			Verdict:    models.RuntimeCompleted,
 			Statements: []models.StatementMeasurement{{ObservedClass: classes[i]}},
 		}
@@ -42,7 +42,7 @@ func TestCommentHasOneTitleAndLinkedMigrationSubtitles(t *testing.T) {
 
 func TestCommentShowsFindingsAndFailedSeedingEvenWhenCompleted(t *testing.T) {
 	body := RenderPRComment(Summary{Migrations: []Migration{{
-		Name: "V2__change.sql", Runtime: &models.RuntimeAnalysisResult{
+		Name: "V2__change.sql", Runtime: &models.RuntimeMigrationResult{
 			Verdict: models.RuntimeCompleted,
 			Seeded:  []models.SeededTable{{Table: "accounts", Error: "could not seed accounts"}},
 			Findings: []models.RuntimeFinding{
@@ -63,7 +63,7 @@ func TestCommentShowsFindingsAndFailedSeedingEvenWhenCompleted(t *testing.T) {
 
 func TestCommentEscapesRepositoryTextAndBoundsLargeReports(t *testing.T) {
 	untrusted := "</code><script>alert(1)</script> @someone\n[link](https://example.com) `tick` *bold*"
-	summary := Summary{Migrations: []Migration{{Name: untrusted, Runtime: &models.RuntimeAnalysisResult{
+	summary := Summary{Migrations: []Migration{{Name: untrusted, Runtime: &models.RuntimeMigrationResult{
 		Verdict: models.RuntimeCompleted, Findings: []models.RuntimeFinding{{Type: "TYPE", Message: untrusted}},
 	}}}}
 	body := RenderPRComment(summary, testCommentRun())

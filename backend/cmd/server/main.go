@@ -11,6 +11,7 @@ import (
 	"migration-lab/backend/internal/database"
 	"migration-lab/backend/internal/datasets"
 	"migration-lab/backend/internal/loader"
+	"migration-lab/backend/internal/models"
 	"migration-lab/backend/internal/monitoring"
 	"migration-lab/backend/internal/runner"
 	"migration-lab/backend/internal/server"
@@ -62,9 +63,11 @@ func initConfig(port *int) (server.Config, error) {
 
 	db := database.New(sets)
 	cfg := server.Config{
-		Port:    *port,
-		Store:   db,
-		Runner:  runner.MigrationRunner{Store: db},
+		Port:  *port,
+		Store: db,
+		Run: func(ctx context.Context, datasetId string) (models.RunMigrationsResult, error) {
+			return runner.LoadAndRunMigrations(ctx, db.MigrationInfos, datasetId)
+		},
 		Analyse: runtime.Analyse,
 	}
 	return cfg, nil

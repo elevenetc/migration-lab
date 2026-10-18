@@ -1,14 +1,14 @@
 package database
 
 import (
+	"slices"
 	"sort"
 
 	"migration-lab/backend/internal/models"
-	"migration-lab/backend/internal/parser"
 )
 
 // Database is a temporary, in-memory stand-in for a real migrations database.
-// It stores raw migration sources per dataset id and parses them on query.
+// It stores raw migration sources per dataset id.
 type Database struct {
 	datasets map[string][]models.MigrationInfo
 }
@@ -27,22 +27,12 @@ func (d *Database) DatasetIds() []string {
 	return ids
 }
 
-// Migrations returns the parsed migrations for the given dataset id,
+// MigrationInfos returns the raw migration sources of the given dataset id,
 // or models.ErrNotFound if the id is unknown.
-func (d *Database) Migrations(migrationId string) ([]models.Migration, error) {
-	infos, ok := d.datasets[migrationId]
+func (d *Database) MigrationInfos(datasetId string) ([]models.MigrationInfo, error) {
+	infos, ok := d.datasets[datasetId]
 	if !ok {
 		return nil, models.ErrNotFound
 	}
-
-	parsed, err := parser.ParseTimeline(infos)
-	if err != nil {
-		return nil, err
-	}
-
-	migrations := make([]models.Migration, len(parsed))
-	for i, m := range parsed {
-		migrations[i] = *m
-	}
-	return migrations, nil
+	return slices.Clone(infos), nil
 }

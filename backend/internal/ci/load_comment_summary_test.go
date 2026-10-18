@@ -16,7 +16,7 @@ func TestCommentShowsConciseReviewSummary(t *testing.T) {
 	target := "V2__add_account_status.sql"
 	saveCommentFixture(t, output, "plan.json", migrationPlan{Head: run.Head, Directory: "db/migrations", Targets: []string{target}})
 	saveCommentFixture(t, output, "results.json", []migrationResult{{Migration: target, Result: target + ".json"}})
-	saveCommentFixture(t, output, target+".json", map[string]any{"runtimeResult": models.RuntimeAnalysisResult{
+	saveCommentFixture(t, output, target+".json", runtimeOutput(models.RuntimeMigrationResult{
 		MigrationID: target, Verdict: models.RuntimeCompleted, DeadlineMs: 5000,
 		Statements: []models.StatementMeasurement{
 			{DurationMs: 12, PredictedClass: models.TableRewrite, ObservedClass: models.MetadataOnly},
@@ -24,7 +24,7 @@ func TestCommentShowsConciseReviewSummary(t *testing.T) {
 		},
 		Seeded:  []models.SeededTable{{Table: "accounts", Rows: 1_000_000}},
 		Message: "all 2 statements completed in 15 ms",
-	}})
+	}))
 	body := prcomment.RenderPRComment(loadCommentSummary(output, run.Head), run)
 	want := "## Migration runtime analysis\n\n" +
 		"### [✅` " + target + " `](https://github.com/owner/repo/pull/7/files#diff-f71ba626fed0ac9e5c7e61d9722162e06e8cabcbc644d8250c35e21e06361207)\n\n" +
@@ -88,7 +88,14 @@ func TestCommentHandlesFailuresAndPartialArtifacts(t *testing.T) {
 		{name: "wrong migration in JSON", status: "success", want: "Runtime output is missing or invalid", setup: func(t *testing.T, output string, run prcomment.Run) {
 			saveCommentFixture(t, output, "plan.json", migrationPlan{Head: run.Head, Targets: []string{"V2__add.sql"}})
 			saveCommentFixture(t, output, "results.json", []migrationResult{{Migration: "V2__add.sql"}})
-			saveCommentFixture(t, output, "V2__add.sql.json", map[string]any{"runtimeResult": models.RuntimeAnalysisResult{MigrationID: "other", Verdict: models.RuntimeCompleted}})
+			saveCommentFixture(t, output, "V2__add.sql.json", runtimeOutput(models.RuntimeMigrationResult{MigrationID: "other", Verdict: models.RuntimeCompleted}))
+		}},
+		{name: "run could not start", status: "failure", want: "did not measure the migration: failed to apply", setup: func(t *testing.T, output string, run prcomment.Run) {
+			saveCommentFixture(t, output, "plan.json", migrationPlan{Head: run.Head, Targets: []string{"V2__add.sql"}})
+			saveCommentFixture(t, output, "results.json", []migrationResult{{Migration: "V2__add.sql", ExitCode: 1}})
+			saveCommentFixture(t, output, "V2__add.sql.json", map[string]any{"runtimeResult": models.RuntimeAnalysisResult{
+				Migrations: []models.RuntimeMigrationResult{}, Message: "failed to apply V1__create.sql: syntax error",
+			}})
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -114,7 +121,7 @@ func TestCommentIncludesAllTargetsAfterRuntimeFailure(t *testing.T) {
 	saveCommentFixture(t, output, "plan.json", migrationPlan{Head: run.Head, Targets: targets})
 	saveCommentFixture(t, output, "results.json", []migrationResult{{Migration: targets[0], ExitCode: 1}, {Migration: targets[1]}})
 	for i, verdict := range []models.RuntimeVerdict{models.RuntimeExceedsDeadline, models.RuntimeCompleted} {
-		saveCommentFixture(t, output, targets[i]+".json", map[string]any{"runtimeResult": models.RuntimeAnalysisResult{MigrationID: targets[i], Verdict: verdict}})
+		saveCommentFixture(t, output, targets[i]+".json", runtimeOutput(models.RuntimeMigrationResult{MigrationID: targets[i], Verdict: verdict}))
 	}
 	body := prcomment.RenderPRComment(loadCommentSummary(output, run.Head), run)
 	for _, want := range []string{"Analysis did not finish successfully", targets[0], targets[1], targets[2], "Do not merge", "exceeded the runtime limit", "Review before merging", "No runtime result was collected"} {
@@ -153,4 +160,9 @@ func saveCommentFixture(t *testing.T, output, name string, value any) {
 	if err := writeJSON(filepath.Join(output, name), value); err != nil {
 		t.Fatal(err)
 	}
+}
+
+// runtimeOutput is the CLI output of a runtime pass that measured migrations.
+func runtimeOutput(migrations ...models.RuntimeMigrationResult) map[string]any {
+	return map[string]any{"runtimeResult": models.RuntimeAnalysisResult{Migrations: migrations}}
 }

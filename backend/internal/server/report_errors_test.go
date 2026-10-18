@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"migration-lab/backend/internal/models"
 	"migration-lab/backend/internal/monitoring"
 
 	"github.com/getsentry/sentry-go"
@@ -59,7 +60,7 @@ func TestRequestErrorsAreCapturedOnceWithIsolatedContext(t *testing.T) {
 	e.GET("/error", func(c echo.Context) error { return errors.New("returned error") })
 
 	for _, path := range []string{"/api/migrations", "/panic", "/error"} {
-		req := httptest.NewRequest(http.MethodGet, path+"?migrationId=demo&migration=V2&privatePath=/private/sql", strings.NewReader("secret SQL"))
+		req := httptest.NewRequest(http.MethodGet, path+"?datasetId=demo&migration=V2&privatePath=/private/sql", strings.NewReader("secret SQL"))
 		req.Header.Set("Authorization", "secret")
 		req.Header.Set("Cookie", "session=secret")
 		rec := httptest.NewRecorder()
@@ -103,9 +104,9 @@ func TestRequestErrorsAreCapturedOnceWithIsolatedContext(t *testing.T) {
 
 func TestExpectedResponsesAreNotReported(t *testing.T) {
 	hub, transport := testHub(t)
-	e := New(Config{Sentry: hub, Store: datasetsDB(), Runner: fakeRunner{}})
+	e := New(Config{Sentry: hub, Store: datasetsDB(), Run: fakeRun(models.RunMigrationsResult{}, nil)})
 	e.GET("/bad-input", func(c echo.Context) error { return echo.NewHTTPError(400, "invalid input") })
-	for _, path := range []string{"/health", "/api/migrations?migrationId=missing", "/api/migrations?migrationsPath=/missing", "/bad-input"} {
+	for _, path := range []string{"/health", "/api/migrations?datasetId=missing", "/api/migrations?migrationsPath=/missing", "/bad-input"} {
 		e.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, path, nil))
 	}
 	// Unsuccessful SQL execution is still a normal analysis result (HTTP 200).
@@ -153,7 +154,7 @@ func TestLogsAreDeliveredWithRequestContextAndKeptLocally(t *testing.T) {
 		return errors.New("handler failed")
 	})
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/logged?migrationId=demo&migration=V2&migrationsPath=/private/sql", nil))
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/logged?datasetId=demo&migration=V2&migrationsPath=/private/sql", nil))
 	e.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/health", nil))
 	monitoring.Infof(context.Background(), "CLI stays local")
 	if !hub.Flush(time.Second) {

@@ -1,7 +1,7 @@
 # Supported Runtime Analysis
 
-Findings produced by *executing* one migration against a real PostgreSQL container, on tables seeded to production-like
-size.
+Findings produced by *executing* migrations against a real PostgreSQL container, on tables seeded to production-like
+size — one selected migration, or every migration of a timeline in turn.
 
 Static analysis reads the AST and reasons about what a statement *is*. Runtime analysis runs it and observes what it
 *does*: duration, locks held, rows scanned, relations rewritten, and what a killed attempt leaves behind.
@@ -25,23 +25,43 @@ render through one path. Measurements ride alongside as extra payload.
 
 ## What runs today
 
-Entry point `Analyse` (`internal/analysis/runtime`), given a timeline and which migration to measure:
+Entry point `Analyse` (`internal/analysis/runtime`), given a timeline and optionally a target migration. It measures
+the target alone (PR runs, the per-cell `runtime` button), or every migration when none is named (the CLI's `--runtime`,
+the web client's `Runtime all` button). Either way the answer has one shape: the migrations it measured.
 
 1. Start a throwaway `postgres:16-alpine` container — pinned, so version-gated fast paths match what is measured
-2. Apply every migration *before* the analyzed one
-3. Read the catalog: tables, partitioning, fillable columns
-4. [Seed](#seeding) the touched tables, then `ANALYZE` each so the planner sees real statistics
-5. Execute the statements under a shared [deadline](#deadline-and-retry-safety), sampling locks throughout and
-   snapshotting the schema around each one
-6. Derive each statement's [observed performance class](#observed-performance-class) and pair it with the prediction
-7. Classify the run, check what a killed attempt left behind, turn measurements into [findings](#findings)
+2. Apply every migration *before* the first measured one, unmeasured
+3. For each measured migration, in order (`measureMigration`):
+   1. Read the catalog: tables, partitioning, fillable columns
+   2. [Top up](#seeding) the touched tables, then `ANALYZE` each so the planner sees real statistics. A table the
+      migration creates is empty while it runs, as it would be in production
+   3. Execute the statements under a shared [deadline](#deadline-and-retry-safety), sampling locks throughout and
+      snapshotting the schema around each one
+   4. Derive each statement's [observed performance class](#observed-performance-class) and pair it with the prediction
+   5. Classify the run, check what a killed attempt left behind, turn measurements into [findings](#findings)
+   6. [Force it through](#forcing-a-migration-through) when it did not complete and migrations follow
 
 Notes:
 
-- Measured inside one transaction that is rolled back, so the seeded database is reusable
+- Measured inside one transaction. The last measured migration is rolled back; one with migrations after it is
+  committed when it completed, so it is not run twice
 - A statement PostgreSQL refuses to run in a transaction (`CONCURRENTLY`, `VACUUM`, `REINDEX`, `ALTER SYSTEM`, database
   and tablespace DDL) forces the migration to run without one; its effects stay applied
 - Statements are split with `pg_query`, so unmodelled ones run too — a backfill `UPDATE` is measured like any other
+
+### Forcing a migration through
+
+A measured migration that did not complete is forced through without a deadline, the way an operator unblocks a
+deploy: invalid indexes a cancelled `CONCURRENTLY` build left are dropped, then the migration runs again — from its
+first statement when it was rolled back, from the statement that stopped it otherwise. One that fails even without a
+deadline stops the run: `stopped` names it, and later migrations are not measured.
+
+### Result
+
+`RuntimeAnalysisResult` — `deadlineMs`, `rows`, `migrations` (one `RuntimeMigrationResult` each: seeded tables,
+statement measurements, verdict, retry, findings, message), `stopped` and `message`. A failure to start the container or
+apply the predecessors leaves `migrations` empty and says why in `message`. Each migration is a separate result, so
+results can later be cached per timeline prefix.
 
 ## Observed performance class
 
@@ -73,7 +93,7 @@ empty, so the prediction stands in:
 
 ## Inputs
 
-Every touched table is seeded to **1,000,000 rows**. Production data is never copied. `--rows` (and the `rows` query
+Every touched table is topped up to **1,000,000 rows**. Production data is never copied. `--rows` (and the `rows` query
 parameter) lowers the count; tests and local runs use it to stay quick.
 
 **Planned**, in the order the need would arrive:
@@ -96,6 +116,10 @@ Which tables:
 
 How: `generate_series`, skipping columns the database fills itself (identity, generated, `serial`). A table with only
 such columns is still seeded, every column taking its default.
+
+Tables are **topped up**, not appended to: rows are counted, and only the missing ones are inserted, numbered on from the
+existing count so generated keys do not collide. A table seeded for an earlier migration of a timeline keeps its size,
+and rows a migration inserted itself (lookup data) are kept. `seeded[].rows` reports the count after seeding.
 
 | Type                                                         | Value                             |
 |--------------------------------------------------------------|-----------------------------------|
@@ -179,27 +203,31 @@ Why the lock finding asks what the statement cost:
 ## Interfaces
 
 ```
-POST /api/migrations/runtime-analysis?migrationId=<dataset>&migration=<migration id>[&rows=&deadlineMs=]
-POST /api/migrations/runtime-analysis?migrationsPath=<abs-dir>&migration=<migration id>
+POST /api/migrations/runtime-analysis?datasetId=<dataset>[&migration=<migration id>][&rows=&deadlineMs=]
+POST /api/migrations/runtime-analysis?migrationsPath=<abs-dir>[&migration=<migration id>]
 ```
 
-`migrationsPath` takes precedence over `migrationId`. Omitting `migration` measures the last of the timeline — the one
-that just arrived on the branch.
+`migrationsPath` takes precedence over `datasetId`. `migration` measures that migration alone; without it every
+migration is measured.
 
 ```bash
-# Last migration of a directory, every touched table seeded to 1M rows
+# Every migration of a directory in turn, every touched table topped up to 1M rows
 ./build/migration-lab --runtime /path/to/migrations
 
 # Smaller and quicker, with a 30 s grace period
 ./build/migration-lab --runtime --rows 50000 --deadline-ms 30000 /path/to/migrations
 
-# Select an earlier migration by its filename; later migrations are excluded
+# Only one migration, selected by its filename; later migrations are excluded
 ./build/migration-lab --runtime --migration V42__add_index.sql /path/to/migrations
 ```
 
-- CLI prints `runtimeResult` alongside the static `analysisResult`, and exits non-zero unless the verdict is
-  `COMPLETED` — which is what fails the CI job
-- Web client: each migration cell has a `runtime` button under `focus-in`, result shown in a popup
+- CLI prints `runtimeResult` alongside the static `staticResult`
+- `--runtime` exits zero once the run started, whatever the verdicts: an old migration that misses the deadline must
+  not fail every later run
+- `--runtime --migration` exits non-zero unless the target's verdict is `COMPLETED` — which is what fails the CI job
+- Inline SQL is split with `pg_query`, each statement becoming a migration of its own (`statement_1`, …)
+- Web client: `Runtime all` in the header measures the whole timeline, with one row per migration that expands into
+  the full result; each migration cell has a `runtime` button under `focus-in` that measures only that migration
 - [GitHub Actions](github-actions.md): a reusable workflow measures added migrations in pull requests
   and retains JSON and diagnostic logs as artifacts
 
@@ -235,8 +263,10 @@ Absolute durations are optimistic and not portable.
   readers and writers, with explicit synchronization rather than opportunistic reads
 - **Retained lock snapshots** — inspect locks before rollback to capture fast transactional operations, accounting for
   locks inherited from earlier statements; transient and nontransactional locks still need separate treatment
-- **Timeline integration** — findings are warning-shaped already, but only the popup and CLI show them; the grid and the
+- **Timeline integration** — findings are warning-shaped already, but only the popups and CLI show them; the grid and the
   HTML report do not
+- **Timeline caching** — a timeline result per prefix of migrations, so a new migration appends to a cached run; the
+  database state at the prefix would need a snapshot, since replaying it pays every rewrite again
 
 ## Notes
 

@@ -41,7 +41,7 @@ Analyze the included example migrations or a SQL string:
 ./build/migration-lab "CREATE TABLE users (id INT);"
 ```
 
-The default output is JSON containing `analysisResult`. Static analysis runs without Docker.
+The default output is JSON containing `staticResult`. Static analysis runs without Docker.
 Pass your own directory to analyze its `*.sql` files:
 
 ```bash
@@ -113,7 +113,7 @@ Start with the bundled sample files mounted as the migration root:
 MIGRATIONS_ROOT="$PWD/backend/testdata" just dev-run
 ```
 
-Open [localhost:3000/?migrationId=ecommerce](http://localhost:3000/?migrationId=ecommerce).
+Open [localhost:3000/?datasetId=ecommerce](http://localhost:3000/?datasetId=ecommerce).
 Use the dataset selector to explore other examples, including `simple-partition` and `performance-class`.
 
 Tables form the rows and migrations form the columns. Drag to pan, scroll to zoom, and use the left and
@@ -136,7 +136,7 @@ http://localhost:3000/?migrationsPath=/absolute/path/to/migrations
 ```
 
 The path must be accessible inside the backend container. `migrationsPath` takes precedence over
-`migrationId`. Without an explicit `MIGRATIONS_ROOT`, Compose mounts `~/dev`; keep the variable set when
+`datasetId`. Without an explicit `MIGRATIONS_ROOT`, Compose mounts `~/dev`; keep the variable set when
 working with a narrower directory. It can also be set in a local `.env` file.
 
 Stop the services with:
